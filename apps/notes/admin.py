@@ -16,11 +16,11 @@ class EntryInline(admin.TabularInline):
 @admin.register(Notebook)
 class NotebookAdmin(admin.ModelAdmin):
     list_display = [
-        'title', 'user', 'stock_code', 'company_name', 
+        'title', 'user', 
         'status', 'entry_count', 'updated_at'
     ]
     list_filter = ['status', 'created_at', 'updated_at']
-    search_fields = ['title', 'subtitle', 'stock_code', 'company_name']
+    search_fields = ['title', 'subtitle']
     filter_horizontal = ['tags']
     
     inlines = [EntryInline]
