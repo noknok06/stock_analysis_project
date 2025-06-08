@@ -1,0 +1,42 @@
+/* カスタムスタイル */
+.bg-gray-750 {
+    background-color: #3f4954;
+}
+
+/* 検索結果ハイライト */
+mark {
+    background-color: #fbbf24;
+    color: #000;
+    padding: 0 2px;
+    border-radius: 2px;
+}
+
+/* スムーズなトランジション */
+* {
+    transition: all 0.2s ease-in-out;
+}
+
+/* フォーカススタイル */
+input:focus, select:focus, textarea:focus {
+    outline: none;
+    ring: 2px;
+    ring-color: rgba(59, 130, 246, 0.5);
+}
+
+/* カスタムスクロールバー */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #374151;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #6b7280;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #9ca3af;
+}

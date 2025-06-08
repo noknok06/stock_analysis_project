@@ -1,0 +1,113 @@
+{% extends 'base.html' %}
+
+{% block title %}ダッシュボード - 株式分析記録アプリ{% endblock %}
+
+{% block content %}
+<!-- Inline Search Bar -->
+<div class="mb-8">
+    <div class="relative max-w-2xl mx-auto">
+        <div class="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400">
+            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+            </svg>
+        </div>
+        <input type="text" 
+               id="global-search" 
+               placeholder="銘柄名、タグ、分析内容で検索..."
+               class="pl-10 w-full bg-gray-800 border border-gray-700 text-white placeholder-gray-400 focus:border-blue-500 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500/20">
+    </div>
+</div>
+
+<!-- Dashboard Stats -->
+<div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
+    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+        <h3 class="text-sm font-medium text-gray-300 mb-1">アクティブノート</h3>
+        <div class="text-2xl font-bold text-white">{{ stats.active_notebooks }}</div>
+        <p class="text-xs text-gray-400">過去30日</p>
+    </div>
+    
+    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+        <h3 class="text-sm font-medium text-gray-300 mb-1">今月の記録</h3>
+        <div class="text-2xl font-bold text-white">{{ stats.monthly_entries }}</div>
+        <p class="text-xs text-gray-400">エントリー数</p>
+    </div>
+    
+    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+        <h3 class="text-sm font-medium text-gray-300 mb-1">総記録数</h3>
+        <div class="text-2xl font-bold text-white">{{ stats.total_entries }}</div>
+        <p class="text-xs text-gray-400">累計エントリー</p>
+    </div>
+    
+    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+        <h3 class="text-sm font-medium text-gray-300 mb-1">目標達成率</h3>
+        <div class="text-2xl font-bold text-green-400">{{ stats.goal_achievement_rate }}%</div>
+        <p class="text-xs text-gray-400">今月の目標</p>
+    </div>
+</div>
+
+<!-- Recent Activity & Trending Tags -->
+<div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+    <!-- Recent Activity -->
+    <section class="bg-gray-800 border border-gray-700 rounded-lg">
+        <header class="p-6 border-b border-gray-700">
+            <h2 class="text-white font-semibold flex items-center gap-2">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                最近の活動
+            </h2>
+        </header>
+        
+        <div class="p-6 space-y-4">
+            {% for activity in recent_activities %}
+                <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                    <div>
+                        <p class="text-white font-medium">{{ activity.title }}</p>
+                        <p class="text-sm text-gray-400">{{ activity.created_at|timesince }}前</p>
+                    </div>
+                    <span class="px-2 py-1 text-xs rounded-full bg-blue-900 text-blue-300">
+                        {{ activity.get_activity_type_display }}
+                    </span>
+                </div>
+            {% empty %}
+                <p class="text-gray-400 text-center py-4">最近のアクティビティはありません</p>
+            {% endfor %}
+        </div>
+    </section>
+
+    <!-- Trending Tags -->
+    <section class="bg-gray-800 border border-gray-700 rounded-lg">
+        <header class="p-6 border-b border-gray-700">
+            <h2 class="text-white font-semibold flex items-center gap-2">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a2 2 0 012-2z"></path>
+                </svg>
+                トレンドタグ
+            </h2>
+        </header>
+        
+        <div class="p-6">
+            <div class="flex flex-wrap gap-2">
+                {% for tag in trending_tags %}
+                    <span class="px-3 py-1 text-sm rounded-full border border-gray-600 text-gray-300 hover:bg-gray-700 cursor-pointer transition-colors">
+                        {{ tag.name }} ({{ tag.usage_count }})
+                    </span>
+                {% empty %}
+                    <p class="text-gray-400 text-center py-4">タグがありません</p>
+                {% endfor %}
+            </div>
+        </div>
+    </section>
+</div>
+
+<!-- Quick Actions -->
+<div class="mt-8 text-center">
+    <a href="{% url 'notes:create' %}" 
+       class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+        <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+        新規ノート作成
+    </a>
+</div>
+{% endblock %}

@@ -1,0 +1,743 @@
+<!-- ========================================
+templates/notes/create.html
+======================================== -->
+
+{% extends 'base.html' %}
+
+{% block title %}新規ノート作成 - 株式分析記録アプリ{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tag-suggestion {
+        transition: all 0.2s ease;
+    }
+    .tag-suggestion:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+    }
+    .form-section {
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    }
+    .step-indicator {
+        background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8">
+        <div class="flex items-center space-x-4 mb-4">
+            <a href="{% url 'notes:list' %}" 
+               class="text-gray-400 hover:text-white transition-colors">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+            </a>
+            <h1 class="text-3xl font-bold text-white">新規ノート作成</h1>
+        </div>
+        <p class="text-gray-400">株式分析ノートを作成して投資戦略を記録しましょう</p>
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="mb-8">
+        <div class="flex items-center space-x-4">
+            <div class="flex items-center space-x-2">
+                <div class="step-indicator w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold">
+                    1
+                </div>
+                <span class="text-white font-medium">基本情報</span>
+            </div>
+            <div class="h-1 w-16 bg-gray-700 rounded"></div>
+            <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-gray-400 text-sm font-bold">
+                    2
+                </div>
+                <span class="text-gray-400">投資戦略</span>
+            </div>
+            <div class="h-1 w-16 bg-gray-700 rounded"></div>
+            <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-gray-400 text-sm font-bold">
+                    3
+                </div>
+                <span class="text-gray-400">タグ設定</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Form -->
+    <form method="POST" id="notebook-form" class="space-y-8">
+        {% csrf_token %}
+        
+        <!-- 基本情報セクション -->
+        <section class="form-section bg-gray-800 border border-gray-700 rounded-lg p-8">
+            <h2 class="text-xl font-semibold text-white mb-6 flex items-center">
+                <svg class="h-6 w-6 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-6m-2-5.5V9.5a2 2 0 012-2h6a2 2 0 012 2V16"></path>
+                </svg>
+                基本情報
+            </h2>
+            
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 銘柄コード -->
+                <div>
+                    <label for="id_stock_code" class="block text-sm font-medium text-gray-300 mb-2">
+                        銘柄コード
+                    </label>
+                    <div class="relative">
+                        {{ form.stock_code }}
+                        <div id="stock-suggestions" class="absolute z-10 w-full bg-gray-700 border border-gray-600 rounded-md mt-1 hidden">
+                            <!-- 銘柄候補がここに表示される -->
+                        </div>
+                    </div>
+                    {% if form.stock_code.errors %}
+                        <p class="text-red-400 text-sm mt-1">{{ form.stock_code.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- 企業名 -->
+                <div>
+                    <label for="id_company_name" class="block text-sm font-medium text-gray-300 mb-2">
+                        企業名
+                    </label>
+                    {{ form.company_name }}
+                    {% if form.company_name.errors %}
+                        <p class="text-red-400 text-sm mt-1">{{ form.company_name.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- タイトル -->
+                <div class="md:col-span-2">
+                    <label for="id_title" class="block text-sm font-medium text-gray-300 mb-2">
+                        ノートタイトル <span class="text-red-400">*</span>
+                    </label>
+                    {{ form.title }}
+                    {% if form.title.errors %}
+                        <p class="text-red-400 text-sm mt-1">{{ form.title.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- サブタイトル -->
+                <div class="md:col-span-2">
+                    <label for="id_subtitle" class="block text-sm font-medium text-gray-300 mb-2">
+                        サブタイトル
+                    </label>
+                    {{ form.subtitle }}
+                    {% if form.subtitle.errors %}
+                        <p class="text-red-400 text-sm mt-1">{{ form.subtitle.errors.0 }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </section>
+
+        <!-- 投資戦略セクション -->
+        <section class="form-section bg-gray-800 border border-gray-700 rounded-lg p-8">
+            <h2 class="text-xl font-semibold text-white mb-6 flex items-center">
+                <svg class="h-6 w-6 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                </svg>
+                投資戦略・目標
+            </h2>
+
+            <div class="space-y-6">
+                <!-- 投資理由 -->
+                <div>
+                    <label for="id_investment_reason" class="block text-sm font-medium text-gray-300 mb-2">
+                        投資理由・戦略 <span class="text-red-400">*</span>
+                    </label>
+                    {{ form.investment_reason }}
+                    <div class="mt-2 text-sm text-gray-400">
+                        なぜこの銘柄に投資するのか、どのような戦略で臨むのかを具体的に記述してください
+                    </div>
+                    {% if form.investment_reason.errors %}
+                        <p class="text-red-400 text-sm mt-1">{{ form.investment_reason.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- 目標株価 -->
+                    <div>
+                        <label for="id_target_price" class="block text-sm font-medium text-gray-300 mb-2">
+                            目標株価
+                        </label>
+                        {{ form.target_price }}
+                        {% if form.target_price.errors %}
+                            <p class="text-red-400 text-sm mt-1">{{ form.target_price.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- ステータス -->
+                    <div>
+                        <label for="id_status" class="block text-sm font-medium text-gray-300 mb-2">
+                            ステータス
+                        </label>
+                        {{ form.status }}
+                        {% if form.status.errors %}
+                            <p class="text-red-400 text-sm mt-1">{{ form.status.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- 売却タイミング -->
+                <div>
+                    <label for="id_sell_timing" class="block text-sm font-medium text-gray-300 mb-2">
+                        売却タイミング
+                    </label>
+                    {{ form.sell_timing }}
+                    {% if form.sell_timing.errors %}
+                        <p class="text-red-400 text-sm mt-1">{{ form.sell_timing.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- 注目ポイント（動的追加） -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">
+                        注目ポイント
+                    </label>
+                    <div id="key-points-container">
+                        <div class="key-point-item flex gap-2 mb-2">
+                            <input type="text" 
+                                   name="key_point_0" 
+                                   placeholder="注目ポイント 1"
+                                   class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <button type="button" 
+                                    onclick="removeKeyPoint(this)"
+                                    class="px-3 py-2 text-red-400 hover:text-red-300 hidden">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="button" 
+                            onclick="addKeyPoint()"
+                            class="text-blue-400 hover:text-blue-300 text-sm flex items-center">
+                        <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        ポイントを追加
+                    </button>
+                </div>
+
+                <!-- リスク要因（動的追加） -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">
+                        リスク要因
+                    </label>
+                    <div id="risk-factors-container">
+                        <div class="risk-factor-item flex gap-2 mb-2">
+                            <input type="text" 
+                                   name="risk_factor_0" 
+                                   placeholder="リスク要因 1"
+                                   class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <button type="button" 
+                                    onclick="removeRiskFactor(this)"
+                                    class="px-3 py-2 text-red-400 hover:text-red-300 hidden">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                                </svg>
+                            </button>
+                        </div>
+                    </div>
+                    <button type="button" 
+                            onclick="addRiskFactor()"
+                            class="text-yellow-400 hover:text-yellow-300 text-sm flex items-center">
+                        <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        リスクを追加
+                    </button>
+                </div>
+            </div>
+        </section>
+
+        <!-- タグ設定セクション -->
+        <section class="form-section bg-gray-800 border border-gray-700 rounded-lg p-8">
+            <h2 class="text-xl font-semibold text-white mb-6 flex items-center">
+                <svg class="h-6 w-6 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a2 2 0 012-2z"></path>
+                </svg>
+                タグ設定
+            </h2>
+
+            <!-- カスタムタグ入力 -->
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                    カスタムタグ
+                </label>
+                <div class="flex gap-2">
+                    <input type="text" 
+                           id="custom-tag-input"
+                           placeholder="#から始まるタグを入力..."
+                           class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button type="button" 
+                            onclick="addCustomTag()"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                        追加
+                    </button>
+                </div>
+            </div>
+
+            <!-- 選択済みタグ -->
+            <div id="selected-tags" class="mb-6">
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                    選択済みタグ
+                </label>
+                <div id="selected-tags-container" class="flex flex-wrap gap-2 min-h-[2.5rem] p-3 bg-gray-700 border border-gray-600 rounded-lg">
+                    <span class="text-gray-400 text-sm" id="no-tags-message">タグが選択されていません</span>
+                </div>
+            </div>
+
+            <!-- AI推奨タグ -->
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2 flex items-center">
+                    <svg class="h-4 w-4 mr-1 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    AI推奨タグ
+                </label>
+                <div id="suggested-tags" class="flex flex-wrap gap-2">
+                    <!-- AI推奨タグがここに動的に表示される -->
+                </div>
+            </div>
+
+            <!-- 隠しフィールド（選択されたタグ） -->
+            <input type="hidden" name="selected_tags_json" id="selected-tags-json">
+        </section>
+
+        <!-- アクションボタン -->
+        <div class="flex justify-between items-center pt-6 border-t border-gray-700">
+            <a href="{% url 'notes:list' %}" 
+               class="px-6 py-3 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors">
+                キャンセル
+            </a>
+            
+            <div class="flex gap-3">
+                <button type="button" 
+                        onclick="previewNotebook()"
+                        class="px-6 py-3 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors">
+                    プレビュー
+                </button>
+                <button type="submit" 
+                        class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    ノートを作成
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- プレビューモーダル -->
+<div id="preview-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden">
+        <div class="flex items-center justify-between p-6 border-b border-gray-700">
+            <h3 class="text-xl font-semibold text-white">ノートプレビュー</h3>
+            <button onclick="closePreview()" class="text-gray-400 hover:text-white">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <div id="preview-content" class="p-6 overflow-y-auto max-h-[60vh]">
+            <!-- プレビュー内容がここに表示される -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// グローバル変数
+let selectedTags = [];
+let keyPointCount = 1;
+let riskFactorCount = 1;
+
+// ページ読み込み時の初期化
+document.addEventListener('DOMContentLoaded', function() {
+    // 銘柄コード入力時の企業名自動補完
+    setupStockCodeAutocomplete();
+    
+    // AI推奨タグの初期表示
+    updateSuggestedTags();
+    
+    // フォームバリデーション
+    setupFormValidation();
+});
+
+// 銘柄コード自動補完
+function setupStockCodeAutocomplete() {
+    const stockCodeInput = document.getElementById('id_stock_code');
+    const companyNameInput = document.getElementById('id_company_name');
+    
+    stockCodeInput.addEventListener('input', function() {
+        const code = this.value;
+        if (code.length === 4) {
+            // 銘柄情報を取得（模擬データ）
+            const mockData = {
+                '7203': 'トヨタ自動車',
+                '6758': 'ソニーグループ',
+                '9984': 'ソフトバンクグループ',
+                '6861': 'キーエンス',
+                '4519': '中外製薬'
+            };
+            
+            if (mockData[code]) {
+                companyNameInput.value = mockData[code];
+                // タイトルも自動生成
+                document.getElementById('id_title').value = `${code} ${mockData[code]}`;
+                updateSuggestedTags();
+            }
+        }
+    });
+}
+
+// 注目ポイント追加
+function addKeyPoint() {
+    const container = document.getElementById('key-points-container');
+    const newItem = document.createElement('div');
+    newItem.className = 'key-point-item flex gap-2 mb-2';
+    newItem.innerHTML = `
+        <input type="text" 
+               name="key_point_${keyPointCount}" 
+               placeholder="注目ポイント ${keyPointCount + 1}"
+               class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button type="button" 
+                onclick="removeKeyPoint(this)"
+                class="px-3 py-2 text-red-400 hover:text-red-300">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    `;
+    container.appendChild(newItem);
+    keyPointCount++;
+    
+    // 削除ボタンを表示
+    updateRemoveButtons('key-point-item');
+}
+
+// 注目ポイント削除
+function removeKeyPoint(button) {
+    button.closest('.key-point-item').remove();
+    updateRemoveButtons('key-point-item');
+}
+
+// リスク要因追加
+function addRiskFactor() {
+    const container = document.getElementById('risk-factors-container');
+    const newItem = document.createElement('div');
+    newItem.className = 'risk-factor-item flex gap-2 mb-2';
+    newItem.innerHTML = `
+        <input type="text" 
+               name="risk_factor_${riskFactorCount}" 
+               placeholder="リスク要因 ${riskFactorCount + 1}"
+               class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+        <button type="button" 
+                onclick="removeRiskFactor(this)"
+                class="px-3 py-2 text-red-400 hover:text-red-300">
+            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+            </svg>
+        </button>
+    `;
+    container.appendChild(newItem);
+    riskFactorCount++;
+    
+    // 削除ボタンを表示
+    updateRemoveButtons('risk-factor-item');
+}
+
+// リスク要因削除
+function removeRiskFactor(button) {
+    button.closest('.risk-factor-item').remove();
+    updateRemoveButtons('risk-factor-item');
+}
+
+// 削除ボタンの表示/非表示を更新
+function updateRemoveButtons(className) {
+    const items = document.querySelectorAll(`.${className}`);
+    items.forEach((item, index) => {
+        const removeButton = item.querySelector('button');
+        if (items.length > 1) {
+            removeButton.classList.remove('hidden');
+        } else {
+            removeButton.classList.add('hidden');
+        }
+    });
+}
+
+// カスタムタグ追加
+function addCustomTag() {
+    const input = document.getElementById('custom-tag-input');
+    let tagName = input.value.trim();
+    
+    if (!tagName) return;
+    
+    // #がない場合は自動で追加
+    if (!tagName.startsWith('#')) {
+        tagName = '#' + tagName;
+    }
+    
+    // 重複チェック
+    if (selectedTags.includes(tagName)) {
+        showNotification('このタグは既に選択されています', 'warning');
+        return;
+    }
+    
+    selectedTags.push(tagName);
+    input.value = '';
+    updateSelectedTagsDisplay();
+    updateSuggestedTags();
+}
+
+// 推奨タグをクリック
+function selectSuggestedTag(tagName) {
+    if (selectedTags.includes(tagName)) return;
+    
+    selectedTags.push(tagName);
+    updateSelectedTagsDisplay();
+    updateSuggestedTags();
+}
+
+// 選択済みタグの表示を更新
+function updateSelectedTagsDisplay() {
+    const container = document.getElementById('selected-tags-container');
+    const noTagsMessage = document.getElementById('no-tags-message');
+    
+    if (selectedTags.length === 0) {
+        noTagsMessage.classList.remove('hidden');
+        container.innerHTML = '<span class="text-gray-400 text-sm" id="no-tags-message">タグが選択されていません</span>';
+    } else {
+        container.innerHTML = '';
+        selectedTags.forEach(tag => {
+            const tagElement = document.createElement('span');
+            tagElement.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-600 text-white';
+            tagElement.innerHTML = `
+                ${tag}
+                <button type="button" onclick="removeSelectedTag('${tag}')" class="ml-2 text-blue-200 hover:text-white">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            `;
+            container.appendChild(tagElement);
+        });
+    }
+    
+    // 隠しフィールドを更新
+    document.getElementById('selected-tags-json').value = JSON.stringify(selectedTags);
+}
+
+// 選択済みタグを削除
+function removeSelectedTag(tagName) {
+    selectedTags = selectedTags.filter(tag => tag !== tagName);
+    updateSelectedTagsDisplay();
+    updateSuggestedTags();
+}
+
+// AI推奨タグを更新
+function updateSuggestedTags() {
+    const container = document.getElementById('suggested-tags');
+    const content = getFormContent();
+    
+    // 模擬AI推奨ロジック
+    const suggestions = generateTagSuggestions(content);
+    
+    container.innerHTML = '';
+    suggestions.forEach(tag => {
+        if (!selectedTags.includes(tag)) {
+            const tagElement = document.createElement('button');
+            tagElement.type = 'button';
+            tagElement.className = 'tag-suggestion px-3 py-1 rounded-full text-sm border border-gray-600 text-gray-300 hover:bg-gray-700 transition-colors';
+            tagElement.textContent = tag;
+            tagElement.onclick = () => selectSuggestedTag(tag);
+            container.appendChild(tagElement);
+        }
+    });
+    
+    if (container.children.length === 0) {
+        container.innerHTML = '<span class="text-gray-400 text-sm">推奨タグはありません</span>';
+    }
+}
+
+// フォーム内容を取得
+function getFormContent() {
+    return {
+        stockCode: document.getElementById('id_stock_code').value,
+        companyName: document.getElementById('id_company_name').value,
+        investmentReason: document.getElementById('id_investment_reason').value,
+        targetPrice: document.getElementById('id_target_price').value,
+        status: document.getElementById('id_status').value
+    };
+}
+
+// タグ推奨ロジック（模擬AI）
+function generateTagSuggestions(content) {
+    const suggestions = [];
+    const text = (content.investmentReason + ' ' + content.companyName).toLowerCase();
+    
+    // キーワードベースの推奨
+    const keywordMap = {
+        '配当': ['#高配当', '#配当株', '#株主還元'],
+        '成長': ['#成長株', '#長期投資'],
+        '割安': ['#割安株', '#バリュー投資'],
+        'テクノロジー': ['#テクノロジー', '#IT'],
+        '自動車': ['#自動車', '#製造業'],
+        'トヨタ': ['#7203トヨタ', '#自動車', '#高配当'],
+        'ソニー': ['#6758ソニー', '#エンタメ', '#半導体'],
+        'ソフトバンク': ['#9984ソフトバンク', '#通信', '#投資事業']
+    };
+    
+    for (const [keyword, tags] of Object.entries(keywordMap)) {
+        if (text.includes(keyword)) {
+            suggestions.push(...tags);
+        }
+    }
+    
+    // ステータスベースの推奨
+    if (content.status === 'ACTIVE') {
+        suggestions.push('#アクティブ投資');
+    } else if (content.status === 'MONITORING') {
+        suggestions.push('#要監視');
+    }
+    
+    // 重複除去して最大5個まで
+    return [...new Set(suggestions)].slice(0, 5);
+}
+
+// プレビュー機能
+function previewNotebook() {
+    const content = getFormContent();
+    const keyPoints = Array.from(document.querySelectorAll('input[name^="key_point_"]'))
+        .map(input => input.value)
+        .filter(value => value.trim());
+    const riskFactors = Array.from(document.querySelectorAll('input[name^="risk_factor_"]'))
+        .map(input => input.value)
+        .filter(value => value.trim());
+    
+    const previewHtml = `
+        <div class="space-y-4">
+            <div>
+                <h4 class="font-semibold text-white">${content.stockCode} ${content.companyName}</h4>
+                <p class="text-gray-400">${document.getElementById('id_subtitle').value}</p>
+            </div>
+            
+            <div>
+                <h5 class="font-medium text-white mb-2">投資理由</h5>
+                <p class="text-gray-300">${content.investmentReason}</p>
+            </div>
+            
+            ${keyPoints.length > 0 ? `
+            <div>
+                <h5 class="font-medium text-white mb-2">注目ポイント</h5>
+                <ul class="list-disc list-inside space-y-1 text-gray-300">
+                    ${keyPoints.map(point => `<li>${point}</li>`).join('')}
+                </ul>
+            </div>
+            ` : ''}
+            
+            ${riskFactors.length > 0 ? `
+            <div>
+                <h5 class="font-medium text-white mb-2">リスク要因</h5>
+                <ul class="list-disc list-inside space-y-1 text-gray-300">
+                    ${riskFactors.map(risk => `<li>${risk}</li>`).join('')}
+                </ul>
+            </div>
+            ` : ''}
+            
+            <div>
+                <h5 class="font-medium text-white mb-2">タグ</h5>
+                <div class="flex flex-wrap gap-2">
+                    ${selectedTags.map(tag => `<span class="px-2 py-1 bg-blue-600 text-white text-sm rounded">${tag}</span>`).join('')}
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.getElementById('preview-content').innerHTML = previewHtml;
+    document.getElementById('preview-modal').classList.remove('hidden');
+}
+
+// プレビューを閉じる
+function closePreview() {
+    document.getElementById('preview-modal').classList.add('hidden');
+}
+
+// フォームバリデーション
+function setupFormValidation() {
+    const form = document.getElementById('notebook-form');
+    form.addEventListener('submit', function(e) {
+        let isValid = true;
+        
+        // 必須フィールドのチェック
+        const requiredFields = ['id_title', 'id_investment_reason'];
+        requiredFields.forEach(fieldId => {
+            const field = document.getElementById(fieldId);
+            if (!field.value.trim()) {
+                field.classList.add('border-red-500');
+                isValid = false;
+            } else {
+                field.classList.remove('border-red-500');
+            }
+        });
+        
+        if (!isValid) {
+            e.preventDefault();
+            showNotification('必須項目を入力してください', 'error');
+        }
+    });
+}
+
+// 通知表示
+function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg text-white max-w-sm transform transition-all duration-300 translate-x-full opacity-0`;
+    
+    if (type === 'error') {
+        notification.classList.add('bg-red-600');
+    } else if (type === 'warning') {
+        notification.classList.add('bg-yellow-600');
+    } else if (type === 'success') {
+        notification.classList.add('bg-green-600');
+    } else {
+        notification.classList.add('bg-blue-600');
+    }
+    
+    notification.innerHTML = `
+        <div class="flex items-center">
+            <span>${message}</span>
+            <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-white/80 hover:text-white">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // アニメーション
+    setTimeout(() => {
+        notification.classList.remove('translate-x-full', 'opacity-0');
+    }, 100);
+    
+    // 自動削除
+    setTimeout(() => {
+        notification.classList.add('translate-x-full', 'opacity-0');
+        setTimeout(() => notification.remove(), 300);
+    }, 5000);
+}
+
+// エンターキーでのカスタムタグ追加
+document.getElementById('custom-tag-input').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        e.preventDefault();
+        addCustomTag();
+    }
+});
+</script>
+{% endblock %}

@@ -1,0 +1,125 @@
+{% extends 'base.html' %}
+
+{% block title %}ノート一覧 - 株式分析記録アプリ{% endblock %}
+
+{% block content %}
+<!-- Header -->
+<div class="flex justify-between items-center mb-6">
+    <h1 class="text-2xl font-semibold text-white">ノート一覧</h1>
+    <a href="{% url 'notes:create' %}" 
+       class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+        </svg>
+        新規ノート
+    </a>
+</div>
+
+<!-- Search and Filters -->
+<div class="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
+    <form method="GET" class="space-y-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <!-- Search Input -->
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">検索</label>
+                <input type="text" 
+                       name="q" 
+                       value="{{ search_query }}"
+                       placeholder="銘柄名、企業名、内容で検索..."
+                       class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            
+            <!-- Status Filter -->
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">ステータス</label>
+                <select name="status" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <option value="">すべて</option>
+                    <option value="ACTIVE">アクティブ</option>
+                    <option value="MONITORING">監視中</option>
+                    <option value="ATTENTION">要注意</option>
+                </select>
+            </div>
+            
+            <!-- Search Button -->
+            <div class="flex items-end">
+                <button type="submit" 
+                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg px-4 py-2 transition-colors">
+                    検索
+                </button>
+            </div>
+        </div>
+    </form>
+</div>
+
+<!-- Notebooks Grid -->
+<div class="grid gap-4">
+    {% for notebook in notebooks %}
+        <div class="bg-gray-800 border border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer rounded-lg"
+             onclick="location.href='{% url 'notes:detail' notebook.pk %}'">
+            <div class="p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <div>
+                        <h3 class="text-white font-semibold text-lg">{{ notebook.title }}</h3>
+                        <p class="text-gray-400">{{ notebook.subtitle }}</p>
+                    </div>
+                    <span class="px-2 py-1 text-xs rounded-full
+                               {% if notebook.status == 'ACTIVE' %}bg-green-900 text-green-300
+                               {% elif notebook.status == 'MONITORING' %}bg-yellow-900 text-yellow-300
+                               {% elif notebook.status == 'ATTENTION' %}bg-red-900 text-red-300
+                               {% endif %}">
+                        {{ notebook.get_status_display }}
+                    </span>
+                </div>
+                
+                <!-- Tags -->
+                <div class="flex flex-wrap gap-1 mb-3">
+                    {% for tag in notebook.tags.all %}
+                        <span class="px-2 py-1 text-xs border border-gray-600 text-gray-300 rounded">
+                            {{ tag.name }}
+                        </span>
+                    {% endfor %}
+                </div>
+                
+                <!-- Footer -->
+                <div class="flex justify-between items-center text-sm text-gray-400">
+                    <span>{{ notebook.entry_count }} エントリー</span>
+                    <span>最終更新: {{ notebook.updated_at|date:"Y/m/d" }}</span>
+                </div>
+            </div>
+        </div>
+    {% empty %}
+        <div class="text-center py-12">
+            <p class="text-gray-400 mb-4">ノートがありません</p>
+            <a href="{% url 'notes:create' %}" 
+               class="text-blue-400 hover:text-blue-300">
+                最初のノートを作成しましょう
+            </a>
+        </div>
+    {% endfor %}
+</div>
+
+<!-- Pagination -->
+{% if is_paginated %}
+    <div class="mt-8 flex justify-center">
+        <nav class="flex space-x-2">
+            {% if page_obj.has_previous %}
+                <a href="?page={{ page_obj.previous_page_number }}"
+                   class="px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded hover:bg-gray-700">
+                    前へ
+                </a>
+            {% endif %}
+            
+            <span class="px-3 py-2 bg-blue-600 text-white rounded">
+                {{ page_obj.number }}
+            </span>
+            
+            {% if page_obj.has_next %}
+                <a href="?page={{ page_obj.next_page_number }}"
+                   class="px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded hover:bg-gray-700">
+                    次へ
+                </a>
+            {% endif %}
+        </nav>
+    </div>
+{% endif %}
+{% endblock %}
