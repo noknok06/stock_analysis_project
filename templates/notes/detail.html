@@ -1,0 +1,1009 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ notebook.title }} - 株式分析記録アプリ{% endblock %}
+
+{% block extra_css %}
+<style>
+    .entry-card {
+        transition: all 0.2s ease-in-out;
+    }
+    .entry-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+    .page-indicator {
+        transition: all 0.2s ease-in-out;
+    }
+    .page-indicator.active {
+        background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
+    }
+    .status-badge {
+        animation: pulse 2s infinite;
+    }
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.8; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <!-- ノートヘッダー -->
+    <div class="bg-gray-800 border border-gray-700 rounded-lg mb-8">
+        <div class="p-6 border-b border-gray-700">
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-4">
+                    <a href="{% url 'notes:list' %}" 
+                       class="text-gray-400 hover:text-white transition-colors">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                    </a>
+                    <div>
+                        <h1 class="text-2xl font-bold text-white">{{ notebook.title }}</h1>
+                        {% if notebook.subtitle %}
+                            <p class="text-gray-400">{{ notebook.subtitle }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <div class="flex items-center space-x-3">
+                    <span class="status-badge px-3 py-1 text-sm rounded-full 
+                               {% if notebook.status == 'ACTIVE' %}bg-green-900 text-green-300
+                               {% elif notebook.status == 'MONITORING' %}bg-yellow-900 text-yellow-300
+                               {% elif notebook.status == 'ATTENTION' %}bg-red-900 text-red-300
+                               {% else %}bg-gray-700 text-gray-300{% endif %}">
+                        {{ notebook.get_status_display }}
+                    </span>
+                    
+                    <button onclick="openNewEntryModal()" 
+                            class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        新規エントリー
+                    </button>
+                    
+                    <a href="{% url 'notes:edit' notebook.pk %}" 
+                       class="inline-flex items-center px-4 py-2 border border-gray-600 text-gray-300 hover:bg-gray-700 rounded-lg transition-colors">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                        ノート編集
+                    </button>
+                </div>
+            </div>
+            
+            <!-- 基本情報 -->
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                {% if notebook.stock_code %}
+                    <div class="flex items-center space-x-2">
+                        <span class="text-gray-400">銘柄:</span>
+                        <span class="text-white font-medium">{{ notebook.stock_code }} {{ notebook.company_name }}</span>
+                    </div>
+                {% endif %}
+                {% if notebook.target_price %}
+                    <div class="flex items-center space-x-2">
+                        <span class="text-gray-400">目標株価:</span>
+                        <span class="text-green-400 font-medium">{{ notebook.target_price }}</span>
+                    </div>
+                {% endif %}
+                <div class="flex items-center space-x-2">
+                    <span class="text-gray-400">エントリー数:</span>
+                    <span class="text-white font-medium">{{ notebook.entry_count }}</span>
+                </div>
+            </div>
+            
+            <!-- タグ -->
+            {% if notebook.tags.all %}
+                <div class="flex flex-wrap gap-2">
+                    {% for tag in notebook.tags.all %}
+                        <span class="px-2 py-1 text-xs border border-gray-600 text-gray-300 rounded hover:bg-gray-700 cursor-pointer transition-colors">
+                            {{ tag.name }}
+                        </span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- 投資目標セクション -->
+        {% if notebook.investment_reason %}
+            <div class="p-6">
+                <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+                    <svg class="h-5 w-5 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                    </svg>
+                    投資戦略
+                </h3>
+                
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <!-- 投資理由 -->
+                    <div class="lg:col-span-2">
+                        <h4 class="text-sm font-medium text-gray-300 mb-2">投資理由</h4>
+                        <p class="text-gray-300 leading-relaxed">{{ notebook.investment_reason }}</p>
+                    </div>
+                    
+                    <!-- 売却タイミング -->
+                    {% if notebook.sell_timing %}
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-300 mb-2">売却タイミング</h4>
+                            <p class="text-gray-300">{{ notebook.sell_timing }}</p>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- 注目ポイントとリスク要因 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+                    {% if notebook.key_points %}
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-300 mb-3 flex items-center">
+                                <svg class="h-4 w-4 mr-1 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                                注目ポイント
+                            </h4>
+                            <ul class="space-y-2">
+                                {% for point in notebook.key_points %}
+                                    <li class="flex items-start">
+                                        <span class="w-2 h-2 bg-blue-400 rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                                        <span class="text-gray-300">{{ point }}</span>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                    
+                    {% if notebook.risk_factors %}
+                        <div>
+                            <h4 class="text-sm font-medium text-gray-300 mb-3 flex items-center">
+                                <svg class="h-4 w-4 mr-1 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                                リスク要因
+                            </h4>
+                            <ul class="space-y-2">
+                                {% for risk in notebook.risk_factors %}
+                                    <li class="flex items-start">
+                                        <span class="w-2 h-2 bg-yellow-400 rounded-full mt-2 mr-3 flex-shrink-0"></span>
+                                        <span class="text-gray-300">{{ risk }}</span>
+                                    </li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        {% endif %}
+    </div>
+    
+    <!-- エントリー一覧 -->
+    <div class="space-y-6">
+        <div class="flex items-center justify-between">
+            <h2 class="text-xl font-semibold text-white flex items-center">
+                <svg class="h-5 w-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                </svg>
+                記録エントリー
+                <span class="ml-2 text-gray-400 text-base font-normal">({{ entries.count }}件)</span>
+            </h2>
+            
+            <!-- エントリーフィルター -->
+            <div class="flex items-center space-x-2">
+                <select id="entry-type-filter" class="bg-gray-700 border border-gray-600 text-white rounded px-3 py-1 text-sm">
+                    <option value="">すべて</option>
+                    <option value="ANALYSIS">決算分析</option>
+                    <option value="NEWS">ニュース</option>
+                    <option value="CALCULATION">計算結果</option>
+                    <option value="MEMO">メモ</option>
+                    <option value="GOAL">投資目標</option>
+                </select>
+            </div>
+        </div>
+        
+        {% if entries %}
+            <!-- エントリーカード -->
+            <div class="space-y-4" id="entries-container">
+                {% for entry in entries %}
+                    <div class="entry-card bg-gray-800 border border-gray-700 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-750 transition-colors"
+                         data-entry-type="{{ entry.entry_type }}"
+                         data-entry-id="{{ entry.pk }}">
+                        <div class="p-6">
+                            <!-- エントリーヘッダー -->
+                            <div class="flex items-center justify-between mb-4">
+                                <div class="flex items-center space-x-3 pointer-events-none">
+                                    <div class="p-2 rounded-lg {% if entry.entry_type == 'ANALYSIS' %}bg-blue-900 text-blue-300{% elif entry.entry_type == 'NEWS' %}bg-green-900 text-green-300{% elif entry.entry_type == 'CALCULATION' %}bg-orange-900 text-orange-300{% elif entry.entry_type == 'MEMO' %}bg-gray-700 text-gray-300{% else %}bg-purple-900 text-purple-300{% endif %}">
+                                        {% if entry.entry_type == 'ANALYSIS' %}
+                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                            </svg>
+                                        {% elif entry.entry_type == 'NEWS' %}
+                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path>
+                                            </svg>
+                                        {% elif entry.entry_type == 'CALCULATION' %}
+                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                            </svg>
+                                        {% elif entry.entry_type == 'MEMO' %}
+                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                                            </svg>
+                                        {% else %}
+                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                            </svg>
+                                        {% endif %}
+                                    </div>
+                                    <div class="pointer-events-none">
+                                        <h3 class="text-lg font-semibold text-white">{{ entry.title }}</h3>
+                                        <p class="text-sm text-gray-400">{{ entry.get_entry_type_display }} • {{ entry.created_at|date:"Y/m/d H:i" }}</p>
+                                    </div>
+                                </div>
+                                
+                                <div class="flex items-center space-x-2">
+                                    {% if entry.tags.all %}
+                                        <div class="flex space-x-1 pointer-events-none">
+                                            {% for tag in entry.tags.all|slice:":2" %}
+                                                <span class="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded">{{ tag.name }}</span>
+                                            {% endfor %}
+                                            {% if entry.tags.count > 2 %}
+                                                <span class="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded">+{{ entry.tags.count|add:"-2" }}</span>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                </div>
+                            </div>
+                            
+                            <!-- エントリー内容プレビュー -->
+                            <div class="text-gray-300 pointer-events-none">
+                                {% if entry.entry_type == 'ANALYSIS' and entry.content.summary %}
+                                    <p class="mb-2"><strong>サマリー:</strong> {{ entry.content.summary|truncatewords:30 }}</p>
+                                {% elif entry.entry_type == 'NEWS' and entry.content.headline %}
+                                    <p class="mb-2"><strong>ヘッドライン:</strong> {{ entry.content.headline }}</p>
+                                {% elif entry.entry_type == 'CALCULATION' and entry.content.current_price %}
+                                    <p class="mb-2"><strong>現在株価:</strong> {{ entry.content.current_price }}</p>
+                                {% elif entry.entry_type == 'MEMO' and entry.content.observation %}
+                                    <p class="mb-2">{{ entry.content.observation|truncatewords:30 }}</p>
+                                {% endif %}
+                                
+                                <!-- エントリー内容の詳細を表示 -->
+                                <div class="mt-3 text-sm text-gray-400">
+                                    クリックして詳細を表示...
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+            
+            <!-- ページネーション -->
+            {% if is_paginated %}
+                <div class="flex items-center justify-center space-x-4 mt-8">
+                    <button onclick="previousPage()" 
+                            {% if not page_obj.has_previous %}disabled{% endif %}
+                            class="px-4 py-2 bg-gray-800 border border-gray-700 text-white rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                        <svg class="h-4 w-4 mr-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                        前のページ
+                    </button>
+                    
+                    <div class="flex items-center space-x-2">
+                        <span class="text-gray-400 text-sm">{{ page_obj.number }} / {{ page_obj.paginator.num_pages }}</span>
+                        <div class="flex space-x-1">
+                            {% for num in page_obj.paginator.page_range %}
+                                {% if num == page_obj.number %}
+                                    <span class="page-indicator active w-3 h-3 rounded-full"></span>
+                                {% else %}
+                                    <span class="page-indicator w-3 h-3 rounded-full bg-gray-600 hover:bg-gray-500 cursor-pointer" 
+                                          onclick="goToPage({{ num }})"></span>
+                                {% endif %}
+                            {% endfor %}
+                        </div>
+                    </div>
+                    
+                    <button onclick="nextPage()" 
+                            {% if not page_obj.has_next %}disabled{% endif %}
+                            class="px-4 py-2 bg-gray-800 border border-gray-700 text-white rounded hover:bg-gray-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors">
+                        次のページ
+                        <svg class="h-4 w-4 ml-1 inline" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </button>
+                </div>
+            {% endif %}
+        {% else %}
+            <!-- エントリーなしの場合 -->
+            <div class="text-center py-16">
+                <div class="mx-auto h-24 w-24 text-gray-600 mb-4">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-lg font-medium text-gray-400 mb-2">まだエントリーがありません</h3>
+                <p class="text-gray-500 mb-6">最初の分析記録を作成しましょう</p>
+                <button onclick="openNewEntryModal()" 
+                        class="inline-flex items-center px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+                    <svg class="h-5 w-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    最初のエントリーを作成
+                </button>
+            </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- 新規エントリーモーダル -->
+<div id="new-entry-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+     onclick="handleModalBackgroundClick(event, 'new-entry-modal')">
+    <div class="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden"
+         onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between p-6 border-b border-gray-700">
+            <div>
+                <h2 class="text-2xl font-bold text-white">新規エントリー作成</h2>
+                <p class="text-gray-400">{{ notebook.title }} に新しい記録を追加します</p>
+            </div>
+            <button onclick="closeNewEntryModal()" class="text-gray-400 hover:text-white">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <form id="entry-form" method="POST" action="{% url 'notes:entry_create' notebook.pk %}" class="overflow-y-auto max-h-[calc(90vh-140px)]">
+            {% csrf_token %}
+            <div class="p-6 space-y-6">
+                <!-- エントリータイプ選択 -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-4">エントリータイプ</label>
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
+                        <button type="button" onclick="selectEntryType('ANALYSIS')" 
+                                class="entry-type-btn p-4 rounded-lg border-2 border-gray-600 bg-gray-700 hover:bg-gray-600 transition-all text-center">
+                            <div class="p-2 rounded-lg bg-blue-900 text-blue-300 mb-2 mx-auto w-fit">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                </svg>
+                            </div>
+                            <h3 class="font-semibold text-white text-sm">決算分析</h3>
+                            <p class="text-xs text-gray-400 mt-1">決算情報の分析記録</p>
+                        </button>
+                        
+                        <button type="button" onclick="selectEntryType('NEWS')" 
+                                class="entry-type-btn p-4 rounded-lg border-2 border-gray-600 bg-gray-700 hover:bg-gray-600 transition-all text-center">
+                            <div class="p-2 rounded-lg bg-green-900 text-green-300 mb-2 mx-auto w-fit">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="font-semibold text-white text-sm">ニュース</h3>
+                            <p class="text-xs text-gray-400 mt-1">関連ニュースの記録</p>
+                        </button>
+                        
+                        <button type="button" onclick="selectEntryType('CALCULATION')" 
+                                class="entry-type-btn p-4 rounded-lg border-2 border-gray-600 bg-gray-700 hover:bg-gray-600 transition-all text-center">
+                            <div class="p-2 rounded-lg bg-orange-900 text-orange-300 mb-2 mx-auto w-fit">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="font-semibold text-white text-sm">計算結果</h3>
+                            <p class="text-xs text-gray-400 mt-1">バリュエーション計算</p>
+                        </button>
+                        
+                        <button type="button" onclick="selectEntryType('MEMO')" 
+                                class="entry-type-btn p-4 rounded-lg border-2 border-gray-600 bg-gray-700 hover:bg-gray-600 transition-all text-center">
+                            <div class="p-2 rounded-lg bg-gray-700 text-gray-300 mb-2 mx-auto w-fit">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="font-semibold text-white text-sm">メモ</h3>
+                            <p class="text-xs text-gray-400 mt-1">個人的な気づき・メモ</p>
+                        </button>
+                        
+                        <button type="button" onclick="selectEntryType('GOAL')" 
+                                class="entry-type-btn p-4 rounded-lg border-2 border-gray-600 bg-gray-700 hover:bg-gray-600 transition-all text-center">
+                            <div class="p-2 rounded-lg bg-purple-900 text-purple-300 mb-2 mx-auto w-fit">
+                                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="font-semibold text-white text-sm">投資目標</h3>
+                            <p class="text-xs text-gray-400 mt-1">目標・戦略の記録</p>
+                        </button>
+                    </div>
+                    <input type="hidden" id="entry_type" name="entry_type" required>
+                </div>
+                
+                <!-- 基本情報 -->
+                <div>
+                    <label for="entry_title" class="block text-sm font-medium text-gray-300 mb-2">
+                        エントリータイトル <span class="text-red-400">*</span>
+                    </label>
+                    <input type="text" 
+                           id="entry_title" 
+                           name="title" 
+                           required
+                           placeholder="エントリーのタイトルを入力してください"
+                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <!-- エントリー固有フォーム -->
+                <div id="entry-type-form">
+                    <!-- 動的に生成されるフォーム内容 -->
+                </div>
+            </div>
+            
+            <div class="flex items-center justify-between p-6 bg-gray-800 border-t border-gray-700">
+                <div class="text-sm text-gray-400">
+                    <svg class="h-4 w-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                    作成日: {{ 'now'|date:"Y/m/d" }}
+                </div>
+                <div class="flex space-x-3">
+                    <button type="button" onclick="closeNewEntryModal()" 
+                            class="px-6 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors">
+                        キャンセル
+                    </button>
+                    <button type="submit" 
+                            class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        エントリーを作成
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- エントリー詳細モーダル -->
+<div id="entry-detail-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
+     onclick="handleModalBackgroundClick(event, 'entry-detail-modal')">
+    <div class="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden"
+         onclick="event.stopPropagation()">
+        <div class="flex items-center justify-between p-6 border-b border-gray-700">
+            <h3 class="text-xl font-semibold text-white" id="entry-detail-title">エントリー詳細</h3>
+            <button onclick="closeEntryDetail()" class="text-gray-400 hover:text-white">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <div id="entry-detail-content" class="p-6 overflow-y-auto max-h-[60vh]">
+            <!-- エントリー詳細内容がここに表示される -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedEntryType = null;
+
+// エントリータイプ選択
+function selectEntryType(type, event) {
+    // イベントの伝播を停止
+    if (event) {
+        event.preventDefault();
+        event.stopPropagation();
+        event.stopImmediatePropagation();
+    }
+    
+    console.log('エントリータイプ選択:', type);
+    selectedEntryType = type;
+    
+    const entryTypeInput = document.getElementById('entry_type');
+    if (entryTypeInput) {
+        entryTypeInput.value = type;
+    }
+    
+    // すべてのボタンをリセット
+    document.querySelectorAll('.entry-type-btn').forEach(btn => {
+        btn.classList.remove('border-blue-500', 'bg-blue-900/30');
+        btn.classList.add('border-gray-600', 'bg-gray-700');
+    });
+    
+    // 選択されたボタンをハイライト
+    let currentButton = null;
+    if (event && event.currentTarget) {
+        currentButton = event.currentTarget;
+    } else {
+        // fallback: 該当するボタンを探す
+        const buttons = document.querySelectorAll('.entry-type-btn');
+        buttons.forEach(btn => {
+            const h3 = btn.querySelector('h3');
+            if (h3) {
+                const btnText = h3.textContent;
+                const typeMap = {
+                    '決算分析': 'ANALYSIS',
+                    'ニュース': 'NEWS', 
+                    '計算結果': 'CALCULATION',
+                    'メモ': 'MEMO',
+                    '投資目標': 'GOAL'
+                };
+                if (typeMap[btnText] === type) {
+                    currentButton = btn;
+                }
+            }
+        });
+    }
+    
+    if (currentButton) {
+        currentButton.classList.remove('border-gray-600', 'bg-gray-700');
+        currentButton.classList.add('border-blue-500', 'bg-blue-900/30');
+    }
+    
+    // エントリータイプ固有フォームを生成
+    generateEntryTypeForm(type);
+    
+    return false; // onclick イベントの戻り値
+}
+
+// エントリータイプ固有フォーム生成
+function generateEntryTypeForm(type) {
+    const container = document.getElementById('entry-type-form');
+    let formHtml = '';
+    
+    switch(type) {
+        case 'ANALYSIS':
+            formHtml = `
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">サマリー</label>
+                        <textarea name="summary" rows="3" placeholder="決算の概要を記述してください"
+                                class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">売上高</label>
+                            <input type="text" name="revenue" placeholder="例: 8.7兆円 (+8.2%)"
+                                   class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">営業利益</label>
+                            <input type="text" name="operating_profit" placeholder="例: 2.1兆円 (+12.1%)"
+                                   class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">純利益</label>
+                            <input type="text" name="net_income" placeholder="例: 1.8兆円 (+15.3%)"
+                                   class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">EPS</label>
+                            <input type="text" name="eps" placeholder="例: 285円"
+                                   class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">分析</label>
+                        <textarea name="analysis" rows="4" placeholder="決算内容の詳細分析を記述してください"
+                                class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">今後の見通し</label>
+                        <textarea name="outlook" rows="3" placeholder="今後の業績見通しや予想を記述してください"
+                                class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                </div>
+            `;
+            break;
+            
+        case 'NEWS':
+            formHtml = `
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">ヘッドライン</label>
+                        <input type="text" name="headline" placeholder="ニュースのタイトルを入力してください"
+                               class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">ニュース内容</label>
+                        <textarea name="content" rows="4" placeholder="ニュースの詳細内容を記述してください"
+                                class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">事業への影響</label>
+                        <textarea name="impact" rows="3" placeholder="このニュースが事業に与える影響を分析してください"
+                                class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">株価への影響</label>
+                        <textarea name="stock_impact" rows="3" placeholder="株価への影響や市場の反応を記述してください"
+                                class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                </div>
+            `;
+            break;
+            
+        case 'CALCULATION':
+            formHtml = `
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">現在株価</label>
+                        <input type="text" name="current_price" placeholder="例: 2,850円"
+                               class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">PER</label>
+                            <input type="text" name="per" placeholder="例: 12.5倍"
+                                   class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">PBR</label>
+                            <input type="text" name="pbr" placeholder="例: 1.1倍"
+                                   class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">配当利回り</label>
+                            <input type="text" name="dividend_yield" placeholder="例: 2.8%"
+                                   class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">ROE</label>
+                            <input type="text" name="roe" placeholder="例: 8.9%"
+                                   class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">適正価格</label>
+                        <input type="text" name="fair_value" placeholder="例: 3,100円 - 3,300円"
+                               class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">推奨・コメント</label>
+                        <textarea name="recommendation" rows="3" placeholder="計算結果に基づく推奨や分析コメントを記述してください"
+                                class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                </div>
+            `;
+            break;
+            
+        case 'MEMO':
+            formHtml = `
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">観察事項</label>
+                        <textarea name="observation" rows="3" placeholder="市場や銘柄について気づいたことを記述してください"
+                                class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">市場トレンド</label>
+                        <textarea name="market_trend" rows="3" placeholder="市場全体のトレンドや動向について記述してください"
+                                class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">個人的メモ</label>
+                        <textarea name="personal_note" rows="3" placeholder="個人的な考えや戦略について記述してください"
+                                class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2 flex items-center">
+                            <svg class="h-4 w-4 mr-1 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z"></path>
+                            </svg>
+                            次のアクション
+                        </label>
+                        <textarea name="next_action" rows="3" placeholder="次に取るべきアクションや確認事項を記述してください"
+                                class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                </div>
+            `;
+            break;
+            
+        case 'GOAL':
+            formHtml = `
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">目標株価</label>
+                            <input type="text" name="target_price" placeholder="例: 3,200円"
+                                   class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">売却タイミング</label>
+                            <input type="text" name="sell_timing" placeholder="例: 配当利回り3%を下回った時点"
+                                   class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">投資理由・戦略</label>
+                        <textarea name="investment_reason" rows="4" placeholder="なぜこの銘柄に投資するのか、どのような戦略で臨むのかを記述してください"
+                                class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">期待される効果</label>
+                        <textarea name="expected_effect" rows="3" placeholder="この目標達成により期待される効果を記述してください"
+                                class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                </div>
+            `;
+            break;
+    }
+    
+    container.innerHTML = formHtml;
+}
+
+// モーダル背景クリック処理
+function handleModalBackgroundClick(event, modalId) {
+    // モーダルの背景（黒い部分）をクリックした場合のみ閉じる
+    if (event.target === event.currentTarget) {
+        if (modalId === 'new-entry-modal') {
+            closeNewEntryModal();
+        } else if (modalId === 'entry-detail-modal') {
+            closeEntryDetail();
+        }
+    }
+}
+
+// モーダル関連の関数
+function openNewEntryModal() {
+    console.log('新規エントリーモーダルを開きます');
+    const modal = document.getElementById('new-entry-modal');
+    modal.classList.remove('hidden');
+    
+    // モーダル表示中はページのスクロールを無効化
+    document.body.style.overflow = 'hidden';
+    
+    // フォーカスをモーダル内に設定
+    setTimeout(() => {
+        const titleInput = document.getElementById('entry_title');
+        if (titleInput) {
+            titleInput.focus();
+        }
+    }, 100);
+    
+    // モーダル外部のクリックイベントを一時的に無効化
+    disablePageInteractions();
+}
+
+function closeNewEntryModal() {
+    console.log('新規エントリーモーダルを閉じます');
+    const modal = document.getElementById('new-entry-modal');
+    modal.classList.add('hidden');
+    
+    // ページのスクロールを有効化
+    document.body.style.overflow = '';
+    
+    // フォームをリセット
+    const form = document.getElementById('entry-form');
+    if (form) {
+        form.reset();
+    }
+    
+    const typeForm = document.getElementById('entry-type-form');
+    if (typeForm) {
+        typeForm.innerHTML = '';
+    }
+    
+    selectedEntryType = null;
+    
+    // エントリータイプボタンをリセット
+    document.querySelectorAll('.entry-type-btn').forEach(btn => {
+        btn.classList.remove('border-blue-500', 'bg-blue-900/30');
+        btn.classList.add('border-gray-600', 'bg-gray-700');
+    });
+    
+    // ページのインタラクションを有効化
+    enablePageInteractions();
+}
+
+// ページのインタラクションを無効化/有効化
+function disablePageInteractions() {
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+        mainContent.style.pointerEvents = 'none';
+    }
+}
+
+function enablePageInteractions() {
+    const mainContent = document.querySelector('main');
+    if (mainContent) {
+        mainContent.style.pointerEvents = '';
+    }
+}
+
+// エントリーカードのクリックイベント設定
+document.addEventListener('DOMContentLoaded', function() {
+    // CSRFトークンの設定
+    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
+    
+    // エントリーカードにクリックイベントを設定
+    const entryCards = document.querySelectorAll('.entry-card');
+    entryCards.forEach(card => {
+        card.addEventListener('click', function(e) {
+            // ボタンやリンククリック時は無視
+            if (e.target.closest('button') || e.target.closest('a')) {
+                return;
+            }
+            
+            const entryId = this.dataset.entryId;
+            if (entryId) {
+                openEntryDetail(entryId);
+            }
+        });
+    });
+    
+    // エントリータイプボタンのイベントリスナー設定（onclick属性の代替）
+    document.querySelectorAll('.entry-type-btn').forEach(btn => {
+        btn.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            // onclickから取得せずに、直接判定
+            const btnText = this.querySelector('h3').textContent;
+            let entryType = '';
+            
+            switch(btnText) {
+                case '決算分析': entryType = 'ANALYSIS'; break;
+                case 'ニュース': entryType = 'NEWS'; break;
+                case '計算結果': entryType = 'CALCULATION'; break;
+                case 'メモ': entryType = 'MEMO'; break;
+                case '投資目標': entryType = 'GOAL'; break;
+            }
+            
+            if (entryType) {
+                selectEntryType(entryType, e);
+            }
+        });
+    });
+    
+    // フォーム内の全ての要素でクリックイベントの伝播を防ぐ
+    const entryForm = document.getElementById('entry-form');
+    if (entryForm) {
+        entryForm.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+    
+    // モーダル内部のクリックイベント伝播を防ぐ
+    const modalContent = document.querySelector('#new-entry-modal .bg-gray-900');
+    if (modalContent) {
+        modalContent.addEventListener('click', function(e) {
+            e.stopPropagation();
+        });
+    }
+    
+    // フォーム送信時のCSRFトークン設定
+    window.csrfToken = csrfToken;
+    
+    // デバッグ用
+    console.log('ノート詳細ページが初期化されました');
+    console.log('エントリーカード数:', entryCards.length);
+    console.log('エントリータイプボタン数:', document.querySelectorAll('.entry-type-btn').length);
+});
+
+// エントリー詳細表示
+function openEntryDetail(entryId) {
+    // ローディング表示
+    document.getElementById('entry-detail-title').textContent = '読み込み中...';
+    document.getElementById('entry-detail-content').innerHTML = '<div class="flex items-center justify-center py-8"><div class="text-gray-400">読み込み中...</div></div>';
+    document.getElementById('entry-detail-modal').classList.remove('hidden');
+    
+    // エントリー詳細をAjaxで取得して表示
+    fetch(`/notes/entry/${entryId}/`)
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                document.getElementById('entry-detail-title').textContent = data.title;
+                document.getElementById('entry-detail-content').innerHTML = data.html;
+            } else {
+                throw new Error(data.error || 'データの取得に失敗しました');
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            document.getElementById('entry-detail-title').textContent = 'エラー';
+            document.getElementById('entry-detail-content').innerHTML = `
+                <div class="text-center py-8">
+                    <div class="text-red-400 mb-2">エントリーの詳細を取得できませんでした</div>
+                    <div class="text-gray-400 text-sm">${error.message}</div>
+                    <button onclick="closeEntryDetail()" class="mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded">
+                        閉じる
+                    </button>
+                </div>
+            `;
+        });
+}
+
+function closeEntryDetail() {
+    console.log('エントリー詳細モーダルを閉じます');
+    document.getElementById('entry-detail-modal').classList.add('hidden');
+}
+
+// エントリータイプフィルター
+document.getElementById('entry-type-filter').addEventListener('change', function() {
+    const selectedType = this.value;
+    console.log('エントリータイプフィルター:', selectedType);
+    const entries = document.querySelectorAll('.entry-card');
+    
+    entries.forEach(entry => {
+        if (selectedType === '' || entry.dataset.entryType === selectedType) {
+            entry.style.display = 'block';
+        } else {
+            entry.style.display = 'none';
+        }
+    });
+});
+
+// ページネーション関数
+function previousPage() {
+    {% if page_obj.has_previous %}
+        window.location.href = '?page={{ page_obj.previous_page_number }}';
+    {% endif %}
+}
+
+function nextPage() {
+    {% if page_obj.has_next %}
+        window.location.href = '?page={{ page_obj.next_page_number }}';
+    {% endif %}
+}
+
+function goToPage(pageNum) {
+    window.location.href = '?page=' + pageNum;
+}
+
+// フォーム送信時の処理
+document.getElementById('entry-form').addEventListener('submit', function(e) {
+    if (!selectedEntryType) {
+        e.preventDefault();
+        alert('エントリータイプを選択してください。');
+        return;
+    }
+    
+    if (!document.getElementById('entry_title').value.trim()) {
+        e.preventDefault();
+        alert('エントリータイトルを入力してください。');
+        return;
+    }
+    
+    // フォームデータをJSONに変換
+    const contentData = {};
+    
+    // エントリータイプ固有のフィールドを収集
+    const typeForm = document.getElementById('entry-type-form');
+    if (typeForm) {
+        const inputs = typeForm.querySelectorAll('input, textarea, select');
+        inputs.forEach(input => {
+            if (input.value.trim()) {
+                contentData[input.name] = input.value;
+            }
+        });
+    }
+    
+    // content フィールドにJSONデータを設定
+    const contentInput = document.createElement('input');
+    contentInput.type = 'hidden';
+    contentInput.name = 'content';
+    contentInput.value = JSON.stringify(contentData);
+    this.appendChild(contentInput);
+    
+    // 送信ボタンを無効化（重複送信防止）
+    const submitButton = this.querySelector('button[type="submit"]');
+    submitButton.disabled = true;
+    submitButton.textContent = '作成中...';
+    
+    // 送信後に元に戻す（エラー時のため）
+    setTimeout(() => {
+        submitButton.disabled = false;
+        submitButton.innerHTML = `
+            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+            </svg>
+            エントリーを作成
+        `;
+    }, 3000);
+});
+</script>
+{% endblock %}

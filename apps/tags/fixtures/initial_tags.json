@@ -1,0 +1,262 @@
+[
+  {
+    "model": "tags.tag",
+    "pk": 1,
+    "fields": {
+      "name": "#7203トヨタ",
+      "category": "STOCK",
+      "description": "トヨタ自動車の銘柄タグ",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "tags.tag",
+    "pk": 2,
+    "fields": {
+      "name": "#6758ソニー",
+      "category": "STOCK",
+      "description": "ソニーグループの銘柄タグ",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "tags.tag",
+    "pk": 3,
+    "fields": {
+      "name": "#9984ソフトバンク",
+      "category": "STOCK", 
+      "description": "ソフトバンクグループの銘柄タグ",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "tags.tag",
+    "pk": 4,
+    "fields": {
+      "name": "#高配当",
+      "category": "STYLE",
+      "description": "高配当株投資スタイル",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "tags.tag",
+    "pk": 5,
+    "fields": {
+      "name": "#成長株",
+      "category": "STYLE",
+      "description": "成長株投資スタイル",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "tags.tag",
+    "pk": 6,
+    "fields": {
+      "name": "#割安株",
+      "category": "STYLE",
+      "description": "バリュー投資スタイル",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "tags.tag",
+    "pk": 7,
+    "fields": {
+      "name": "#長期投資",
+      "category": "STRATEGY",
+      "description": "長期投資戦略",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "tags.tag",
+    "pk": 8,
+    "fields": {
+      "name": "#短期取引",
+      "category": "STRATEGY",
+      "description": "短期取引戦略",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "tags.tag",
+    "pk": 9,
+    "fields": {
+      "name": "#自動車",
+      "category": "SECTOR",
+      "description": "自動車業界セクター",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "tags.tag",
+    "pk": 10,
+    "fields": {
+      "name": "#テクノロジー",
+      "category": "SECTOR",
+      "description": "テクノロジー業界セクター",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "tags.tag",
+    "pk": 11,
+    "fields": {
+      "name": "#決算分析",
+      "category": "ANALYSIS",
+      "description": "決算分析手法",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "tags.tag",
+    "pk": 12,
+    "fields": {
+      "name": "#バリュエーション",
+      "category": "ANALYSIS",
+      "description": "企業価値評価分析",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "tags.tag",
+    "pk": 13,
+    "fields": {
+      "name": "#テクニカル",
+      "category": "ANALYSIS",
+      "description": "テクニカル分析手法",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "tags.tag",
+    "pk": 14,
+    "fields": {
+      "name": "#業績好調",
+      "category": "MARKET",
+      "description": "業績が好調な状況",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "tags.tag",
+    "pk": 15,
+    "fields": {
+      "name": "#市場回復",
+      "category": "MARKET",
+      "description": "市場回復局面",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "tags.tag",
+    "pk": 16,
+    "fields": {
+      "name": "#競合激化",
+      "category": "RISK",
+      "description": "競合他社との競争激化リスク",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "tags.tag",
+    "pk": 17,
+    "fields": {
+      "name": "#為替リスク",
+      "category": "RISK",
+      "description": "為替変動によるリスク",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "tags.tag",
+    "pk": 18,
+    "fields": {
+      "name": "#規制リスク",
+      "category": "RISK",
+      "description": "法規制変更によるリスク",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "tags.tag",
+    "pk": 19,
+    "fields": {
+      "name": "#配当株",
+      "category": "STYLE",
+      "description": "配当重視の投資スタイル",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  },
+  {
+    "model": "tags.tag",
+    "pk": 20,
+    "fields": {
+      "name": "#株主優待",
+      "category": "STYLE",
+      "description": "株主優待重視の投資スタイル",
+      "usage_count": 0,
+      "is_active": true,
+      "created_at": "2024-01-01T00:00:00Z",
+      "updated_at": "2024-01-01T00:00:00Z"
+    }
+  }
+]
