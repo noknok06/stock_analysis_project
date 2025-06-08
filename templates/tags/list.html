@@ -1,0 +1,332 @@
+<!-- ========================================
+templates/tags/list.html
+======================================== -->
+
+{% extends 'base.html' %}
+
+{% block title %}タグ一覧 - 株式分析記録アプリ{% endblock %}
+
+{% block extra_css %}
+<style>
+    .tag-card {
+        transition: all 0.2s ease-in-out;
+    }
+    .tag-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+    .tag-category-stock { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+    .tag-category-style { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
+    .tag-category-sector { background: linear-gradient(135deg, #059669, #047857); }
+    .tag-category-analysis { background: linear-gradient(135deg, #ea580c, #dc2626); }
+    .tag-category-strategy { background: linear-gradient(135deg, #0284c7, #0369a1); }
+    .tag-category-market { background: linear-gradient(135deg, #65a30d, #4d7c0f); }
+    .tag-category-risk { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-6xl mx-auto">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+        <div>
+            <h1 class="text-3xl font-bold text-white mb-2">タグ管理</h1>
+            <p class="text-gray-400">投資分析で使用するタグを管理します</p>
+        </div>
+        
+        <!-- Quick Stats -->
+        <div class="flex items-center space-x-4 text-sm">
+            <div class="text-center">
+                <div class="text-2xl font-bold text-blue-400">{{ tags.count }}</div>
+                <div class="text-gray-400">アクティブタグ</div>
+            </div>
+            <div class="text-center">
+                <div class="text-2xl font-bold text-green-400">{{ tags|length }}</div>
+                <div class="text-gray-400">表示中</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Search and Filter -->
+    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-8">
+        <form method="GET" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Search Input -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">タグ検索</label>
+                    <input type="text" 
+                           name="q" 
+                           value="{{ request.GET.q }}"
+                           placeholder="タグ名で検索..."
+                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <!-- Category Filter -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">カテゴリ</label>
+                    <select name="category" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">すべて</option>
+                        <option value="STOCK" {% if request.GET.category == 'STOCK' %}selected{% endif %}>銘柄</option>
+                        <option value="STYLE" {% if request.GET.category == 'STYLE' %}selected{% endif %}>投資スタイル</option>
+                        <option value="SECTOR" {% if request.GET.category == 'SECTOR' %}selected{% endif %}>業界セクター</option>
+                        <option value="ANALYSIS" {% if request.GET.category == 'ANALYSIS' %}selected{% endif %}>分析手法</option>
+                        <option value="STRATEGY" {% if request.GET.category == 'STRATEGY' %}selected{% endif %}>投資戦略</option>
+                        <option value="MARKET" {% if request.GET.category == 'MARKET' %}selected{% endif %}>市場状況</option>
+                        <option value="RISK" {% if request.GET.category == 'RISK' %}selected{% endif %}>リスク要因</option>
+                    </select>
+                </div>
+                
+                <!-- Search Button -->
+                <div class="flex items-end">
+                    <button type="submit" 
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg px-4 py-2 transition-colors">
+                        <svg class="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        検索
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Tags Grid -->
+    {% if tags %}
+        <!-- Category Summary -->
+        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
+            {% regroup tags by category as category_list %}
+            {% for category, category_tags in category_list %}
+                <div class="text-center">
+                    <div class="w-16 h-16 mx-auto mb-2 rounded-full tag-category-{{ category.lower }} flex items-center justify-center">
+                        <span class="text-white font-bold text-lg">{{ category_tags|length }}</span>
+                    </div>
+                    <div class="text-sm text-gray-300">
+                        {% if category == 'STOCK' %}銘柄
+                        {% elif category == 'STYLE' %}スタイル
+                        {% elif category == 'SECTOR' %}セクター
+                        {% elif category == 'ANALYSIS' %}分析
+                        {% elif category == 'STRATEGY' %}戦略
+                        {% elif category == 'MARKET' %}市場
+                        {% elif category == 'RISK' %}リスク
+                        {% else %}その他{% endif %}
+                    </div>
+                </div>
+            {% endfor %}
+        </div>
+
+        <!-- Tags List -->
+        <div class="grid gap-4">
+            {% regroup tags by category as category_list %}
+            {% for category, category_tags in category_list %}
+                <section class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                    <h2 class="text-lg font-semibold text-white mb-4 flex items-center">
+                        <div class="w-4 h-4 rounded-full tag-category-{{ category.lower }} mr-2"></div>
+                        {% if category == 'STOCK' %}銘柄タグ
+                        {% elif category == 'STYLE' %}投資スタイル
+                        {% elif category == 'SECTOR' %}業界セクター
+                        {% elif category == 'ANALYSIS' %}分析手法
+                        {% elif category == 'STRATEGY' %}投資戦略
+                        {% elif category == 'MARKET' %}市場状況
+                        {% elif category == 'RISK' %}リスク要因
+                        {% else %}その他{% endif %}
+                        <span class="ml-2 px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded-full">{{ category_tags|length }}個</span>
+                    </h2>
+                    
+                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
+                        {% for tag in category_tags %}
+                            <div class="tag-card bg-gray-700 border border-gray-600 rounded-lg p-4 hover:bg-gray-650 transition-colors">
+                                <div class="flex items-center justify-between mb-2">
+                                    <h3 class="font-semibold text-white truncate">{{ tag.name }}</h3>
+                                    <span class="px-2 py-1 text-xs rounded-full bg-blue-900 text-blue-300">
+                                        {{ tag.usage_count }}回
+                                    </span>
+                                </div>
+                                
+                                {% if tag.description %}
+                                    <p class="text-sm text-gray-400 mb-3 line-clamp-2">{{ tag.description }}</p>
+                                {% endif %}
+                                
+                                <div class="flex items-center justify-between text-xs text-gray-500">
+                                    <span>作成: {{ tag.created_at|date:"m/d" }}</span>
+                                    <span>更新: {{ tag.updated_at|date:"m/d" }}</span>
+                                </div>
+                                
+                                <!-- Tag Actions -->
+                                <div class="mt-3 flex space-x-2">
+                                    <button onclick="copyTagName('{{ tag.name }}')" 
+                                            class="text-xs px-2 py-1 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors">
+                                        コピー
+                                    </button>
+                                    <button onclick="searchWithTag('{{ tag.name }}')" 
+                                            class="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors">
+                                        検索
+                                    </button>
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </section>
+            {% endfor %}
+        </div>
+
+        <!-- Pagination -->
+        {% if is_paginated %}
+            <div class="mt-8 flex justify-center">
+                <nav class="flex space-x-2">
+                    {% if page_obj.has_previous %}
+                        <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}"
+                           class="px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded hover:bg-gray-700 transition-colors">
+                            前へ
+                        </a>
+                    {% endif %}
+                    
+                    <span class="px-3 py-2 bg-blue-600 text-white rounded">
+                        {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                    </span>
+                    
+                    {% if page_obj.has_next %}
+                        <a href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}"
+                           class="px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded hover:bg-gray-700 transition-colors">
+                            次へ
+                        </a>
+                    {% endif %}
+                </nav>
+            </div>
+        {% endif %}
+    {% else %}
+        <!-- Empty State -->
+        <div class="text-center py-16">
+            <div class="mx-auto h-24 w-24 text-gray-600 mb-4">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a2 2 0 012-2z"></path>
+                </svg>
+            </div>
+            <h3 class="text-lg font-medium text-gray-400 mb-2">タグが見つかりません</h3>
+            <p class="text-base text-gray-500 mb-6">
+                {% if request.GET.q or request.GET.category %}
+                    検索条件に一致するタグがありません。
+                {% else %}
+                    まだタグが作成されていません。
+                {% endif %}
+            </p>
+            {% if request.GET.q or request.GET.category %}
+                <a href="{% url 'tags:list' %}" 
+                   class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+                    すべてのタグを表示
+                </a>
+            {% else %}
+                <a href="{% url 'notes:create' %}" 
+                   class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    ノートを作成してタグを追加
+                </a>
+            {% endif %}
+        </div>
+    {% endif %}
+</div>
+
+<!-- Copy Notification -->
+<div id="copy-notification" class="fixed top-4 right-4 z-50 px-4 py-2 bg-green-600 text-white rounded-lg transform translate-x-full opacity-0 transition-all duration-300">
+    タグ名をコピーしました
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// タグ名をクリップボードにコピー
+function copyTagName(tagName) {
+    if (navigator.clipboard && window.isSecureContext) {
+        navigator.clipboard.writeText(tagName).then(() => {
+            showCopyNotification();
+        }).catch(err => {
+            console.error('コピーに失敗しました:', err);
+            fallbackCopyTextToClipboard(tagName);
+        });
+    } else {
+        fallbackCopyTextToClipboard(tagName);
+    }
+}
+
+// フォールバック用のコピー関数
+function fallbackCopyTextToClipboard(text) {
+    const textArea = document.createElement("textarea");
+    textArea.value = text;
+    textArea.style.top = "0";
+    textArea.style.left = "0";
+    textArea.style.position = "fixed";
+    
+    document.body.appendChild(textArea);
+    textArea.focus();
+    textArea.select();
+    
+    try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+            showCopyNotification();
+        }
+    } catch (err) {
+        console.error('フォールバックコピーに失敗しました:', err);
+    }
+    
+    document.body.removeChild(textArea);
+}
+
+// コピー通知を表示
+function showCopyNotification() {
+    const notification = document.getElementById('copy-notification');
+    notification.classList.remove('translate-x-full', 'opacity-0');
+    
+    setTimeout(() => {
+        notification.classList.add('translate-x-full', 'opacity-0');
+    }, 2000);
+}
+
+// タグで検索
+function searchWithTag(tagName) {
+    // ノート検索ページにリダイレクト
+    window.location.href = `/notes/?q=${encodeURIComponent(tagName)}`;
+}
+
+// キーボードショートカット
+document.addEventListener('keydown', function(e) {
+    // Ctrl+F でタグ検索にフォーカス
+    if (e.ctrlKey && e.key === 'f') {
+        e.preventDefault();
+        const searchInput = document.querySelector('input[name="q"]');
+        if (searchInput) {
+            searchInput.focus();
+            searchInput.select();
+        }
+    }
+});
+
+// 検索フォームの改善
+document.addEventListener('DOMContentLoaded', function() {
+    const searchInput = document.querySelector('input[name="q"]');
+    const categorySelect = document.querySelector('select[name="category"]');
+    
+    // リアルタイム検索（デバウンス付き）
+    let searchTimeout;
+    if (searchInput) {
+        searchInput.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                if (this.value.length >= 2 || this.value.length === 0) {
+                    // 自動検索実行
+                    this.form.submit();
+                }
+            }, 500);
+        });
+    }
+    
+    // カテゴリ変更時の自動検索
+    if (categorySelect) {
+        categorySelect.addEventListener('change', function() {
+            this.form.submit();
+        });
+    }
+});
+</script>
+{% endblock %}

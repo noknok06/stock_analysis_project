@@ -1,0 +1,202 @@
+/* ========================================
+   static/css/tag-manager.css - 統一タグ管理CSS
+   ======================================== */
+
+/* タグ推奨ボタンのアニメーション */
+.tag-suggestion {
+    transition: all 0.2s ease-in-out;
+    cursor: pointer;
+}
+
+.tag-suggestion:hover {
+    transform: translateY(-1px) scale(1.02);
+    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+}
+
+.tag-suggestion:active {
+    transform: translateY(0) scale(0.98);
+    transition-duration: 0.1s;
+}
+
+/* 選択済みタグのアニメーション */
+.tag-element {
+    animation: slideInFromLeft 0.3s ease-out;
+}
+
+.tag-element.removing {
+    animation: slideOutToRight 0.2s ease-in forwards;
+}
+
+@keyframes slideInFromLeft {
+    from {
+        transform: translateX(-20px);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}
+
+@keyframes slideOutToRight {
+    to {
+        transform: translateX(20px);
+        opacity: 0;
+        max-width: 0;
+        padding: 0;
+        margin: 0;
+    }
+}
+
+/* タグ通知のスタイル */
+.tag-notification {
+    backdrop-filter: blur(8px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+}
+
+/* タグ入力フィールドのフォーカス状態 */
+.tag-input:focus {
+    outline: none;
+    ring: 2px;
+    ring-color: rgba(59, 130, 246, 0.5);
+    border-color: #3b82f6;
+}
+
+/* タグコンテナのスタイル */
+.tags-container {
+    min-height: 2.5rem;
+    transition: all 0.2s ease;
+}
+
+.tags-container:empty::before {
+    content: "タグが選択されていません";
+    color: #9ca3af;
+    font-size: 0.875rem;
+}
+
+.tags-container.has-tags::before {
+    display: none;
+}
+
+/* レスポンシブ対応 */
+@media (max-width: 768px) {
+    .tag-suggestion,
+    .tag-element {
+        font-size: 0.75rem;
+        padding: 0.25rem 0.5rem;
+    }
+    
+    .tag-notification {
+        max-width: calc(100vw - 2rem);
+        right: 1rem;
+    }
+}
+
+/* ダークモード対応 */
+@media (prefers-color-scheme: dark) {
+    .tag-suggestion {
+        background-color: #374151;
+        border-color: #4b5563;
+        color: #d1d5db;
+    }
+    
+    .tag-suggestion:hover {
+        background-color: #4b5563;
+        border-color: #3b82f6;
+    }
+    
+    .tag-element {
+        background-color: #3b82f6;
+        color: white;
+    }
+}
+
+/* アクセシビリティ */
+.tag-suggestion:focus,
+.tag-element button:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* ロード状態のスタイル */
+.tag-loading {
+    opacity: 0.6;
+    pointer-events: none;
+    position: relative;
+}
+
+.tag-loading::after {
+    content: "";
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 16px;
+    height: 16px;
+    border: 2px solid #3b82f6;
+    border-top: 2px solid transparent;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+    to {
+        transform: translate(-50%, -50%) rotate(360deg);
+    }
+}
+
+/* タグカテゴリーのカラーコーディング */
+.tag-category-stock {
+    background-color: #dc2626 !important;
+}
+
+.tag-category-style {
+    background-color: #7c3aed !important;
+}
+
+.tag-category-sector {
+    background-color: #059669 !important;
+}
+
+.tag-category-analysis {
+    background-color: #ea580c !important;
+}
+
+.tag-category-strategy {
+    background-color: #0284c7 !important;
+}
+
+.tag-category-market {
+    background-color: #65a30d !important;
+}
+
+.tag-category-risk {
+    background-color: #dc2626 !important;
+}
+
+/* ツールチップ */
+.tag-tooltip {
+    position: relative;
+}
+
+.tag-tooltip::before {
+    content: attr(data-tooltip);
+    position: absolute;
+    bottom: 100%;
+    left: 50%;
+    transform: translateX(-50%);
+    background-color: #1f2937;
+    color: white;
+    padding: 0.5rem;
+    border-radius: 0.375rem;
+    font-size: 0.75rem;
+    white-space: nowrap;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.2s;
+    z-index: 50;
+}
+
+.tag-tooltip:hover::before {
+    opacity: 1;
+}

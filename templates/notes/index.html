@@ -4,94 +4,168 @@
 
 {% block content %}
 <!-- Header -->
-<div class="flex justify-between items-center mb-6">
-    <h1 class="text-2xl font-semibold text-white">ノート一覧</h1>
+<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 md:mb-6">
+    <h1 class="text-xl md:text-2xl font-semibold text-white">ノート一覧</h1>
     <a href="{% url 'notes:create' %}" 
-       class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+       title="新規ノート作成"
+       class="inline-flex items-center px-3 md:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors w-full sm:w-auto justify-center">
         <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
         </svg>
-        新規ノート
+        <span class="hidden sm:inline">新規ノート</span>
+        <span class="sm:hidden">新規作成</span>
     </a>
 </div>
 
 <!-- Search and Filters -->
-<div class="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-6">
+<div class="bg-gray-800 border border-gray-700 rounded-lg p-4 md:p-6 mb-4 md:mb-6">
     <form method="GET" class="space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
             <!-- Search Input -->
-            <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">検索</label>
+            <div class="md:col-span-2">
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                    <svg class="h-4 w-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                    検索
+                </label>
                 <input type="text" 
                        name="q" 
                        value="{{ search_query }}"
                        placeholder="銘柄名、企業名、内容で検索..."
-                       class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                       class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
             </div>
             
             <!-- Status Filter -->
             <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">ステータス</label>
-                <select name="status" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <label class="block text-sm font-medium text-gray-300 mb-2">
+                    <svg class="h-4 w-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.707V4z"></path>
+                    </svg>
+                    ステータス
+                </label>
+                <select name="status" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">すべて</option>
                     <option value="ACTIVE">アクティブ</option>
                     <option value="MONITORING">監視中</option>
                     <option value="ATTENTION">要注意</option>
                 </select>
             </div>
-            
-            <!-- Search Button -->
-            <div class="flex items-end">
-                <button type="submit" 
-                        class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg px-4 py-2 transition-colors">
-                    検索
-                </button>
-            </div>
+        </div>
+        
+        <!-- Search Button -->
+        <div class="flex justify-end">
+            <button type="submit" 
+                    class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg px-4 py-2 transition-colors flex items-center justify-center">
+                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                </svg>
+                検索実行
+            </button>
         </div>
     </form>
 </div>
 
+<!-- Trending Tags Section -->
+<section class="bg-gray-800 border border-gray-700 rounded-lg mb-4 md:mb-6">
+    <header class="p-4 md:p-6 border-b border-gray-700">
+        <h2 class="text-white font-semibold flex items-center gap-2">
+            <svg class="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a2 2 0 012-2z"></path>
+            </svg>
+            <span class="hidden sm:inline">トレンドタグ</span>
+            <span class="sm:hidden">トレンド</span>
+        </h2>
+    </header>
+    
+    <div class="p-4 md:p-6">
+        <div class="flex flex-wrap gap-1.5 md:gap-2">
+            {% for tag in trending_tags %}
+                <span class="tag-clickable px-2 md:px-3 py-1 text-xs md:text-sm rounded-full border border-gray-600 text-gray-300 hover:bg-gray-700 hover:border-blue-500 cursor-pointer transition-all duration-200 transform hover:scale-105"
+                      data-tag="{{ tag.name }}"
+                      title="クリックして検索">
+                    {% if tag.name|length > 8 %}
+                        <span class="hidden sm:inline">{{ tag.name }} ({{ tag.usage_count }})</span>
+                        <span class="sm:hidden">{{ tag.name|truncatechars:6 }} ({{ tag.usage_count }})</span>
+                    {% else %}
+                        {{ tag.name }} ({{ tag.usage_count }})
+                    {% endif %}
+                </span>
+            {% empty %}
+                <span class="text-gray-400 text-sm">タグがありません</span>
+            {% endfor %}
+        </div>
+        
+        <!-- 検索実行中インジケーター -->
+        <div id="search-indicator" class="hidden mt-3 flex items-center text-blue-400 text-sm">
+            <svg class="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            検索中...
+        </div>
+    </div>
+</section>
+
 <!-- Notebooks Grid -->
-<div class="grid gap-4">
+<div class="grid gap-3 md:gap-4">
     {% for notebook in notebooks %}
         <div class="bg-gray-800 border border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer rounded-lg"
              onclick="location.href='{% url 'notes:detail' notebook.pk %}'">
-            <div class="p-6">
-                <div class="flex justify-between items-start mb-4">
-                    <div>
-                        <h3 class="text-white font-semibold text-lg">{{ notebook.title }}</h3>
-                        <p class="text-gray-400">{{ notebook.subtitle }}</p>
+            <div class="p-4 md:p-6">
+                <div class="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0 mb-3 md:mb-4">
+                    <div class="flex-1 min-w-0">
+                        <h3 class="text-white font-semibold text-base md:text-lg truncate">{{ notebook.title }}</h3>
+                        {% if notebook.subtitle %}
+                            <p class="text-gray-400 text-sm md:text-base truncate">{{ notebook.subtitle }}</p>
+                        {% endif %}
                     </div>
-                    <span class="px-2 py-1 text-xs rounded-full
+                    <span class="px-2 py-1 text-xs rounded-full flex-shrink-0
                                {% if notebook.status == 'ACTIVE' %}bg-green-900 text-green-300
                                {% elif notebook.status == 'MONITORING' %}bg-yellow-900 text-yellow-300
                                {% elif notebook.status == 'ATTENTION' %}bg-red-900 text-red-300
                                {% endif %}">
-                        {{ notebook.get_status_display }}
+                        <span class="hidden sm:inline">{{ notebook.get_status_display }}</span>
+                        <span class="sm:hidden">
+                            {% if notebook.status == 'ACTIVE' %}●
+                            {% elif notebook.status == 'MONITORING' %}⚠
+                            {% elif notebook.status == 'ATTENTION' %}⚠
+                            {% else %}○{% endif %}
+                        </span>
                     </span>
                 </div>
                 
                 <!-- Tags -->
-                <div class="flex flex-wrap gap-1 mb-3">
-                    {% for tag in notebook.tags.all %}
-                        <span class="px-2 py-1 text-xs border border-gray-600 text-gray-300 rounded">
-                            {{ tag.name }}
-                        </span>
-                    {% endfor %}
-                </div>
+                {% if notebook.tags.all %}
+                    <div class="flex flex-wrap gap-1 mb-3">
+                        {% for tag in notebook.tags.all %}
+                            <span class="px-1.5 md:px-2 py-1 text-xs border border-gray-600 text-gray-300 rounded truncate max-w-20 sm:max-w-none">
+                                {{ tag.name }}
+                            </span>
+                        {% endfor %}
+                    </div>
+                {% endif %}
                 
                 <!-- Footer -->
-                <div class="flex justify-between items-center text-sm text-gray-400">
+                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 sm:gap-0 text-xs md:text-sm text-gray-400">
                     <span>{{ notebook.entry_count }} エントリー</span>
-                    <span>最終更新: {{ notebook.updated_at|date:"Y/m/d" }}</span>
+                    <span>最終更新: {{ notebook.updated_at|date:"m/d"|default:"--/--" }}</span>
                 </div>
             </div>
         </div>
     {% empty %}
-        <div class="text-center py-12">
-            <p class="text-gray-400 mb-4">ノートがありません</p>
+        <div class="text-center py-12 md:py-16">
+            <div class="mx-auto h-16 w-16 md:h-24 md:w-24 text-gray-600 mb-4">
+                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-6m-2-5.5V9.5a2 2 0 012-2h6a2 2 0 012 2V16"></path>
+                </svg>
+            </div>
+            <p class="text-gray-400 mb-4 text-sm md:text-base">ノートがありません</p>
             <a href="{% url 'notes:create' %}" 
-               class="text-blue-400 hover:text-blue-300">
+               class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                </svg>
                 最初のノートを作成しましょう
             </a>
         </div>
@@ -100,26 +174,170 @@
 
 <!-- Pagination -->
 {% if is_paginated %}
-    <div class="mt-8 flex justify-center">
-        <nav class="flex space-x-2">
+    <div class="mt-6 md:mt-8 flex justify-center">
+        <nav class="flex space-x-1 md:space-x-2">
             {% if page_obj.has_previous %}
                 <a href="?page={{ page_obj.previous_page_number }}"
-                   class="px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded hover:bg-gray-700">
-                    前へ
+                   title="前のページ"
+                   class="px-2 md:px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded hover:bg-gray-700 transition-colors">
+                    <svg class="h-4 w-4 md:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                    </svg>
+                    <span class="hidden md:inline">前へ</span>
                 </a>
             {% endif %}
             
-            <span class="px-3 py-2 bg-blue-600 text-white rounded">
+            <span class="px-2 md:px-3 py-2 bg-blue-600 text-white rounded text-sm md:text-base">
                 {{ page_obj.number }}
             </span>
             
             {% if page_obj.has_next %}
                 <a href="?page={{ page_obj.next_page_number }}"
-                   class="px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded hover:bg-gray-700">
-                    次へ
+                   title="次のページ"
+                   class="px-2 md:px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded hover:bg-gray-700 transition-colors">
+                    <span class="hidden md:inline">次へ</span>
+                    <svg class="h-4 w-4 md:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
                 </a>
             {% endif %}
         </nav>
     </div>
 {% endif %}
+{% endblock %}
+
+{% block extra_js %}
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // トレンドタグのクリックイベント設定
+    const clickableTags = document.querySelectorAll('.tag-clickable');
+    const searchIndicator = document.getElementById('search-indicator');
+    
+    clickableTags.forEach(tag => {
+        tag.addEventListener('click', function() {
+            const tagName = this.getAttribute('data-tag');
+            console.log('タグクリック:', tagName);
+            
+            // クリック効果の表示
+            this.classList.add('clicked');
+            
+            // 検索インジケーター表示
+            if (searchIndicator) {
+                searchIndicator.classList.remove('hidden');
+            }
+            
+            // 短時間後にノート検索ページに遷移（クエリパラメータ付き）
+            setTimeout(() => {
+                const encodedTag = encodeURIComponent(tagName);
+                const currentUrl = new URL(window.location);
+                currentUrl.searchParams.set('q', tagName);
+                window.location.href = currentUrl.toString();
+            }, 300);
+        });
+        
+        // タッチデバイスでのフィードバック改善
+        tag.addEventListener('touchstart', function() {
+            this.style.transform = 'scale(0.95)';
+        });
+        
+        tag.addEventListener('touchend', function() {
+            setTimeout(() => {
+                this.style.transform = 'scale(1)';
+            }, 100);
+        });
+    });
+
+    // URLパラメータからの検索語ハイライト
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchQuery = urlParams.get('q');
+    if (searchQuery) {
+        // 検索語がある場合、該当するタグをハイライト
+        clickableTags.forEach(tag => {
+            if (tag.getAttribute('data-tag') === searchQuery) {
+                tag.classList.add('bg-blue-600', 'border-blue-500', 'text-white');
+            }
+        });
+    }
+});
+
+// タッチデバイス検出
+function isTouchDevice() {
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+}
+
+// デバイスに応じたインタラクション調整
+if (isTouchDevice()) {
+    document.body.classList.add('touch-device');
+}
+</script>
+
+<style>
+/* スマホ用の追加スタイル */
+@media (max-width: 768px) {
+    /* タップ領域の確保 */
+    .tag-clickable {
+        min-height: 36px;
+        min-width: 36px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* アクティブ状態の視覚的フィードバック */
+    .tag-clickable:active {
+        background-color: rgba(75, 85, 99, 0.5);
+        transform: scale(0.95);
+    }
+    
+    /* ノートカードのタップ領域 */
+    .cursor-pointer {
+        min-height: 44px;
+    }
+}
+
+/* ホバー効果の改善 */
+@media (hover: hover) {
+    .tag-clickable:hover {
+        background-color: rgba(75, 85, 99, 0.7);
+        border-color: #3b82f6;
+        box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+    }
+}
+
+/* タグクリック時のアニメーション */
+.tag-clickable.clicked {
+    background-color: #3b82f6;
+    border-color: #1d4ed8;
+    color: white;
+    transform: scale(0.95);
+}
+
+.tag-clickable.clicked::after {
+    content: ' ✓';
+    font-size: 0.75rem;
+}
+
+/* レスポンシブテキスト調整 */
+.truncate {
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+/* アニメーション */
+@keyframes slideIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.bg-gray-800 {
+    animation: slideIn 0.3s ease-out;
+}
+</style>
 {% endblock %}

@@ -93,9 +93,15 @@ class NotebookCreateView(LoginRequiredMixin, CreateView):
             # 成功時はノート詳細ページにリダイレクト
             return redirect('notes:detail', pk=self.object.pk)
         except Exception as e:
-            messages.error(self.request, 'ノートの作成に失敗しました。')
+            messages.error(self.request, f'ノートの作成に失敗しました: {str(e)}')
             return self.form_invalid(form)
-
+    
+    def form_invalid(self, form):
+        """フォーム無効時の処理"""
+        for field, errors in form.errors.items():
+            for error in errors:
+                messages.error(self.request, f'{form[field].label}: {error}')
+        return super().form_invalid(form)
 
 class NotebookUpdateView(UserOwnerMixin, UpdateView):
     """ノート編集ビュー"""
@@ -106,6 +112,17 @@ class NotebookUpdateView(UserOwnerMixin, UpdateView):
     def get_success_url(self):
         return reverse_lazy('notes:detail', kwargs={'pk': self.object.pk})
     
+    def get_context_data(self, **kwargs):
+        """編集用の追加コンテキスト"""
+        context = super().get_context_data(**kwargs)
+        # 既存タグをJavaScript用に準備
+        existing_tags = [
+            {'id': tag.pk, 'name': tag.name, 'category': tag.category}
+            for tag in self.object.tags.all()
+        ]
+        context['existing_tags_json'] = json.dumps(existing_tags)
+        return context
+    
     def form_valid(self, form):
         """フォーム有効時の処理"""
         try:
@@ -113,8 +130,15 @@ class NotebookUpdateView(UserOwnerMixin, UpdateView):
             messages.success(self.request, f'ノート「{self.object.title}」を更新しました。')
             return response
         except Exception as e:
-            messages.error(self.request, 'ノートの更新に失敗しました。')
+            messages.error(self.request, f'ノートの更新に失敗しました: {str(e)}')
             return self.form_invalid(form)
+    
+    def form_invalid(self, form):
+        """フォーム無効時の処理"""
+        for field, errors in form.errors.items():
+            for error in errors:
+                messages.error(self.request, f'{form[field].label}: {error}')
+        return super().form_invalid(form)
 
 
 # ========================================

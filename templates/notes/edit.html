@@ -1,16 +1,15 @@
+<!-- ========================================
+templates/notes/edit.html（統一タグ管理版）
+======================================== -->
+
 {% extends 'base.html' %}
 
 {% block title %}{{ notebook.title }} - 編集 - 株式分析記録アプリ{% endblock %}
 
 {% block extra_css %}
+{% load static %}
+<link rel="stylesheet" href="{% static 'css/tag-manager.css' %}">
 <style>
-    .tag-suggestion {
-        transition: all 0.2s ease;
-    }
-    .tag-suggestion:hover {
-        transform: translateY(-1px);
-        box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-    }
     .form-section {
         background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
     }
@@ -20,6 +19,13 @@
     @keyframes pulse {
         0%, 100% { opacity: 1; }
         50% { opacity: 0.8; }
+    }
+    .animate-in {
+        animation: slideInFromLeft 0.3s ease-out;
+    }
+    @keyframes slideInFromLeft {
+        from { transform: translateX(-10px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
     }
 </style>
 {% endblock %}
@@ -68,9 +74,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <!-- 銘柄コード -->
                 <div>
-                    <label for="id_stock_code" class="block text-sm font-medium text-gray-300 mb-2">
-                        銘柄コード
-                    </label>
+                    <label for="id_stock_code" class="block text-sm font-medium text-gray-300 mb-2">銘柄コード</label>
                     <input type="text" 
                            id="id_stock_code" 
                            name="stock_code" 
@@ -84,9 +88,7 @@
 
                 <!-- 企業名 -->
                 <div>
-                    <label for="id_company_name" class="block text-sm font-medium text-gray-300 mb-2">
-                        企業名
-                    </label>
+                    <label for="id_company_name" class="block text-sm font-medium text-gray-300 mb-2">企業名</label>
                     <input type="text" 
                            id="id_company_name" 
                            name="company_name" 
@@ -117,9 +119,7 @@
 
                 <!-- サブタイトル -->
                 <div class="md:col-span-2">
-                    <label for="id_subtitle" class="block text-sm font-medium text-gray-300 mb-2">
-                        サブタイトル
-                    </label>
+                    <label for="id_subtitle" class="block text-sm font-medium text-gray-300 mb-2">サブタイトル</label>
                     <input type="text" 
                            id="id_subtitle" 
                            name="subtitle" 
@@ -162,9 +162,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <!-- 目標株価 -->
                     <div>
-                        <label for="id_target_price" class="block text-sm font-medium text-gray-300 mb-2">
-                            目標株価
-                        </label>
+                        <label for="id_target_price" class="block text-sm font-medium text-gray-300 mb-2">目標株価</label>
                         <input type="text" 
                                id="id_target_price" 
                                name="target_price" 
@@ -178,9 +176,7 @@
 
                     <!-- ステータス -->
                     <div>
-                        <label for="id_status" class="block text-sm font-medium text-gray-300 mb-2">
-                            ステータス
-                        </label>
+                        <label for="id_status" class="block text-sm font-medium text-gray-300 mb-2">ステータス</label>
                         <select id="id_status" 
                                 name="status"
                                 class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
@@ -197,9 +193,7 @@
 
                 <!-- 売却タイミング -->
                 <div>
-                    <label for="id_sell_timing" class="block text-sm font-medium text-gray-300 mb-2">
-                        売却タイミング
-                    </label>
+                    <label for="id_sell_timing" class="block text-sm font-medium text-gray-300 mb-2">売却タイミング</label>
                     <textarea id="id_sell_timing" 
                               name="sell_timing" 
                               rows="2"
@@ -212,9 +206,7 @@
 
                 <!-- 注目ポイント -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">
-                        注目ポイント
-                    </label>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">注目ポイント</label>
                     <div id="key-points-container">
                         {% for point in notebook.key_points %}
                             <div class="key-point-item flex gap-2 mb-2">
@@ -259,9 +251,7 @@
 
                 <!-- リスク要因 -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">
-                        リスク要因
-                    </label>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">リスク要因</label>
                     <div id="risk-factors-container">
                         {% for risk in notebook.risk_factors %}
                             <div class="risk-factor-item flex gap-2 mb-2">
@@ -315,16 +305,30 @@
                 タグ設定
             </h2>
 
-            <!-- 現在のタグ -->
+            <!-- カスタムタグ入力 -->
             <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                    現在のタグ
-                </label>
-                <div class="flex flex-wrap gap-2 min-h-[2.5rem] p-3 bg-gray-700 border border-gray-600 rounded-lg">
+                <label class="block text-sm font-medium text-gray-300 mb-2">新しいタグを追加</label>
+                <div class="flex gap-2">
+                    <input type="text" 
+                           id="custom-tag-input"
+                           placeholder="#から始まるタグを入力..."
+                           class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <button type="button" 
+                            onclick="addCustomTag()"
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                        追加
+                    </button>
+                </div>
+            </div>
+
+            <!-- 選択済みタグ -->
+            <div id="selected-tags" class="mb-6">
+                <label class="block text-sm font-medium text-gray-300 mb-2">選択済みタグ</label>
+                <div id="selected-tags-container" class="flex flex-wrap gap-2 min-h-[2.5rem] p-3 bg-gray-700 border border-gray-600 rounded-lg">
                     {% for tag in notebook.tags.all %}
                         <span class="inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-600 text-white">
                             {{ tag.name }}
-                            <button type="button" onclick="removeTag('{{ tag.pk }}')" class="ml-2 text-blue-200 hover:text-white">
+                            <button type="button" onclick="removeExistingTag('{{ tag.pk }}', '{{ tag.name }}')" class="ml-2 text-blue-200 hover:text-white">
                                 <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                 </svg>
@@ -333,24 +337,6 @@
                     {% empty %}
                         <span class="text-gray-400 text-sm">タグが設定されていません</span>
                     {% endfor %}
-                </div>
-            </div>
-
-            <!-- タグ追加 -->
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                    新しいタグを追加
-                </label>
-                <div class="flex gap-2">
-                    <input type="text" 
-                           id="new-tag-input"
-                           placeholder="#から始まるタグを入力..."
-                           class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button type="button" 
-                            onclick="addNewTag()"
-                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
-                        追加
-                    </button>
                 </div>
             </div>
 
@@ -367,8 +353,10 @@
                 </div>
             </div>
 
-            <!-- 隠しフィールド（タグ管理用） -->
-            <input type="hidden" name="tag_changes" id="tag-changes-input" value="{}">
+            <!-- 隠しフィールド -->
+            <input type="hidden" name="selected_tags_json" id="selected-tags-json">
+            <input type="hidden" name="key_points" id="key-points-hidden">
+            <input type="hidden" name="risk_factors" id="risk-factors-hidden">
         </section>
 
         <!-- 統計情報 -->
@@ -434,26 +422,63 @@
 {% endblock %}
 
 {% block extra_js %}
+{% load static %}
+<script src="{% static 'js/tag-manager.js' %}"></script>
 <script>
 let keyPointCount = {{ notebook.key_points|length|default:1 }};
 let riskFactorCount = {{ notebook.risk_factors|length|default:1 }};
-let tagChanges = {
-    added: [],
-    removed: []
-};
+let tagManager = null;
 
-// 注目ポイント追加
+// ページ読み込み時の初期化
+document.addEventListener('DOMContentLoaded', function() {
+    // タグマネージャー初期化
+    tagManager = initTagManager({
+        selectedTagsContainer: 'selected-tags-container',
+        suggestedTagsContainer: 'suggested-tags',
+        tagInput: 'custom-tag-input',
+        tagChangesInput: 'selected-tags-json'
+    });
+    
+    // 既存タグを設定
+    const existingTags = [
+        {% for tag in notebook.tags.all %}
+            '{{ tag.name }}'{% if not forloop.last %},{% endif %}
+        {% endfor %}
+    ];
+    
+    if (tagManager && existingTags.length > 0) {
+        tagManager.setExistingTags(existingTags);
+    }
+    
+    // その他の初期化
+    updateRemoveButtons('key-point-item');
+    updateRemoveButtons('risk-factor-item');
+});
+
+// 注目ポイント・リスク要因管理（DRY原則適用）
 function addKeyPoint() {
-    const container = document.getElementById('key-points-container');
+    addDynamicItem('key-points-container', 'key-point-item', 'key_point', keyPointCount, '注目ポイント', 'removeKeyPoint');
+    keyPointCount++;
+    updateRemoveButtons('key-point-item');
+}
+
+function addRiskFactor() {
+    addDynamicItem('risk-factors-container', 'risk-factor-item', 'risk_factor', riskFactorCount, 'リスク要因', 'removeRiskFactor');
+    riskFactorCount++;
+    updateRemoveButtons('risk-factor-item');
+}
+
+function addDynamicItem(containerId, itemClass, namePrefix, count, placeholder, removeFunction) {
+    const container = document.getElementById(containerId);
     const newItem = document.createElement('div');
-    newItem.className = 'key-point-item flex gap-2 mb-2';
+    newItem.className = `${itemClass} flex gap-2 mb-2 animate-in`;
     newItem.innerHTML = `
         <input type="text" 
-               name="key_point_${keyPointCount}" 
-               placeholder="注目ポイント ${keyPointCount + 1}"
+               name="${namePrefix}_${count}" 
+               placeholder="${placeholder} ${count + 1}"
                class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
         <button type="button" 
-                onclick="removeKeyPoint(this)"
+                onclick="${removeFunction}(this)"
                 class="px-3 py-2 text-red-400 hover:text-red-300">
             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -461,8 +486,6 @@ function addKeyPoint() {
         </button>
     `;
     container.appendChild(newItem);
-    keyPointCount++;
-    updateRemoveButtons('key-point-item');
 }
 
 function removeKeyPoint(button) {
@@ -470,35 +493,11 @@ function removeKeyPoint(button) {
     updateRemoveButtons('key-point-item');
 }
 
-// リスク要因追加
-function addRiskFactor() {
-    const container = document.getElementById('risk-factors-container');
-    const newItem = document.createElement('div');
-    newItem.className = 'risk-factor-item flex gap-2 mb-2';
-    newItem.innerHTML = `
-        <input type="text" 
-               name="risk_factor_${riskFactorCount}" 
-               placeholder="リスク要因 ${riskFactorCount + 1}"
-               class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <button type="button" 
-                onclick="removeRiskFactor(this)"
-                class="px-3 py-2 text-red-400 hover:text-red-300">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-        </button>
-    `;
-    container.appendChild(newItem);
-    riskFactorCount++;
-    updateRemoveButtons('risk-factor-item');
-}
-
 function removeRiskFactor(button) {
     button.closest('.risk-factor-item').remove();
     updateRemoveButtons('risk-factor-item');
 }
 
-// 削除ボタンの表示制御
 function updateRemoveButtons(className) {
     const items = document.querySelectorAll(`.${className}`);
     items.forEach((item, index) => {
@@ -511,85 +510,60 @@ function updateRemoveButtons(className) {
     });
 }
 
-// タグ管理
-function removeTag(tagId) {
-    tagChanges.removed.push(tagId);
-    updateTagChangesInput();
-    
-    // UIからタグを削除
-    event.target.closest('span').remove();
-}
-
-function addNewTag() {
-    const input = document.getElementById('new-tag-input');
-    let tagName = input.value.trim();
-    
-    if (!tagName) return;
-    
-    if (!tagName.startsWith('#')) {
-        tagName = '#' + tagName;
-    }
-    
-    // 重複チェック（簡易）
-    const existingTags = document.querySelectorAll('.current-tags span');
-    for (let tag of existingTags) {
-        if (tag.textContent.includes(tagName)) {
-            alert('このタグは既に存在します。');
-            return;
+// 既存タグを削除（編集時）
+function removeExistingTag(tagId, tagName) {
+    if (tagManager) {
+        tagManager.removeExistingTag(tagId, tagName);
+        
+        // UIからタグを削除
+        event.target.closest('span').remove();
+        
+        // コンテナが空の場合、メッセージを表示
+        const container = document.getElementById('selected-tags-container');
+        if (container.children.length === 0) {
+            container.innerHTML = '<span class="text-gray-400 text-sm">タグが設定されていません</span>';
         }
     }
-    
-    tagChanges.added.push(tagName);
-    updateTagChangesInput();
-    
-    // UIにタグを追加
-    const tagContainer = document.querySelector('.current-tags');
-    if (!tagContainer) return;
-    
-    const tagElement = document.createElement('span');
-    tagElement.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-600 text-white';
-    tagElement.innerHTML = `
-        ${tagName}
-        <button type="button" onclick="removeNewTag('${tagName}')" class="ml-2 text-blue-200 hover:text-white">
-            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-        </button>
-    `;
-    
-    tagContainer.appendChild(tagElement);
-    input.value = '';
-}
-
-function removeNewTag(tagName) {
-    tagChanges.added = tagChanges.added.filter(tag => tag !== tagName);
-    updateTagChangesInput();
-    event.target.closest('span').remove();
-}
-
-function updateTagChangesInput() {
-    document.getElementById('tag-changes-input').value = JSON.stringify(tagChanges);
 }
 
 // プレビュー機能
 function previewChanges() {
-    const title = document.getElementById('id_title').value;
-    const subtitle = document.getElementById('id_subtitle').value;
-    const stockCode = document.getElementById('id_stock_code').value;
-    const companyName = document.getElementById('id_company_name').value;
-    const investmentReason = document.getElementById('id_investment_reason').value;
-    const targetPrice = document.getElementById('id_target_price').value;
-    const sellTiming = document.getElementById('id_sell_timing').value;
-    const status = document.getElementById('id_status').value;
+    const formData = collectFormData();
+    const previewHtml = generatePreviewHtml(formData);
     
-    // 注目ポイントとリスク要因を取得
+    document.getElementById('preview-content').innerHTML = previewHtml;
+    document.getElementById('preview-modal').classList.remove('hidden');
+}
+
+function closePreview() {
+    document.getElementById('preview-modal').classList.add('hidden');
+}
+
+function collectFormData() {
     const keyPoints = Array.from(document.querySelectorAll('input[name^="key_point_"]'))
         .map(input => input.value)
         .filter(value => value.trim());
+        
     const riskFactors = Array.from(document.querySelectorAll('input[name^="risk_factor_"]'))
         .map(input => input.value)
         .filter(value => value.trim());
-    
+
+    return {
+        title: document.getElementById('id_title').value,
+        subtitle: document.getElementById('id_subtitle').value,
+        stockCode: document.getElementById('id_stock_code').value,
+        companyName: document.getElementById('id_company_name').value,
+        investmentReason: document.getElementById('id_investment_reason').value,
+        targetPrice: document.getElementById('id_target_price').value,
+        sellTiming: document.getElementById('id_sell_timing').value,
+        status: document.getElementById('id_status').value,
+        keyPoints: keyPoints,
+        riskFactors: riskFactors,
+        selectedTags: tagManager ? tagManager.selectedTags : []
+    };
+}
+
+function generatePreviewHtml(data) {
     const statusLabels = {
         'ACTIVE': 'アクティブ',
         'MONITORING': '監視中',
@@ -604,101 +578,98 @@ function previewChanges() {
         'ARCHIVED': 'bg-gray-700 text-gray-300'
     };
     
-    const previewHtml = `
+    return `
         <div class="space-y-6">
             <div class="flex items-center justify-between">
                 <div>
-                    <h4 class="text-xl font-semibold text-white">${title}</h4>
-                    ${subtitle ? `<p class="text-gray-400">${subtitle}</p>` : ''}
-                    ${stockCode && companyName ? `<p class="text-sm text-gray-300 mt-1">${stockCode} ${companyName}</p>` : ''}
+                    <h4 class="text-xl font-semibold text-white">${data.title}</h4>
+                    ${data.subtitle ? `<p class="text-gray-400">${data.subtitle}</p>` : ''}
+                    ${data.stockCode && data.companyName ? `<p class="text-sm text-gray-300 mt-1">${data.stockCode} ${data.companyName}</p>` : ''}
                 </div>
-                <span class="px-3 py-1 text-sm rounded-full ${statusColors[status]}">${statusLabels[status]}</span>
+                <span class="px-3 py-1 text-sm rounded-full ${statusColors[data.status]}">${statusLabels[data.status]}</span>
             </div>
             
-            ${targetPrice ? `
+            ${data.targetPrice ? `
             <div>
                 <h5 class="font-medium text-white mb-2">目標株価</h5>
-                <p class="text-green-400 font-semibold">${targetPrice}</p>
+                <p class="text-green-400 font-semibold">${data.targetPrice}</p>
             </div>
             ` : ''}
             
             <div>
                 <h5 class="font-medium text-white mb-2">投資理由</h5>
-                <p class="text-gray-300">${investmentReason}</p>
+                <p class="text-gray-300">${data.investmentReason}</p>
             </div>
             
-            ${sellTiming ? `
+            ${data.sellTiming ? `
             <div>
                 <h5 class="font-medium text-white mb-2">売却タイミング</h5>
-                <p class="text-gray-300">${sellTiming}</p>
+                <p class="text-gray-300">${data.sellTiming}</p>
             </div>
             ` : ''}
             
-            ${keyPoints.length > 0 ? `
+            ${data.keyPoints.length > 0 ? `
             <div>
                 <h5 class="font-medium text-white mb-2">注目ポイント</h5>
                 <ul class="list-disc list-inside space-y-1 text-gray-300">
-                    ${keyPoints.map(point => `<li>${point}</li>`).join('')}
+                    ${data.keyPoints.map(point => `<li>${point}</li>`).join('')}
                 </ul>
             </div>
             ` : ''}
             
-            ${riskFactors.length > 0 ? `
+            ${data.riskFactors.length > 0 ? `
             <div>
                 <h5 class="font-medium text-white mb-2">リスク要因</h5>
                 <ul class="list-disc list-inside space-y-1 text-gray-300">
-                    ${riskFactors.map(risk => `<li>${risk}</li>`).join('')}
+                    ${data.riskFactors.map(risk => `<li>${risk}</li>`).join('')}
                 </ul>
             </div>
             ` : ''}
+            
+            <div>
+                <h5 class="font-medium text-white mb-2">タグ</h5>
+                <div class="flex flex-wrap gap-2">
+                    ${data.selectedTags.map(tag => `<span class="px-2 py-1 bg-blue-600 text-white text-sm rounded">${tag}</span>`).join('')}
+                </div>
+            </div>
         </div>
     `;
-    
-    document.getElementById('preview-content').innerHTML = previewHtml;
-    document.getElementById('preview-modal').classList.remove('hidden');
-}
-
-function closePreview() {
-    document.getElementById('preview-modal').classList.add('hidden');
 }
 
 // フォーム送信前の処理
 document.getElementById('notebook-form').addEventListener('submit', function(e) {
-    // 注目ポイントとリスク要因をJSONフィールドに設定
+    // 注目ポイントとリスク要因を隠しフィールドに設定
     const keyPoints = Array.from(document.querySelectorAll('input[name^="key_point_"]'))
         .map(input => input.value)
         .filter(value => value.trim());
-    
+        
     const riskFactors = Array.from(document.querySelectorAll('input[name^="risk_factor_"]'))
         .map(input => input.value)
         .filter(value => value.trim());
     
-    // 隠しフィールドを追加
-    const keyPointsInput = document.createElement('input');
-    keyPointsInput.type = 'hidden';
-    keyPointsInput.name = 'key_points';
-    keyPointsInput.value = JSON.stringify(keyPoints);
-    this.appendChild(keyPointsInput);
+    document.getElementById('key-points-hidden').value = JSON.stringify(keyPoints);
+    document.getElementById('risk-factors-hidden').value = JSON.stringify(riskFactors);
     
-    const riskFactorsInput = document.createElement('input');
-    riskFactorsInput.type = 'hidden';
-    riskFactorsInput.name = 'risk_factors';
-    riskFactorsInput.value = JSON.stringify(riskFactors);
-    this.appendChild(riskFactorsInput);
-});
-
-// エンターキーでのタグ追加
-document.getElementById('new-tag-input').addEventListener('keypress', function(e) {
-    if (e.key === 'Enter') {
+    // バリデーション
+    let isValid = true;
+    const requiredFields = ['id_title', 'id_investment_reason'];
+    
+    requiredFields.forEach(fieldId => {
+        const field = document.getElementById(fieldId);
+        if (!field.value.trim()) {
+            field.classList.add('border-red-500');
+            isValid = false;
+        } else {
+            field.classList.remove('border-red-500');
+        }
+    });
+    
+    if (!isValid) {
         e.preventDefault();
-        addNewTag();
+        if (tagManager) {
+            tagManager.showNotification('必須項目を入力してください', 'error');
+        }
     }
-});
-
-// 初期化時の削除ボタン表示制御
-document.addEventListener('DOMContentLoaded', function() {
-    updateRemoveButtons('key-point-item');
-    updateRemoveButtons('risk-factor-item');
 });
 </script>
 {% endblock %}
