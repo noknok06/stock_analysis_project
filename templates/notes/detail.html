@@ -776,17 +776,9 @@ templates/notes/detail.html - 見直し版（テーマ単位ノート対応）
     </div>
 </div>
 {% endblock %}
-
 {% block extra_js %}
 <script>
 let selectedEntryType = null;
-let currentFilters = {
-    subNotebook: '',
-    entryType: '',
-    stockCode: '',
-    important: false,
-    bookmarked: false
-};
 
 // DOM準備完了時の初期化
 document.addEventListener('DOMContentLoaded', function() {
@@ -798,11 +790,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // フォーム送信時の処理
     setupFormSubmission();
     
-    // フィルターの設定
-    setupFilters();
+    // エントリータイプフィルター設定
+    setupEntryTypeFilter();
 });
 
-// エントリータイプボタンの設定（既存のコードを使用）
+// エントリータイプボタンの設定
 function setupEntryTypeButtons() {
     const entryTypeButtons = document.querySelectorAll('.entry-type-btn');
     console.log('エントリータイプボタン数:', entryTypeButtons.length);
@@ -822,7 +814,7 @@ function setupEntryTypeButtons() {
     });
 }
 
-// エントリータイプ選択（既存のコードを使用）
+// エントリータイプ選択
 function selectEntryType(type, buttonElement) {
     console.log('selectEntryType呼び出し:', type);
     selectedEntryType = type;
@@ -851,7 +843,7 @@ function selectEntryType(type, buttonElement) {
     generateEntryTypeForm(type);
 }
 
-// エントリータイプ固有フォーム生成（既存のコードを使用）
+// エントリータイプ固有フォーム生成
 function generateEntryTypeForm(type) {
     console.log('フォーム生成:', type);
     const container = document.getElementById('entry-type-form');
@@ -1004,168 +996,48 @@ function generateEntryTypeForm(type) {
                 </div>
             `;
             break;
+            
+        case 'GOAL':
+            formHtml = `
+                <div class="space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">目標株価</label>
+                            <input type="text" name="target_price" placeholder="例: 3,200円"
+                                   class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-gray-300 mb-2">売却タイミング</label>
+                            <input type="text" name="sell_timing" placeholder="例: 配当利回り3%を下回った時点"
+                                   class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">投資理由・戦略</label>
+                        <textarea name="investment_reason" rows="4" placeholder="なぜこの銘柄に投資するのか、どのような戦略で臨むのかを記述してください"
+                                class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">期待される効果</label>
+                        <textarea name="expected_effect" rows="3" placeholder="この目標達成により期待される効果を記述してください"
+                                class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                    </div>
+                </div>
+            `;
+            break;
     }
     
     container.innerHTML = formHtml;
     console.log('フォーム生成完了');
 }
 
-// フィルター設定
-function setupFilters() {
-    // エントリータイプフィルター
-    const entryTypeFilter = document.getElementById('entry-type-filter');
-    if (entryTypeFilter) {
-        entryTypeFilter.addEventListener('change', function() {
-            currentFilters.entryType = this.value;
-            applyFilters();
-        });
-    }
-    
-    // 銘柄フィルター
-    const stockFilter = document.getElementById('stock-filter');
-    if (stockFilter) {
-        stockFilter.addEventListener('change', function() {
-            currentFilters.stockCode = this.value;
-            applyFilters();
-        });
-    }
-    
-    // ソート設定
-    const sortOrder = document.getElementById('sort-order');
-    if (sortOrder) {
-        sortOrder.addEventListener('change', function() {
-            applySorting(this.value);
-        });
-    }
-}
-
-// サブノートフィルター
-function filterBySubNotebook(subNotebookId) {
-    // サブノートタブの切り替え
-    document.querySelectorAll('.sub-notebook-tab').forEach(tab => {
-        tab.classList.remove('active');
-    });
-    
-    const activeTab = document.querySelector(`[data-sub-notebook="${subNotebookId}"]`);
-    if (activeTab) {
-        activeTab.classList.add('active');
-    }
-    
-    currentFilters.subNotebook = subNotebookId;
-    applyFilters();
-}
-
-// 重要フラグフィルター切り替え
-function toggleImportantFilter() {
-    const button = document.getElementById('important-filter');
-    currentFilters.important = !currentFilters.important;
-    
-    if (currentFilters.important) {
-        button.classList.add('active');
-    } else {
-        button.classList.remove('active');
-    }
-    
-    applyFilters();
-}
-
-// ブックマークフィルター切り替え
-function toggleBookmarkFilter() {
-    const button = document.getElementById('bookmark-filter');
-    currentFilters.bookmarked = !currentFilters.bookmarked;
-    
-    if (currentFilters.bookmarked) {
-        button.classList.add('active');
-    } else {
-        button.classList.remove('active');
-    }
-    
-    applyFilters();
-}
-
-// フィルター適用
-function applyFilters() {
-    const entries = document.querySelectorAll('.entry-card');
-    let visibleCount = 0;
-    
-    entries.forEach(entry => {
-        let visible = true;
-        
-        // サブノートフィルター
-        if (currentFilters.subNotebook && entry.dataset.subNotebook !== currentFilters.subNotebook) {
-            visible = false;
-        }
-        
-        // エントリータイプフィルター
-        if (currentFilters.entryType && entry.dataset.entryType !== currentFilters.entryType) {
-            visible = false;
-        }
-        
-        // 銘柄フィルター
-        if (currentFilters.stockCode && entry.dataset.stockCode !== currentFilters.stockCode) {
-            visible = false;
-        }
-        
-        // 重要フラグフィルター
-        if (currentFilters.important && entry.dataset.important !== 'true') {
-            visible = false;
-        }
-        
-        // ブックマークフィルター
-        if (currentFilters.bookmarked && entry.dataset.bookmarked !== 'true') {
-            visible = false;
-        }
-        
-        if (visible) {
-            entry.style.display = 'block';
-            visibleCount++;
-        } else {
-            entry.style.display = 'none';
-        }
-    });
-    
-    // エントリー数を更新
-    const countElement = document.getElementById('entries-count');
-    if (countElement) {
-        countElement.textContent = `(${visibleCount}件)`;
-    }
-}
-
-// ソート適用
-function applySorting(sortType) {
-    const container = document.getElementById('entries-container');
-    const entries = Array.from(container.querySelectorAll('.entry-card'));
-    
-    entries.sort((a, b) => {
-        switch (sortType) {
-            case 'newest':
-                return new Date(b.dataset.created) - new Date(a.dataset.created);
-            case 'oldest':
-                return new Date(a.dataset.created) - new Date(b.dataset.created);
-            case 'important':
-                if (a.dataset.important === 'true' && b.dataset.important !== 'true') return -1;
-                if (b.dataset.important === 'true' && a.dataset.important !== 'true') return 1;
-                return new Date(b.dataset.created) - new Date(a.dataset.created);
-            case 'stock':
-                const stockA = a.dataset.stockCode || '';
-                const stockB = b.dataset.stockCode || '';
-                return stockA.localeCompare(stockB);
-            default:
-                return 0;
-        }
-    });
-    
-    // DOM要素を再配置
-    entries.forEach(entry => container.appendChild(entry));
-}
-
-// エントリーカードクリック処理（既存のコードを使用）
+// エントリーカードクリック処理
 function handleEntryCardClick(entryId) {
     console.log('エントリーカードクリック:', entryId);
     openEntryDetail(entryId);
 }
 
-// エントリー詳細表示（既存のコードを使用）
+// エントリー詳細表示
 function openEntryDetail(entryId) {
     console.log('エントリー詳細表示:', entryId);
     
@@ -1193,41 +1065,72 @@ function openEntryDetail(entryId) {
             }
         })
         .catch(error => {
-        console.error('お気に入り切り替えエラー:', error);
+            console.error('エントリー詳細取得エラー:', error);
+            document.getElementById('entry-detail-title').textContent = 'エラー';
+            document.getElementById('entry-detail-content').innerHTML = `
+                <div class="text-center py-8">
+                    <div class="text-red-400 mb-2">エントリーの詳細を取得できませんでした</div>
+                    <div class="text-gray-400 text-sm">${error.message}</div>
+                    <button onclick="closeEntryDetail()" class="mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded">
+                        閉じる
+                    </button>
+                </div>
+            `;
+        });
+}
+
+function closeEntryDetail() {
+    console.log('エントリー詳細モーダルを閉じます');
+    document.getElementById('entry-detail-modal').classList.add('hidden');
+}
+
+// モーダル関連の関数
+function openNewEntryModal() {
+    console.log('新規エントリーモーダルを開きます');
+    const modal = document.getElementById('new-entry-modal');
+    modal.classList.remove('hidden');
+    
+    // モーダル表示中はページのスクロールを無効化
+    document.body.style.overflow = 'hidden';
+    
+    // フォーカスをモーダル内に設定
+    setTimeout(() => {
+        const titleInput = document.getElementById('entry_title');
+        if (titleInput) {
+            titleInput.focus();
+        }
+    }, 100);
+}
+
+function closeNewEntryModal() {
+    console.log('新規エントリーモーダルを閉じます');
+    const modal = document.getElementById('new-entry-modal');
+    modal.classList.add('hidden');
+    
+    // ページのスクロールを有効化
+    document.body.style.overflow = '';
+    
+    // フォームをリセット
+    const form = document.getElementById('entry-form');
+    if (form) {
+        form.reset();
+    }
+    
+    const typeForm = document.getElementById('entry-type-form');
+    if (typeForm) {
+        typeForm.innerHTML = '';
+    }
+    
+    selectedEntryType = null;
+    
+    // エントリータイプボタンをリセット
+    document.querySelectorAll('.entry-type-btn').forEach(btn => {
+        btn.classList.remove('selected', 'border-blue-500', 'bg-blue-900/30');
+        btn.classList.add('border-gray-600', 'bg-gray-700');
     });
 }
 
-// エントリーブックマーク切り替え
-function toggleEntryBookmark(entryId) {
-    fetch(`/notes/entry/${entryId}/bookmark/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            const bookmarkIcon = document.querySelector(`[onclick="toggleEntryBookmark('${entryId}')"]`);
-            const svg = bookmarkIcon.querySelector('svg');
-            
-            if (data.is_bookmarked) {
-                bookmarkIcon.classList.add('active');
-                svg.setAttribute('fill', 'currentColor');
-            } else {
-                bookmarkIcon.classList.remove('active');
-                svg.setAttribute('fill', 'none');
-            }
-            
-            console.log(data.message);
-        }
-    })
-    .catch(error => {
-        console.error('ブックマーク切り替えエラー:', error);
-    });
-}
-
-// フォーム送信処理の設定（既存のコードを使用）
+// フォーム送信処理の設定
 function setupFormSubmission() {
     const form = document.getElementById('entry-form');
     if (form) {
@@ -1310,6 +1213,26 @@ function setupFormSubmission() {
     }
 }
 
+// エントリータイプフィルターの設定
+function setupEntryTypeFilter() {
+    const filter = document.getElementById('entry-type-filter');
+    if (filter) {
+        filter.addEventListener('change', function() {
+            const selectedType = this.value;
+            console.log('エントリータイプフィルター:', selectedType);
+            const entries = document.querySelectorAll('.entry-card');
+            
+            entries.forEach(entry => {
+                if (selectedType === '' || entry.dataset.entryType === selectedType) {
+                    entry.style.display = 'block';
+                } else {
+                    entry.style.display = 'none';
+                }
+            });
+        });
+    }
+}
+
 // ページネーション関数
 function previousPage() {
     {% if page_obj.has_previous %}
@@ -1332,7 +1255,6 @@ document.addEventListener('keydown', function(e) {
     if (e.key === 'Escape') {
         const newEntryModal = document.getElementById('new-entry-modal');
         const entryDetailModal = document.getElementById('entry-detail-modal');
-        const subNotebookModal = document.getElementById('sub-notebook-modal');
         
         if (!newEntryModal.classList.contains('hidden')) {
             closeNewEntryModal();
@@ -1340,149 +1262,7 @@ document.addEventListener('keydown', function(e) {
         if (!entryDetailModal.classList.contains('hidden')) {
             closeEntryDetail();
         }
-        if (!subNotebookModal.classList.contains('hidden')) {
-            closeSubNotebookModal();
-        }
     }
 });
 </script>
 {% endblock %}
-            console.error('エントリー詳細取得エラー:', error);
-            document.getElementById('entry-detail-title').textContent = 'エラー';
-            document.getElementById('entry-detail-content').innerHTML = `
-                <div class="text-center py-8">
-                    <div class="text-red-400 mb-2">エントリーの詳細を取得できませんでした</div>
-                    <div class="text-gray-400 text-sm">${error.message}</div>
-                    <button onclick="closeEntryDetail()" class="mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded">
-                        閉じる
-                    </button>
-                </div>
-            `;
-        });
-}
-
-function closeEntryDetail() {
-    console.log('エントリー詳細モーダルを閉じます');
-    document.getElementById('entry-detail-modal').classList.add('hidden');
-}
-
-// モーダル関連の関数（既存のコードを使用）
-function openNewEntryModal() {
-    console.log('新規エントリーモーダルを開きます');
-    const modal = document.getElementById('new-entry-modal');
-    modal.classList.remove('hidden');
-    
-    // モーダル表示中はページのスクロールを無効化
-    document.body.style.overflow = 'hidden';
-    
-    // フォーカスをモーダル内に設定
-    setTimeout(() => {
-        const titleInput = document.getElementById('entry_title');
-        if (titleInput) {
-            titleInput.focus();
-        }
-    }, 100);
-}
-
-function closeNewEntryModal() {
-    console.log('新規エントリーモーダルを閉じます');
-    const modal = document.getElementById('new-entry-modal');
-    modal.classList.add('hidden');
-    
-    // ページのスクロールを有効化
-    document.body.style.overflow = '';
-    
-    // フォームをリセット
-    const form = document.getElementById('entry-form');
-    if (form) {
-        form.reset();
-    }
-    
-    const typeForm = document.getElementById('entry-type-form');
-    if (typeForm) {
-        typeForm.innerHTML = '';
-    }
-    
-    selectedEntryType = null;
-    
-    // エントリータイプボタンをリセット
-    document.querySelectorAll('.entry-type-btn').forEach(btn => {
-        btn.classList.remove('selected', 'border-blue-500', 'bg-blue-900/30');
-        btn.classList.add('border-gray-600', 'bg-gray-700');
-    });
-}
-
-// サブノート作成モーダル
-function openSubNotebookCreateModal() {
-    document.getElementById('sub-notebook-modal').classList.remove('hidden');
-}
-
-function closeSubNotebookModal() {
-    document.getElementById('sub-notebook-modal').classList.add('hidden');
-    document.getElementById('sub-notebook-title').value = '';
-    document.getElementById('sub-notebook-description').value = '';
-}
-
-function createSubNotebook() {
-    const title = document.getElementById('sub-notebook-title').value.trim();
-    const description = document.getElementById('sub-notebook-description').value.trim();
-    
-    if (!title) {
-        alert('サブノート名を入力してください');
-        return;
-    }
-    
-    fetch(`{% url 'notes:sub_notebook_create' notebook.pk %}`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-        },
-        body: JSON.stringify({
-            title: title,
-            description: description
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            location.reload(); // ページをリロードして新しいサブノートを表示
-        } else {
-            alert(data.error || 'サブノートの作成に失敗しました');
-        }
-    })
-    .catch(error => {
-        console.error('サブノート作成エラー:', error);
-        alert('サブノートの作成に失敗しました');
-    });
-}
-
-// お気に入り切り替え
-function toggleFavorite() {
-    fetch(`{% url 'notes:toggle_favorite' notebook.pk %}`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            const star = document.querySelector('.favorite-star');
-            const svg = star.querySelector('svg');
-            
-            if (data.is_favorite) {
-                star.classList.add('active');
-                svg.setAttribute('fill', 'currentColor');
-            } else {
-                star.classList.remove('active');
-                svg.setAttribute('fill', 'none');
-            }
-            
-            // 通知表示（簡易版）
-            console.log(data.message);
-        }
-    })
-    .catch(error => {
-        console.error('お気に入り切り替えエラー:', error);
-    });
