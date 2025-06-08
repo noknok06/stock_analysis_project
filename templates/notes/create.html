@@ -1,5 +1,5 @@
 <!-- ========================================
-templates/notes/create.html（統一タグ管理版）
+templates/notes/create.html - 見直し版（テーマ単位ノート対応）
 ======================================== -->
 
 {% extends 'base.html' %}
@@ -10,6 +10,18 @@ templates/notes/create.html（統一タグ管理版）
 {% load static %}
 <link rel="stylesheet" href="{% static 'css/tag-manager.css' %}">
 <style>
+    .template-card {
+        transition: all 0.2s ease-in-out;
+        cursor: pointer;
+    }
+    .template-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+    .template-card.selected {
+        border-color: #3b82f6;
+        background-color: rgba(59, 130, 246, 0.1);
+    }
     .form-section {
         background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
     }
@@ -27,7 +39,7 @@ templates/notes/create.html（統一タグ管理版）
 {% endblock %}
 
 {% block content %}
-<div class="max-w-4xl mx-auto">
+<div class="max-w-5xl mx-auto">
     <!-- Header -->
     <div class="mb-8">
         <div class="flex items-center space-x-4 mb-4">
@@ -39,7 +51,7 @@ templates/notes/create.html（統一タグ管理版）
             </a>
             <h1 class="text-3xl font-bold text-white">新規ノート作成</h1>
         </div>
-        <p class="text-gray-400">株式分析ノートを作成して投資戦略を記録しましょう</p>
+        <p class="text-gray-400">投資テーマに沿ったノートを作成して、複数銘柄の分析を体系的に管理しましょう</p>
     </div>
 
     <!-- Progress Steps -->
@@ -47,63 +59,123 @@ templates/notes/create.html（統一タグ管理版）
         <div class="flex items-center space-x-4">
             <div class="flex items-center space-x-2">
                 <div class="step-indicator w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold">1</div>
-                <span class="text-white font-medium">基本情報</span>
+                <span class="text-white font-medium">テンプレート選択</span>
             </div>
             <div class="h-1 w-16 bg-gray-700 rounded"></div>
             <div class="flex items-center space-x-2">
                 <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-gray-400 text-sm font-bold">2</div>
-                <span class="text-gray-400">投資戦略</span>
+                <span class="text-gray-400">基本設定</span>
             </div>
             <div class="h-1 w-16 bg-gray-700 rounded"></div>
             <div class="flex items-center space-x-2">
                 <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-gray-400 text-sm font-bold">3</div>
-                <span class="text-gray-400">タグ設定</span>
+                <span class="text-gray-400">戦略・タグ設定</span>
             </div>
         </div>
     </div>
 
+    <!-- テンプレート選択セクション -->
+    <section class="form-section bg-gray-800 border border-gray-700 rounded-lg p-8 mb-8">
+        <h2 class="text-xl font-semibold text-white mb-6 flex items-center">
+            <svg class="h-6 w-6 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
+            </svg>
+            テンプレート選択（任意）
+        </h2>
+        
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
+            <!-- カスタムノート（デフォルト） -->
+            <div class="template-card p-4 border-2 border-gray-600 bg-gray-700 rounded-lg selected" data-template="custom">
+                <div class="flex items-center mb-3">
+                    <div class="p-2 rounded-lg bg-purple-900 text-purple-300 mr-3">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"></path>
+                        </svg>
+                    </div>
+                    <div>
+                        <h3 class="font-semibold text-white">カスタムノート</h3>
+                        <p class="text-sm text-gray-400">自由にカスタマイズ</p>
+                    </div>
+                </div>
+                <p class="text-sm text-gray-300">独自の投資テーマやアプローチで、自由にノートを構成します。</p>
+            </div>
+            
+            {% for template in templates %}
+                <div class="template-card p-4 border-2 border-gray-600 bg-gray-700 rounded-lg hover:border-blue-500" 
+                     data-template="{{ template.pk }}"
+                     data-title="{{ template.default_title }}"
+                     data-strategy="{{ template.default_strategy }}"
+                     data-criteria="{{ template.default_criteria|safe }}"
+                     data-sub-notebooks="{{ template.suggested_sub_notebooks|safe }}"
+                     data-tags="{{ template.suggested_tags|safe }}">
+                    <div class="flex items-center mb-3">
+                        <div class="p-2 rounded-lg {% if template.template_type == 'HIGH_DIVIDEND' %}bg-green-900 text-green-300{% elif template.template_type == 'GROWTH_STOCKS' %}bg-blue-900 text-blue-300{% elif template.template_type == 'EARNINGS_SEASON' %}bg-orange-900 text-orange-300{% elif template.template_type == 'PORTFOLIO_REVIEW' %}bg-purple-900 text-purple-300{% elif template.template_type == 'SECTOR_ANALYSIS' %}bg-yellow-900 text-yellow-300{% elif template.template_type == 'US_STOCKS' %}bg-red-900 text-red-300{% else %}bg-gray-700 text-gray-300{% endif %} mr-3">
+                            {% if template.template_type == 'HIGH_DIVIDEND' %}
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            {% elif template.template_type == 'GROWTH_STOCKS' %}
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                </svg>
+                            {% elif template.template_type == 'EARNINGS_SEASON' %}
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                                </svg>
+                            {% else %}
+                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-6m-2-5.5V9.5a2 2 0 012-2h6a2 2 0 012 2V16"></path>
+                                </svg>
+                            {% endif %}
+                        </div>
+                        <div>
+                            <h3 class="font-semibold text-white">{{ template.name }}</h3>
+                            <p class="text-sm text-gray-400">{{ template.get_template_type_display }}</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-gray-300">{{ template.description }}</p>
+                </div>
+            {% endfor %}
+        </div>
+        
+        <div id="template-preview" class="hidden">
+            <h4 class="font-medium text-white mb-2">テンプレートプレビュー</h4>
+            <div class="bg-gray-700 p-4 rounded-lg">
+                <div id="template-content" class="text-gray-300"></div>
+            </div>
+        </div>
+    </section>
+
     <!-- Form -->
     <form method="POST" id="notebook-form" class="space-y-8">
         {% csrf_token %}
+        <input type="hidden" id="selected-template" name="template">
         
         <!-- 基本情報セクション -->
         <section class="form-section bg-gray-800 border border-gray-700 rounded-lg p-8">
             <h2 class="text-xl font-semibold text-white mb-6 flex items-center">
-                <svg class="h-6 w-6 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="h-6 w-6 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-6m-2-5.5V9.5a2 2 0 012-2h6a2 2 0 012 2V16"></path>
                 </svg>
                 基本情報
             </h2>
             
-            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <!-- 銘柄コード -->
+            <div class="space-y-6">
+                <!-- ノートタイプ -->
                 <div>
-                    <label for="id_stock_code" class="block text-sm font-medium text-gray-300 mb-2">銘柄コード</label>
-                    <input type="text" 
-                           id="id_stock_code" 
-                           name="stock_code" 
-                           placeholder="例: 7203"
-                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    {% if form.stock_code.errors %}
-                        <p class="text-red-400 text-sm mt-1">{{ form.stock_code.errors.0 }}</p>
-                    {% endif %}
-                </div>
-
-                <!-- 企業名 -->
-                <div>
-                    <label for="id_company_name" class="block text-sm font-medium text-gray-300 mb-2">企業名</label>
-                    <input type="text" 
-                           id="id_company_name" 
-                           name="company_name" 
-                           placeholder="例: トヨタ自動車"
-                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    {% if form.company_name.errors %}
-                        <p class="text-red-400 text-sm mt-1">{{ form.company_name.errors.0 }}</p>
-                    {% endif %}
+                    <label for="id_notebook_type" class="block text-sm font-medium text-gray-300 mb-2">ノートタイプ</label>
+                    <select id="id_notebook_type" 
+                            name="notebook_type"
+                            class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="THEME">テーマ型（複数銘柄）</option>
+                        <option value="STOCK_FOCUSED">銘柄特化型（1銘柄集中）</option>
+                        <option value="PORTFOLIO">ポートフォリオ管理</option>
+                        <option value="RESEARCH">調査・研究</option>
+                    </select>
                 </div>
 
                 <!-- タイトル -->
-                <div class="md:col-span-2">
+                <div>
                     <label for="id_title" class="block text-sm font-medium text-gray-300 mb-2">
                         ノートタイトル <span class="text-red-400">*</span>
                     </label>
@@ -111,7 +183,7 @@ templates/notes/create.html（統一タグ管理版）
                            id="id_title" 
                            name="title" 
                            required
-                           placeholder="例: 7203 トヨタ自動車"
+                           placeholder="例: 2025年 高配当株ウォッチ"
                            class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     {% if form.title.errors %}
                         <p class="text-red-400 text-sm mt-1">{{ form.title.errors.0 }}</p>
@@ -119,16 +191,36 @@ templates/notes/create.html（統一タグ管理版）
                 </div>
 
                 <!-- サブタイトル -->
-                <div class="md:col-span-2">
+                <div>
                     <label for="id_subtitle" class="block text-sm font-medium text-gray-300 mb-2">サブタイトル</label>
                     <input type="text" 
                            id="id_subtitle" 
                            name="subtitle" 
-                           placeholder="例: 長期保有・配当重視"
+                           placeholder="例: 配当利回り3%以上の安定銘柄を選定"
                            class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    {% if form.subtitle.errors %}
-                        <p class="text-red-400 text-sm mt-1">{{ form.subtitle.errors.0 }}</p>
-                    {% endif %}
+                </div>
+
+                <!-- 説明 -->
+                <div>
+                    <label for="id_description" class="block text-sm font-medium text-gray-300 mb-2">ノートの説明</label>
+                    <textarea id="id_description" 
+                              name="description" 
+                              rows="3"
+                              placeholder="このノートの目的や投資方針を記述してください"
+                              class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+
+                <!-- ステータス -->
+                <div>
+                    <label for="id_status" class="block text-sm font-medium text-gray-300 mb-2">ステータス</label>
+                    <select id="id_status" 
+                            name="status"
+                            class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="ACTIVE">アクティブ</option>
+                        <option value="MONITORING">監視中</option>
+                        <option value="ATTENTION">要注意</option>
+                        <option value="ARCHIVED">アーカイブ</option>
+                    </select>
                 </div>
             </div>
         </section>
@@ -136,75 +228,50 @@ templates/notes/create.html（統一タグ管理版）
         <!-- 投資戦略セクション -->
         <section class="form-section bg-gray-800 border border-gray-700 rounded-lg p-8">
             <h2 class="text-xl font-semibold text-white mb-6 flex items-center">
-                <svg class="h-6 w-6 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="h-6 w-6 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
                 </svg>
-                投資戦略・目標
+                投資戦略・テーマ
             </h2>
 
             <div class="space-y-6">
-                <!-- 投資理由 -->
+                <!-- 投資戦略 -->
                 <div>
-                    <label for="id_investment_reason" class="block text-sm font-medium text-gray-300 mb-2">
-                        投資理由・戦略 <span class="text-red-400">*</span>
+                    <label for="id_investment_strategy" class="block text-sm font-medium text-gray-300 mb-2">
+                        投資戦略 <span class="text-red-400">*</span>
                     </label>
-                    <textarea id="id_investment_reason" 
-                              name="investment_reason" 
+                    <textarea id="id_investment_strategy" 
+                              name="investment_strategy" 
                               required
                               rows="4"
-                              placeholder="なぜこの銘柄に投資するのか、どのような戦略で臨むのかを具体的に記述してください"
+                              placeholder="このテーマでの投資戦略や方針を記述してください"
                               class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                    {% if form.investment_reason.errors %}
-                        <p class="text-red-400 text-sm mt-1">{{ form.investment_reason.errors.0 }}</p>
+                    {% if form.investment_strategy.errors %}
+                        <p class="text-red-400 text-sm mt-1">{{ form.investment_strategy.errors.0 }}</p>
                     {% endif %}
                 </div>
 
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- 目標株価 -->
-                    <div>
-                        <label for="id_target_price" class="block text-sm font-medium text-gray-300 mb-2">目標株価</label>
-                        <input type="text" 
-                               id="id_target_price" 
-                               name="target_price" 
-                               placeholder="例: 3,200円"
-                               class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
-
-                    <!-- ステータス -->
-                    <div>
-                        <label for="id_status" class="block text-sm font-medium text-gray-300 mb-2">ステータス</label>
-                        <select id="id_status" 
-                                name="status"
-                                class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                            <option value="ACTIVE">アクティブ</option>
-                            <option value="MONITORING">監視中</option>
-                            <option value="ATTENTION">要注意</option>
-                            <option value="ARCHIVED">アーカイブ</option>
-                        </select>
-                    </div>
+                <!-- 目標配分 -->
+                <div>
+                    <label for="id_target_allocation" class="block text-sm font-medium text-gray-300 mb-2">目標配分</label>
+                    <input type="text" 
+                           id="id_target_allocation" 
+                           name="target_allocation" 
+                           placeholder="例: ポートフォリオの30%、月額3万円"
+                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
 
-                <!-- 売却タイミング -->
+                <!-- 選定基準 -->
                 <div>
-                    <label for="id_sell_timing" class="block text-sm font-medium text-gray-300 mb-2">売却タイミング</label>
-                    <textarea id="id_sell_timing" 
-                              name="sell_timing" 
-                              rows="2"
-                              placeholder="例: 配当利回り3%を下回った時点"
-                              class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                </div>
-
-                <!-- 注目ポイント -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">注目ポイント</label>
-                    <div id="key-points-container">
-                        <div class="key-point-item flex gap-2 mb-2">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">選定基準</label>
+                    <div id="key-criteria-container">
+                        <div class="key-criteria-item flex gap-2 mb-2">
                             <input type="text" 
-                                   name="key_point_0" 
-                                   placeholder="注目ポイント 1"
+                                   name="key_criteria_0" 
+                                   placeholder="選定基準 1"
                                    class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <button type="button" 
-                                    onclick="removeKeyPoint(this)"
+                                    onclick="removeCriteria(this)"
                                     class="px-3 py-2 text-red-400 hover:text-red-300 hidden">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -213,12 +280,12 @@ templates/notes/create.html（統一タグ管理版）
                         </div>
                     </div>
                     <button type="button" 
-                            onclick="addKeyPoint()"
+                            onclick="addCriteria()"
                             class="text-blue-400 hover:text-blue-300 text-sm flex items-center">
                         <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                         </svg>
-                        ポイントを追加
+                        基準を追加
                     </button>
                 </div>
 
@@ -252,56 +319,89 @@ templates/notes/create.html（統一タグ管理版）
             </div>
         </section>
 
-        <!-- タグ設定セクション -->
+        <!-- サブノート・タグ設定セクション -->
         <section class="form-section bg-gray-800 border border-gray-700 rounded-lg p-8">
             <h2 class="text-xl font-semibold text-white mb-6 flex items-center">
-                <svg class="h-6 w-6 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="h-6 w-6 mr-2 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a2 2 0 012-2z"></path>
                 </svg>
-                タグ設定
+                サブノート・タグ設定
             </h2>
 
-            <!-- カスタムタグ入力 -->
-            <div class="mb-6">
-                <label class="block text-sm font-medium text-gray-300 mb-2">カスタムタグ</label>
-                <div class="flex gap-2">
-                    <input type="text" 
-                           id="custom-tag-input"
-                           placeholder="#から始まるタグを入力..."
-                           class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <button type="button" 
-                            onclick="addCustomTag()"
-                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
-                        追加
-                    </button>
+            <!-- サブノート設定 -->
+            <div class="mb-8">
+                <label class="block text-sm font-medium text-gray-300 mb-4">サブノート（章立て）</label>
+                <div id="sub-notebooks-container">
+                    <div class="sub-notebook-item flex gap-2 mb-2">
+                        <input type="text" 
+                               name="sub_notebook_0" 
+                               placeholder="例: 日本株"
+                               class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button type="button" 
+                                onclick="removeSubNotebook(this)"
+                                class="px-3 py-2 text-red-400 hover:text-red-300 hidden">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                            </svg>
+                        </button>
+                    </div>
                 </div>
-            </div>
-
-            <!-- 選択済みタグ -->
-            <div id="selected-tags" class="mb-6">
-                <label class="block text-sm font-medium text-gray-300 mb-2">選択済みタグ</label>
-                <div id="selected-tags-container" class="flex flex-wrap gap-2 min-h-[2.5rem] p-3 bg-gray-700 border border-gray-600 rounded-lg">
-                    <span class="text-gray-400 text-sm">タグが選択されていません</span>
-                </div>
-            </div>
-
-            <!-- AI推奨タグ -->
-            <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2 flex items-center">
-                    <svg class="h-4 w-4 mr-1 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                <button type="button" 
+                        onclick="addSubNotebook()"
+                        class="text-green-400 hover:text-green-300 text-sm flex items-center">
+                    <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                     </svg>
-                    AI推奨タグ
-                </label>
-                <div id="suggested-tags" class="flex flex-wrap gap-2">
-                    <!-- AI推奨タグがここに動的に表示される -->
+                    サブノートを追加
+                </button>
+                <p class="text-xs text-gray-400 mt-2">サブノートを使ってノート内を分類できます（例：日本株、米国株）</p>
+            </div>
+
+            <!-- タグ設定 -->
+            <div>
+                <!-- カスタムタグ入力 -->
+                <div class="mb-6">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">カスタムタグ</label>
+                    <div class="flex gap-2">
+                        <input type="text" 
+                               id="custom-tag-input"
+                               placeholder="#から始まるタグを入力..."
+                               class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <button type="button" 
+                                onclick="addCustomTag()"
+                                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                            追加
+                        </button>
+                    </div>
+                </div>
+
+                <!-- 選択済みタグ -->
+                <div id="selected-tags" class="mb-6">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">選択済みタグ</label>
+                    <div id="selected-tags-container" class="flex flex-wrap gap-2 min-h-[2.5rem] p-3 bg-gray-700 border border-gray-600 rounded-lg">
+                        <span class="text-gray-400 text-sm">タグが選択されていません</span>
+                    </div>
+                </div>
+
+                <!-- AI推奨タグ -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2 flex items-center">
+                        <svg class="h-4 w-4 mr-1 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                        </svg>
+                        AI推奨タグ
+                    </label>
+                    <div id="suggested-tags" class="flex flex-wrap gap-2">
+                        <!-- AI推奨タグがここに動的に表示される -->
+                    </div>
                 </div>
             </div>
 
             <!-- 隠しフィールド -->
             <input type="hidden" name="selected_tags_json" id="selected-tags-json">
-            <input type="hidden" name="key_points" id="key-points-hidden">
+            <input type="hidden" name="key_criteria" id="key-criteria-hidden">
             <input type="hidden" name="risk_factors" id="risk-factors-hidden">
+            <input type="hidden" name="sub_notebooks_json" id="sub-notebooks-hidden">
         </section>
 
         <!-- アクションボタン -->
@@ -331,7 +431,7 @@ templates/notes/create.html（統一タグ管理版）
 
 <!-- プレビューモーダル -->
 <div id="preview-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
-    <div class="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden">
+    <div class="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-3xl max-h-[80vh] overflow-hidden">
         <div class="flex items-center justify-between p-6 border-b border-gray-700">
             <h3 class="text-xl font-semibold text-white">ノートプレビュー</h3>
             <button onclick="closePreview()" class="text-gray-400 hover:text-white">
@@ -352,9 +452,11 @@ templates/notes/create.html（統一タグ管理版）
 <script src="{% static 'js/tag-manager.js' %}"></script>
 <script>
 // グローバル変数
-let keyPointCount = 1;
+let criteriaCount = 1;
 let riskFactorCount = 1;
+let subNotebookCount = 1;
 let tagManager = null;
+let selectedTemplate = null;
 
 // ページ読み込み時の初期化
 document.addEventListener('DOMContentLoaded', function() {
@@ -366,45 +468,195 @@ document.addEventListener('DOMContentLoaded', function() {
         tagChangesInput: 'selected-tags-json'
     });
     
+    // テンプレートカードの設定
+    setupTemplateCards();
+    
     // その他の初期化
-    setupStockCodeAutocomplete();
-    setupFormValidation();
-    updateRemoveButtons('key-point-item');
+    updateRemoveButtons('key-criteria-item');
     updateRemoveButtons('risk-factor-item');
+    updateRemoveButtons('sub-notebook-item');
+    setupFormValidation();
 });
 
-// 銘柄コード自動補完
-function setupStockCodeAutocomplete() {
-    const stockCodeInput = document.getElementById('id_stock_code');
-    const companyNameInput = document.getElementById('id_company_name');
+// テンプレートカード設定
+function setupTemplateCards() {
+    const templateCards = document.querySelectorAll('.template-card');
     
-    stockCodeInput.addEventListener('input', function() {
-        const code = this.value;
-        if (code.length === 4) {
-            const mockData = {
-                '7203': 'トヨタ自動車',
-                '6758': 'ソニーグループ',
-                '9984': 'ソフトバンクグループ',
-                '6861': 'キーエンス',
-                '4519': '中外製薬'
-            };
+    templateCards.forEach(card => {
+        card.addEventListener('click', function() {
+            // 全てのカードから選択状態を削除
+            templateCards.forEach(c => c.classList.remove('selected'));
             
-            if (mockData[code]) {
-                companyNameInput.value = mockData[code];
-                document.getElementById('id_title').value = `${code} ${mockData[code]}`;
-                if (tagManager) {
-                    tagManager.updateSuggestedTags();
-                }
+            // 選択されたカードをハイライト
+            this.classList.add('selected');
+            
+            const templateId = this.dataset.template;
+            selectedTemplate = templateId === 'custom' ? null : templateId;
+            
+            // 隠しフィールドに設定
+            document.getElementById('selected-template').value = selectedTemplate || '';
+            
+            // テンプレートデータを適用
+            if (templateId !== 'custom') {
+                applyTemplateData(this.dataset);
+            } else {
+                clearTemplateData();
             }
-        }
+            
+            // プレビュー表示
+            showTemplatePreview(this.dataset);
+        });
     });
 }
 
-// 注目ポイント・リスク要因管理（DRY原則適用）
-function addKeyPoint() {
-    addDynamicItem('key-points-container', 'key-point-item', 'key_point', keyPointCount, '注目ポイント', 'removeKeyPoint');
-    keyPointCount++;
-    updateRemoveButtons('key-point-item');
+// テンプレートデータを適用
+function applyTemplateData(templateData) {
+    if (templateData.title) {
+        document.getElementById('id_title').value = templateData.title;
+    }
+    
+    if (templateData.strategy) {
+        document.getElementById('id_investment_strategy').value = templateData.strategy;
+    }
+    
+    // 選定基準を適用
+    if (templateData.criteria) {
+        try {
+            const criteria = JSON.parse(templateData.criteria);
+            applyCriteriaToForm(criteria);
+        } catch (e) {
+            console.error('基準データのパースエラー:', e);
+        }
+    }
+    
+    // サブノートを適用
+    if (templateData.subNotebooks) {
+        try {
+            const subNotebooks = JSON.parse(templateData.subNotebooks);
+            applySubNotebooksToForm(subNotebooks);
+        } catch (e) {
+            console.error('サブノートデータのパースエラー:', e);
+        }
+    }
+    
+    // タグを適用
+    if (templateData.tags && tagManager) {
+        try {
+            const tags = JSON.parse(templateData.tags);
+            tags.forEach(tag => {
+                if (!tagManager.selectedTags.includes(tag)) {
+                    tagManager.addTag(tag);
+                }
+            });
+        } catch (e) {
+            console.error('タグデータのパースエラー:', e);
+        }
+    }
+}
+
+// テンプレートデータをクリア
+function clearTemplateData() {
+    document.getElementById('id_title').value = '';
+    document.getElementById('id_investment_strategy').value = '';
+    
+    // 基準とリスク要因をクリア
+    clearDynamicItems('key-criteria-container', 'key-criteria-item');
+    clearDynamicItems('risk-factors-container', 'risk-factor-item');
+    clearDynamicItems('sub-notebooks-container', 'sub-notebook-item');
+    
+    // タグをクリア
+    if (tagManager) {
+        tagManager.selectedTags = [];
+        tagManager.updateSelectedTagsDisplay();
+    }
+}
+
+// 動的項目をクリア
+function clearDynamicItems(containerId, itemClass) {
+    const container = document.getElementById(containerId);
+    const items = container.querySelectorAll(`.${itemClass}`);
+    
+    // 最初の項目以外を削除
+    for (let i = 1; i < items.length; i++) {
+        items[i].remove();
+    }
+    
+    // 最初の項目の値をクリア
+    if (items.length > 0) {
+        const input = items[0].querySelector('input');
+        if (input) input.value = '';
+    }
+}
+
+// 基準をフォームに適用
+function applyCriteriaToForm(criteria) {
+    const container = document.getElementById('key-criteria-container');
+    container.innerHTML = '';
+    
+    criteria.forEach((criterion, index) => {
+        addDynamicItem('key-criteria-container', 'key-criteria-item', 'key_criteria', index, '選定基準', 'removeCriteria', criterion);
+    });
+    
+    criteriaCount = criteria.length;
+    updateRemoveButtons('key-criteria-item');
+}
+
+// サブノートをフォームに適用
+function applySubNotebooksToForm(subNotebooks) {
+    const container = document.getElementById('sub-notebooks-container');
+    container.innerHTML = '';
+    
+    subNotebooks.forEach((subNotebook, index) => {
+        addDynamicItem('sub-notebooks-container', 'sub-notebook-item', 'sub_notebook', index, 'サブノート', 'removeSubNotebook', subNotebook);
+    });
+    
+    subNotebookCount = subNotebooks.length;
+    updateRemoveButtons('sub-notebook-item');
+}
+
+// テンプレートプレビュー表示
+function showTemplatePreview(templateData) {
+    const preview = document.getElementById('template-preview');
+    const content = document.getElementById('template-content');
+    
+    if (templateData.template === 'custom') {
+        preview.classList.add('hidden');
+        return;
+    }
+    
+    let previewHtml = '';
+    
+    if (templateData.title) {
+        previewHtml += `<p><strong>デフォルトタイトル:</strong> ${templateData.title}</p>`;
+    }
+    
+    if (templateData.strategy) {
+        previewHtml += `<p><strong>推奨戦略:</strong> ${templateData.strategy}</p>`;
+    }
+    
+    if (templateData.subNotebooks) {
+        try {
+            const subNotebooks = JSON.parse(templateData.subNotebooks);
+            previewHtml += `<p><strong>推奨サブノート:</strong> ${subNotebooks.join(', ')}</p>`;
+        } catch (e) {}
+    }
+    
+    if (templateData.tags) {
+        try {
+            const tags = JSON.parse(templateData.tags);
+            previewHtml += `<p><strong>推奨タグ:</strong> ${tags.join(', ')}</p>`;
+        } catch (e) {}
+    }
+    
+    content.innerHTML = previewHtml;
+    preview.classList.remove('hidden');
+}
+
+// 動的項目管理（DRY原則適用）
+function addCriteria() {
+    addDynamicItem('key-criteria-container', 'key-criteria-item', 'key_criteria', criteriaCount, '選定基準', 'removeCriteria');
+    criteriaCount++;
+    updateRemoveButtons('key-criteria-item');
 }
 
 function addRiskFactor() {
@@ -413,13 +665,20 @@ function addRiskFactor() {
     updateRemoveButtons('risk-factor-item');
 }
 
-function addDynamicItem(containerId, itemClass, namePrefix, count, placeholder, removeFunction) {
+function addSubNotebook() {
+    addDynamicItem('sub-notebooks-container', 'sub-notebook-item', 'sub_notebook', subNotebookCount, 'サブノート', 'removeSubNotebook');
+    subNotebookCount++;
+    updateRemoveButtons('sub-notebook-item');
+}
+
+function addDynamicItem(containerId, itemClass, namePrefix, count, placeholder, removeFunction, value = '') {
     const container = document.getElementById(containerId);
     const newItem = document.createElement('div');
     newItem.className = `${itemClass} flex gap-2 mb-2 animate-in`;
     newItem.innerHTML = `
         <input type="text" 
                name="${namePrefix}_${count}" 
+               value="${value}"
                placeholder="${placeholder} ${count + 1}"
                class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
         <button type="button" 
@@ -433,14 +692,19 @@ function addDynamicItem(containerId, itemClass, namePrefix, count, placeholder, 
     container.appendChild(newItem);
 }
 
-function removeKeyPoint(button) {
-    button.closest('.key-point-item').remove();
-    updateRemoveButtons('key-point-item');
+function removeCriteria(button) {
+    button.closest('.key-criteria-item').remove();
+    updateRemoveButtons('key-criteria-item');
 }
 
 function removeRiskFactor(button) {
     button.closest('.risk-factor-item').remove();
     updateRemoveButtons('risk-factor-item');
+}
+
+function removeSubNotebook(button) {
+    button.closest('.sub-notebook-item').remove();
+    updateRemoveButtons('sub-notebook-item');
 }
 
 function updateRemoveButtons(className) {
@@ -469,25 +733,29 @@ function closePreview() {
 }
 
 function collectFormData() {
-    const keyPoints = Array.from(document.querySelectorAll('input[name^="key_point_"]'))
+    const keyCriteria = Array.from(document.querySelectorAll('input[name^="key_criteria_"]'))
         .map(input => input.value)
         .filter(value => value.trim());
         
     const riskFactors = Array.from(document.querySelectorAll('input[name^="risk_factor_"]'))
         .map(input => input.value)
         .filter(value => value.trim());
+        
+    const subNotebooks = Array.from(document.querySelectorAll('input[name^="sub_notebook_"]'))
+        .map(input => input.value)
+        .filter(value => value.trim());
 
     return {
         title: document.getElementById('id_title').value,
         subtitle: document.getElementById('id_subtitle').value,
-        stockCode: document.getElementById('id_stock_code').value,
-        companyName: document.getElementById('id_company_name').value,
-        investmentReason: document.getElementById('id_investment_reason').value,
-        targetPrice: document.getElementById('id_target_price').value,
-        sellTiming: document.getElementById('id_sell_timing').value,
+        description: document.getElementById('id_description').value,
+        notebookType: document.getElementById('id_notebook_type').value,
+        investmentStrategy: document.getElementById('id_investment_strategy').value,
+        targetAllocation: document.getElementById('id_target_allocation').value,
         status: document.getElementById('id_status').value,
-        keyPoints: keyPoints,
+        keyCriteria: keyCriteria,
         riskFactors: riskFactors,
+        subNotebooks: subNotebooks,
         selectedTags: tagManager ? tagManager.selectedTags : []
     };
 }
@@ -500,24 +768,48 @@ function generatePreviewHtml(data) {
         'ARCHIVED': 'アーカイブ'
     };
     
+    const typeLabels = {
+        'THEME': 'テーマ型（複数銘柄）',
+        'STOCK_FOCUSED': '銘柄特化型（1銘柄集中）',
+        'PORTFOLIO': 'ポートフォリオ管理',
+        'RESEARCH': '調査・研究'
+    };
+    
     return `
-        <div class="space-y-4">
-            <div>
-                <h4 class="font-semibold text-white">${data.stockCode} ${data.companyName}</h4>
-                <p class="text-gray-400">${data.subtitle}</p>
-                <span class="px-2 py-1 text-xs rounded bg-blue-600 text-white">${statusLabels[data.status]}</span>
+        <div class="space-y-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h4 class="text-xl font-semibold text-white">${data.title}</h4>
+                    ${data.subtitle ? `<p class="text-gray-400">${data.subtitle}</p>` : ''}
+                    <span class="inline-block px-2 py-1 text-xs rounded bg-gray-600 text-gray-300 mt-1">${typeLabels[data.notebookType]}</span>
+                </div>
+                <span class="px-3 py-1 text-sm rounded bg-blue-600 text-white">${statusLabels[data.status]}</span>
             </div>
             
+            ${data.description ? `
             <div>
-                <h5 class="font-medium text-white mb-2">投資理由</h5>
-                <p class="text-gray-300">${data.investmentReason}</p>
+                <h5 class="font-medium text-white mb-2">説明</h5>
+                <p class="text-gray-300">${data.description}</p>
+            </div>
+            ` : ''}
+            
+            <div>
+                <h5 class="font-medium text-white mb-2">投資戦略</h5>
+                <p class="text-gray-300">${data.investmentStrategy}</p>
             </div>
             
-            ${data.keyPoints.length > 0 ? `
+            ${data.targetAllocation ? `
             <div>
-                <h5 class="font-medium text-white mb-2">注目ポイント</h5>
+                <h5 class="font-medium text-white mb-2">目標配分</h5>
+                <p class="text-green-400 font-semibold">${data.targetAllocation}</p>
+            </div>
+            ` : ''}
+            
+            ${data.keyCriteria.length > 0 ? `
+            <div>
+                <h5 class="font-medium text-white mb-2">選定基準</h5>
                 <ul class="list-disc list-inside space-y-1 text-gray-300">
-                    ${data.keyPoints.map(point => `<li>${point}</li>`).join('')}
+                    ${data.keyCriteria.map(criteria => `<li>${criteria}</li>`).join('')}
                 </ul>
             </div>
             ` : ''}
@@ -528,6 +820,15 @@ function generatePreviewHtml(data) {
                 <ul class="list-disc list-inside space-y-1 text-gray-300">
                     ${data.riskFactors.map(risk => `<li>${risk}</li>`).join('')}
                 </ul>
+            </div>
+            ` : ''}
+            
+            ${data.subNotebooks.length > 0 ? `
+            <div>
+                <h5 class="font-medium text-white mb-2">サブノート</h5>
+                <div class="flex flex-wrap gap-2">
+                    ${data.subNotebooks.map(sub => `<span class="px-2 py-1 bg-green-600 text-white text-sm rounded">${sub}</span>`).join('')}
+                </div>
             </div>
             ` : ''}
             
@@ -545,21 +846,26 @@ function generatePreviewHtml(data) {
 function setupFormValidation() {
     const form = document.getElementById('notebook-form');
     form.addEventListener('submit', function(e) {
-        // 注目ポイントとリスク要因を隠しフィールドに設定
-        const keyPoints = Array.from(document.querySelectorAll('input[name^="key_point_"]'))
+        // 動的項目を隠しフィールドに設定
+        const keyCriteria = Array.from(document.querySelectorAll('input[name^="key_criteria_"]'))
             .map(input => input.value)
             .filter(value => value.trim());
             
         const riskFactors = Array.from(document.querySelectorAll('input[name^="risk_factor_"]'))
             .map(input => input.value)
             .filter(value => value.trim());
+            
+        const subNotebooks = Array.from(document.querySelectorAll('input[name^="sub_notebook_"]'))
+            .map(input => input.value)
+            .filter(value => value.trim());
         
-        document.getElementById('key-points-hidden').value = JSON.stringify(keyPoints);
+        document.getElementById('key-criteria-hidden').value = JSON.stringify(keyCriteria);
         document.getElementById('risk-factors-hidden').value = JSON.stringify(riskFactors);
+        document.getElementById('sub-notebooks-hidden').value = JSON.stringify(subNotebooks);
         
         // バリデーション
         let isValid = true;
-        const requiredFields = ['id_title', 'id_investment_reason'];
+        const requiredFields = ['id_title', 'id_investment_strategy'];
         
         requiredFields.forEach(fieldId => {
             const field = document.getElementById(fieldId);
@@ -578,6 +884,13 @@ function setupFormValidation() {
             }
         }
     });
+}
+
+// カスタムタグ追加関数（グローバル）
+function addCustomTag() {
+    if (tagManager) {
+        tagManager.addCustomTag();
+    }
 }
 </script>
 {% endblock %}

@@ -17,6 +17,6 @@ urlpatterns = [
     # エントリー関連
     path('<uuid:notebook_pk>/entry/create/', views.entry_create_view, name='entry_create'),
     path('entry/<uuid:entry_pk>/', views.entry_detail_ajax, name='entry_detail_ajax'),
-    path('entry/<uuid:entry_pk>/edit/', views.entry_update_view, name='entry_edit'),
-    path('entry/<uuid:entry_pk>/delete/', views.entry_delete_view, name='entry_delete'),
+    # path('entry/<uuid:entry_pk>/edit/', views.entry_update_view, name='entry_edit'),
+    # path('entry/<uuid:entry_pk>/delete/', views.entry_delete_view, name='entry_delete'),
 ]
