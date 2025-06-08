@@ -40,3 +40,54 @@ input:focus, select:focus, textarea:focus {
 ::-webkit-scrollbar-thumb:hover {
     background: #9ca3af;
 }
+
+/* スマホ用の追加スタイル */
+@media (max-width: 768px) {
+    /* タップ領域の確保 */
+    nav a, .tag-clickable {
+        min-height: 44px;
+        min-width: 44px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    
+    /* アクティブ状態の視覚的フィードバック */
+    nav a:active, .tag-clickable:active {
+        background-color: rgba(75, 85, 99, 0.5);
+        transform: scale(0.95);
+    }
+    
+    /* タグのスマホ表示調整 */
+    .tag-clickable {
+        min-height: 36px;
+        padding: 0.25rem 0.5rem;
+    }
+}
+
+/* ホバー効果の改善 */
+@media (hover: hover) {
+    nav a:hover svg {
+        transform: scale(1.1);
+        transition: transform 0.2s ease;
+    }
+    
+    .tag-clickable:hover {
+        background-color: rgba(75, 85, 99, 0.7);
+        border-color: #3b82f6;
+        box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+    }
+}
+
+/* タグクリック時のアニメーション */
+.tag-clickable.clicked {
+    background-color: #3b82f6;
+    border-color: #1d4ed8;
+    color: white;
+    transform: scale(0.95);
+}
+
+.tag-clickable.clicked::after {
+    content: ' ✓';
+    font-size: 0.75rem;
+}
