@@ -77,22 +77,62 @@
                         <span class="hidden md:inline">タグ管理</span>
                     </a>
                     
-                    <!-- ユーザー情報・ログアウト -->
-                    <div class="flex items-center space-x-1 sm:space-x-2 md:space-x-4">
-                        <!-- ユーザー名（大画面のみ表示） -->
-                        <span class="hidden lg:inline text-gray-400 text-sm">sample_user</span>
+                <!-- ユーザー情報・認証 -->
+                <div class="flex items-center space-x-1 sm:space-x-2 md:space-x-4">
+                    {% if user.is_authenticated %}
+                        <!-- ユーザープロフィール -->
+                        <a href="{% url 'accounts:profile' %}" 
+                            title="プロフィール"
+                            class="hidden lg:flex items-center text-gray-400 hover:text-white transition-colors space-x-2">
+                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                            <span class="text-sm">
+                                {% if user.userprofile.display_name %}
+                                    {{ user.userprofile.display_name }}
+                                {% else %}
+                                    {{ user.username }}
+                                {% endif %}
+                            </span>
+                        </a>
+                        
+                        <!-- プロフィール（モバイル） -->
+                        <a href="{% url 'accounts:profile' %}" 
+                            title="プロフィール"
+                            class="lg:hidden text-gray-300 hover:text-white transition-colors p-2 rounded-md hover:bg-gray-800">
+                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                            </svg>
+                        </a>
                         
                         <!-- ログアウト -->
-                        <a href="/admin/logout/" 
-                        title="ログアウト"
-                        class="text-gray-300 hover:text-white transition-colors p-2 md:p-0 rounded-md hover:bg-gray-800 md:hover:bg-transparent">
+                        <a href="{% url 'accounts:logout' %}" 
+                            title="ログアウト"
+                            class="text-gray-300 hover:text-white transition-colors p-2 md:p-0 rounded-md hover:bg-gray-800 md:hover:bg-transparent">
                             <svg class="h-5 w-5 md:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"></path>
                             </svg>
                             <span class="hidden md:inline">ログアウト</span>
                         </a>
-                    </div>
-                </nav>
+                    {% else %}
+                        <!-- ログイン・登録ボタン -->
+                        <a href="{% url 'accounts:login' %}" 
+                            title="ログイン"
+                            class="text-gray-300 hover:text-white transition-colors p-2 md:p-0 rounded-md hover:bg-gray-800 md:hover:bg-transparent">
+                            <svg class="h-5 w-5 md:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1"></path>
+                            </svg>
+                            <span class="hidden md:inline">ログイン</span>
+                        </a>
+                        
+                        <a href="{% url 'accounts:signup' %}" 
+                            title="新規登録"
+                            class="bg-blue-600 hover:bg-blue-700 text-white px-3 py-2 rounded-md transition-colors text-sm">
+                            <span class="md:hidden">登録</span>
+                            <span class="hidden md:inline">新規登録</span>
+                        </a>
+                    {% endif %}
+                </div>
             </div>
         </div>
     </header>

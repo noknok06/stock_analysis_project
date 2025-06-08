@@ -1,0 +1,162 @@
+<!-- ========================================
+templates/accounts/login.html
+======================================== -->
+
+{% extends 'base.html' %}
+
+{% block title %}ログイン - 株式分析記録アプリ{% endblock %}
+
+{% block content %}
+<div class="min-h-[calc(100vh-200px)] flex items-center justify-center">
+    <div class="max-w-md w-full space-y-8">
+        <!-- Header -->
+        <div class="text-center">
+            <div class="mx-auto h-12 w-12 bg-blue-600 rounded-full flex items-center justify-center mb-4">
+                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                </svg>
+            </div>
+            <h2 class="text-3xl font-bold text-white">ログイン</h2>
+            <p class="mt-2 text-gray-400">アカウントにサインインしてください</p>
+        </div>
+
+        <!-- Login Form -->
+        <div class="bg-gray-800 border border-gray-700 rounded-lg p-8">
+            <form method="post" class="space-y-6">
+                {% csrf_token %}
+                
+                <!-- Username Field -->
+                <div>
+                    <label for="{{ form.username.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-2">
+                        {{ form.username.label }}
+                    </label>
+                    {{ form.username }}
+                    {% if form.username.errors %}
+                        <div class="mt-1 text-sm text-red-400">
+                            {% for error in form.username.errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Password Field -->
+                <div>
+                    <label for="{{ form.password.id_for_label }}" class="block text-sm font-medium text-gray-300 mb-2">
+                        {{ form.password.label }}
+                    </label>
+                    {{ form.password }}
+                    {% if form.password.errors %}
+                        <div class="mt-1 text-sm text-red-400">
+                            {% for error in form.password.errors %}
+                                <p>{{ error }}</p>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                </div>
+
+                <!-- Remember Me -->
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center">
+                        {{ form.remember_me }}
+                        <label for="{{ form.remember_me.id_for_label }}" class="ml-2 text-sm text-gray-300">
+                            {{ form.remember_me.label }}
+                        </label>
+                    </div>
+                    <a href="{% url 'accounts:password_reset' %}" 
+                       class="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+                        パスワードを忘れた場合
+                    </a>
+                </div>
+
+                <!-- Submit Button -->
+                <div>
+                    <button type="submit" 
+                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg px-4 py-3 transition-colors focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        ログイン
+                    </button>
+                </div>
+
+                <!-- Form Errors -->
+                {% if form.non_field_errors %}
+                    <div class="bg-red-900 border border-red-700 text-red-300 rounded-lg p-3">
+                        {% for error in form.non_field_errors %}
+                            <p class="text-sm">{{ error }}</p>
+                        {% endfor %}
+                    </div>
+                {% endif %}
+            </form>
+        </div>
+
+        <!-- Sign Up Link -->
+        <div class="text-center">
+            <p class="text-gray-400">
+                アカウントをお持ちでない場合は
+                <a href="{% url 'accounts:signup' %}" 
+                   class="text-blue-400 hover:text-blue-300 transition-colors font-medium">
+                    新規登録
+                </a>
+            </p>
+        </div>
+
+        <!-- Demo Account (開発環境のみ) -->
+        {% if debug %}
+        <div class="bg-yellow-900 border border-yellow-700 rounded-lg p-4">
+            <h3 class="text-yellow-300 font-medium mb-2">デモアカウント</h3>
+            <p class="text-yellow-200 text-sm mb-2">開発環境用のテストアカウントです：</p>
+            <div class="space-y-1 text-sm">
+                <p class="text-yellow-200">ユーザー名: <code class="bg-yellow-800 px-1 rounded">demo_user</code></p>
+                <p class="text-yellow-200">パスワード: <code class="bg-yellow-800 px-1 rounded">demo123456</code></p>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Real-time Validation Script -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const usernameField = document.getElementById('{{ form.username.id_for_label }}');
+    const passwordField = document.getElementById('{{ form.password.id_for_label }}');
+    const submitButton = document.querySelector('button[type="submit"]');
+    
+    // リアルタイムバリデーション
+    function validateForm() {
+        const username = usernameField.value.trim();
+        const password = passwordField.value;
+        
+        const isValid = username.length >= 3 && password.length >= 8;
+        
+        submitButton.disabled = !isValid;
+        submitButton.classList.toggle('opacity-50', !isValid);
+        submitButton.classList.toggle('cursor-not-allowed', !isValid);
+    }
+    
+    usernameField.addEventListener('input', validateForm);
+    passwordField.addEventListener('input', validateForm);
+    
+    // 初期状態でのバリデーション
+    validateForm();
+    
+    // フォーム送信時のローディング状態
+    document.querySelector('form').addEventListener('submit', function() {
+        submitButton.disabled = true;
+        submitButton.innerHTML = `
+            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" fill="none" viewBox="0 0 24 24">
+                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+            </svg>
+            ログイン中...
+        `;
+    });
+    
+    // ユーザー名フィールドでのEnterキー処理
+    usernameField.addEventListener('keypress', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            passwordField.focus();
+        }
+    });
+});
+</script>
+{% endblock %}

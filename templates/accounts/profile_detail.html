@@ -1,0 +1,306 @@
+<!-- ========================================
+templates/accounts/profile_detail.html
+======================================== -->
+
+{% extends 'base.html' %}
+
+{% block title %}プロフィール - 株式分析記録アプリ{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto space-y-6">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+        <div>
+            <h1 class="text-2xl md:text-3xl font-bold text-white">プロフィール</h1>
+            <p class="text-gray-400">アカウント情報と投資設定を管理</p>
+        </div>
+        <div class="flex space-x-3">
+            <a href="{% url 'accounts:profile_edit' %}" 
+               class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                </svg>
+                編集
+            </a>
+            <a href="{% url 'accounts:settings' %}" 
+               class="inline-flex items-center px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">
+                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                </svg>
+                設定
+            </a>
+        </div>
+    </div>
+
+    <!-- Profile Cards Grid -->
+    <div class="grid gap-6 md:grid-cols-2">
+        <!-- Basic Information -->
+        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+            <h2 class="text-lg font-semibold text-white mb-4 flex items-center">
+                <svg class="h-5 w-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"></path>
+                </svg>
+                基本情報
+            </h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <dt class="text-sm text-gray-400">ユーザー名</dt>
+                    <dd class="text-white font-medium">{{ user.username }}</dd>
+                </div>
+                
+                <div>
+                    <dt class="text-sm text-gray-400">表示名</dt>
+                    <dd class="text-white">
+                        {% if profile.display_name %}
+                            {{ profile.display_name }}
+                        {% else %}
+                            <span class="text-gray-500">未設定</span>
+                        {% endif %}
+                    </dd>
+                </div>
+                
+                <div>
+                    <dt class="text-sm text-gray-400">メールアドレス</dt>
+                    <dd class="text-white">{{ user.email }}</dd>
+                </div>
+                
+                <div>
+                    <dt class="text-sm text-gray-400">登録日</dt>
+                    <dd class="text-white">{{ user.date_joined|date:"Y年m月d日" }}</dd>
+                </div>
+                
+                <div>
+                    <dt class="text-sm text-gray-400">最終ログイン</dt>
+                    <dd class="text-white">
+                        {% if user.last_login %}
+                            {{ user.last_login|date:"Y年m月d日 H:i" }}
+                        {% else %}
+                            <span class="text-gray-500">記録なし</span>
+                        {% endif %}
+                    </dd>
+                </div>
+            </div>
+        </div>
+
+        <!-- Investment Profile -->
+        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+            <h2 class="text-lg font-semibold text-white mb-4 flex items-center">
+                <svg class="h-5 w-5 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                </svg>
+                投資プロフィール
+            </h2>
+            
+            <div class="space-y-4">
+                <div>
+                    <dt class="text-sm text-gray-400">投資経験</dt>
+                    <dd class="text-white">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                   {% if profile.investment_experience == 'EXPERT' %}bg-purple-900 text-purple-300
+                                   {% elif profile.investment_experience == 'ADVANCED' %}bg-blue-900 text-blue-300
+                                   {% elif profile.investment_experience == 'INTERMEDIATE' %}bg-green-900 text-green-300
+                                   {% else %}bg-yellow-900 text-yellow-300{% endif %}">
+                            {{ profile.get_investment_experience_display }}
+                        </span>
+                    </dd>
+                </div>
+                
+                <div>
+                    <dt class="text-sm text-gray-400">投資スタイル</dt>
+                    <dd class="text-white">
+                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
+                                   {% if profile.investment_style == 'SPECULATIVE' %}bg-red-900 text-red-300
+                                   {% elif profile.investment_style == 'AGGRESSIVE' %}bg-orange-900 text-orange-300
+                                   {% elif profile.investment_style == 'MODERATE' %}bg-blue-900 text-blue-300
+                                   {% else %}bg-green-900 text-green-300{% endif %}">
+                            {{ profile.get_investment_style_display }}
+                        </span>
+                    </dd>
+                </div>
+                
+                <div>
+                    <dt class="text-sm text-gray-400">プロフィール公開</dt>
+                    <dd class="text-white">
+                        {% if profile.public_profile %}
+                            <span class="text-green-400">公開</span>
+                        {% else %}
+                            <span class="text-gray-400">非公開</span>
+                        {% endif %}
+                    </dd>
+                </div>
+                
+                <div>
+                    <dt class="text-sm text-gray-400">メール通知</dt>
+                    <dd class="text-white">
+                        {% if profile.email_notifications %}
+                            <span class="text-green-400">有効</span>
+                        {% else %}
+                            <span class="text-gray-400">無効</span>
+                        {% endif %}
+                    </dd>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bio Section -->
+    {% if profile.bio %}
+    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+        <h2 class="text-lg font-semibold text-white mb-4 flex items-center">
+            <svg class="h-5 w-5 mr-2 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
+            </svg>
+            自己紹介
+        </h2>
+        <p class="text-gray-300 leading-relaxed">{{ profile.bio|linebreaks }}</p>
+    </div>
+    {% endif %}
+
+    <!-- Statistics Grid -->
+    <div class="grid gap-6 md:grid-cols-3">
+        <!-- Activity Statistics -->
+        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+            <h3 class="text-sm font-medium text-gray-400 mb-3">アクティビティ</h3>
+            <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-300">作成ノート数</span>
+                    <span class="text-xl font-bold text-blue-400">{{ profile.total_notebooks }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-300">総エントリー数</span>
+                    <span class="text-xl font-bold text-green-400">{{ profile.total_entries }}</span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-300">平均エントリー/ノート</span>
+                    <span class="text-lg font-semibold text-yellow-400">
+                        {% if profile.total_notebooks > 0 %}
+                            {{ profile.total_entries|floatformat:1|default:"0" }}
+                        {% else %}
+                            0
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Account Security -->
+        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+            <h3 class="text-sm font-medium text-gray-400 mb-3">セキュリティ</h3>
+            <div class="space-y-3">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-300">アカウント状態</span>
+                    <span class="inline-flex items-center px-2 py-1 rounded-full text-xs font-medium bg-green-900 text-green-300">
+                        アクティブ
+                    </span>
+                </div>
+                <div class="flex justify-between items-center">
+                    <span class="text-sm text-gray-300">最終ログインIP</span>
+                    <span class="text-sm text-gray-400 font-mono">
+                        {{ profile.last_login_ip|default:"未記録" }}
+                    </span>
+                </div>
+                <div class="pt-2">
+                    <a href="{% url 'accounts:password_change' %}" 
+                       class="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+                        パスワードを変更 →
+                    </a>
+                </div>
+            </div>
+        </div>
+
+        <!-- Recent Activity -->
+        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+            <h3 class="text-sm font-medium text-gray-400 mb-3">最近のログイン</h3>
+            <div class="space-y-2">
+                {% for login in recent_logins %}
+                    <div class="flex justify-between items-center text-sm">
+                        <span class="text-gray-300">{{ login.created_at|date:"m/d H:i" }}</span>
+                        <span class="text-gray-500 font-mono text-xs">{{ login.ip_address }}</span>
+                    </div>
+                {% empty %}
+                    <p class="text-gray-500 text-sm">ログイン履歴がありません</p>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+
+    <!-- Account Actions -->
+    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+        <h2 class="text-lg font-semibold text-white mb-4 flex items-center">
+            <svg class="h-5 w-5 mr-2 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L4.314 15.5c-.77.833.192 2.5 1.732 2.5z"></path>
+            </svg>
+            アカウント管理
+        </h2>
+        
+        <div class="grid gap-4 md:grid-cols-2">
+            <div class="space-y-2">
+                <h3 class="text-sm font-medium text-gray-300">データエクスポート</h3>
+                <p class="text-sm text-gray-400">投資記録データを JSON 形式でダウンロードできます。</p>
+                <button class="text-sm text-blue-400 hover:text-blue-300 transition-colors">
+                    データをエクスポート →
+                </button>
+            </div>
+            
+            <div class="space-y-2">
+                <h3 class="text-sm font-medium text-gray-300">アカウント削除</h3>
+                <p class="text-sm text-gray-400">アカウントとすべてのデータを完全に削除します。</p>
+                <a href="{% url 'accounts:delete_account' %}" 
+                   class="text-sm text-red-400 hover:text-red-300 transition-colors">
+                    アカウントを削除 →
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Profile Update JavaScript -->
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    // 統計情報の自動更新
+    function updateStatistics() {
+        fetch('/accounts/api/update-profile/', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCookie('csrftoken')
+            },
+            body: JSON.stringify({
+                action: 'update_statistics'
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // 統計情報を更新（必要に応じて）
+                console.log('統計情報を更新しました');
+            }
+        })
+        .catch(error => {
+            console.error('統計更新エラー:', error);
+        });
+    }
+    
+    // CSRFトークン取得
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
+    }
+    
+    // ページ読み込み時に統計更新
+    updateStatistics();
+});
+</script>
+{% endblock %}
