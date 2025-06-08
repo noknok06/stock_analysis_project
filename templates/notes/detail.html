@@ -24,6 +24,17 @@
         0%, 100% { opacity: 1; }
         50% { opacity: 0.8; }
     }
+    .entry-type-btn {
+        cursor: pointer;
+        transition: all 0.2s ease-in-out;
+    }
+    .entry-type-btn:hover {
+        transform: translateY(-1px);
+    }
+    .entry-type-btn.selected {
+        border-color: #3b82f6 !important;
+        background-color: rgba(59, 130, 246, 0.3) !important;
+    }
 </style>
 {% endblock %}
 
@@ -71,7 +82,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
                         </svg>
                         ノート編集
-                    </button>
+                    </a>
                 </div>
             </div>
             
@@ -207,11 +218,12 @@
                 {% for entry in entries %}
                     <div class="entry-card bg-gray-800 border border-gray-700 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-750 transition-colors"
                          data-entry-type="{{ entry.entry_type }}"
-                         data-entry-id="{{ entry.pk }}">
+                         data-entry-id="{{ entry.pk }}"
+                         onclick="handleEntryCardClick('{{ entry.pk }}')">
                         <div class="p-6">
                             <!-- エントリーヘッダー -->
                             <div class="flex items-center justify-between mb-4">
-                                <div class="flex items-center space-x-3 pointer-events-none">
+                                <div class="flex items-center space-x-3">
                                     <div class="p-2 rounded-lg {% if entry.entry_type == 'ANALYSIS' %}bg-blue-900 text-blue-300{% elif entry.entry_type == 'NEWS' %}bg-green-900 text-green-300{% elif entry.entry_type == 'CALCULATION' %}bg-orange-900 text-orange-300{% elif entry.entry_type == 'MEMO' %}bg-gray-700 text-gray-300{% else %}bg-purple-900 text-purple-300{% endif %}">
                                         {% if entry.entry_type == 'ANALYSIS' %}
                                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -235,7 +247,7 @@
                                             </svg>
                                         {% endif %}
                                     </div>
-                                    <div class="pointer-events-none">
+                                    <div>
                                         <h3 class="text-lg font-semibold text-white">{{ entry.title }}</h3>
                                         <p class="text-sm text-gray-400">{{ entry.get_entry_type_display }} • {{ entry.created_at|date:"Y/m/d H:i" }}</p>
                                     </div>
@@ -243,7 +255,7 @@
                                 
                                 <div class="flex items-center space-x-2">
                                     {% if entry.tags.all %}
-                                        <div class="flex space-x-1 pointer-events-none">
+                                        <div class="flex space-x-1">
                                             {% for tag in entry.tags.all|slice:":2" %}
                                                 <span class="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded">{{ tag.name }}</span>
                                             {% endfor %}
@@ -256,7 +268,7 @@
                             </div>
                             
                             <!-- エントリー内容プレビュー -->
-                            <div class="text-gray-300 pointer-events-none">
+                            <div class="text-gray-300">
                                 {% if entry.entry_type == 'ANALYSIS' and entry.content.summary %}
                                     <p class="mb-2"><strong>サマリー:</strong> {{ entry.content.summary|truncatewords:30 }}</p>
                                 {% elif entry.entry_type == 'NEWS' and entry.content.headline %}
@@ -336,10 +348,8 @@
 </div>
 
 <!-- 新規エントリーモーダル -->
-<div id="new-entry-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
-     onclick="handleModalBackgroundClick(event, 'new-entry-modal')">
-    <div class="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden"
-         onclick="event.stopPropagation()">
+<div id="new-entry-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden">
         <div class="flex items-center justify-between p-6 border-b border-gray-700">
             <div>
                 <h2 class="text-2xl font-bold text-white">新規エントリー作成</h2>
@@ -359,7 +369,7 @@
                 <div>
                     <label class="block text-sm font-medium text-gray-300 mb-4">エントリータイプ</label>
                     <div class="grid grid-cols-2 md:grid-cols-5 gap-3">
-                        <button type="button" onclick="selectEntryType('ANALYSIS')" 
+                        <button type="button" data-entry-type="ANALYSIS" 
                                 class="entry-type-btn p-4 rounded-lg border-2 border-gray-600 bg-gray-700 hover:bg-gray-600 transition-all text-center">
                             <div class="p-2 rounded-lg bg-blue-900 text-blue-300 mb-2 mx-auto w-fit">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -370,7 +380,7 @@
                             <p class="text-xs text-gray-400 mt-1">決算情報の分析記録</p>
                         </button>
                         
-                        <button type="button" onclick="selectEntryType('NEWS')" 
+                        <button type="button" data-entry-type="NEWS" 
                                 class="entry-type-btn p-4 rounded-lg border-2 border-gray-600 bg-gray-700 hover:bg-gray-600 transition-all text-center">
                             <div class="p-2 rounded-lg bg-green-900 text-green-300 mb-2 mx-auto w-fit">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -381,7 +391,7 @@
                             <p class="text-xs text-gray-400 mt-1">関連ニュースの記録</p>
                         </button>
                         
-                        <button type="button" onclick="selectEntryType('CALCULATION')" 
+                        <button type="button" data-entry-type="CALCULATION" 
                                 class="entry-type-btn p-4 rounded-lg border-2 border-gray-600 bg-gray-700 hover:bg-gray-600 transition-all text-center">
                             <div class="p-2 rounded-lg bg-orange-900 text-orange-300 mb-2 mx-auto w-fit">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -392,7 +402,7 @@
                             <p class="text-xs text-gray-400 mt-1">バリュエーション計算</p>
                         </button>
                         
-                        <button type="button" onclick="selectEntryType('MEMO')" 
+                        <button type="button" data-entry-type="MEMO" 
                                 class="entry-type-btn p-4 rounded-lg border-2 border-gray-600 bg-gray-700 hover:bg-gray-600 transition-all text-center">
                             <div class="p-2 rounded-lg bg-gray-700 text-gray-300 mb-2 mx-auto w-fit">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -403,7 +413,7 @@
                             <p class="text-xs text-gray-400 mt-1">個人的な気づき・メモ</p>
                         </button>
                         
-                        <button type="button" onclick="selectEntryType('GOAL')" 
+                        <button type="button" data-entry-type="GOAL" 
                                 class="entry-type-btn p-4 rounded-lg border-2 border-gray-600 bg-gray-700 hover:bg-gray-600 transition-all text-center">
                             <div class="p-2 rounded-lg bg-purple-900 text-purple-300 mb-2 mx-auto w-fit">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -462,10 +472,8 @@
 </div>
 
 <!-- エントリー詳細モーダル -->
-<div id="entry-detail-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4"
-     onclick="handleModalBackgroundClick(event, 'entry-detail-modal')">
-    <div class="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden"
-         onclick="event.stopPropagation()">
+<div id="entry-detail-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-4xl max-h-[90vh] overflow-hidden">
         <div class="flex items-center justify-between p-6 border-b border-gray-700">
             <h3 class="text-xl font-semibold text-white" id="entry-detail-title">エントリー詳細</h3>
             <button onclick="closeEntryDetail()" class="text-gray-400 hover:text-white">
@@ -485,67 +493,72 @@
 <script>
 let selectedEntryType = null;
 
-// エントリータイプ選択
-function selectEntryType(type, event) {
-    // イベントの伝播を停止
-    if (event) {
-        event.preventDefault();
-        event.stopPropagation();
-        event.stopImmediatePropagation();
-    }
+// DOM準備完了時の初期化
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('ノート詳細ページが初期化されました');
     
-    console.log('エントリータイプ選択:', type);
+    // エントリータイプボタンのイベントリスナー設定
+    setupEntryTypeButtons();
+    
+    // フォーム送信時の処理
+    setupFormSubmission();
+    
+    // エントリータイプフィルター設定
+    setupEntryTypeFilter();
+});
+
+// エントリータイプボタンの設定
+function setupEntryTypeButtons() {
+    const entryTypeButtons = document.querySelectorAll('.entry-type-btn');
+    console.log('エントリータイプボタン数:', entryTypeButtons.length);
+    
+    entryTypeButtons.forEach(button => {
+        button.addEventListener('click', function(e) {
+            e.preventDefault();
+            e.stopPropagation();
+            
+            const entryType = this.getAttribute('data-entry-type');
+            console.log('エントリータイプ選択:', entryType);
+            
+            if (entryType) {
+                selectEntryType(entryType, this);
+            }
+        });
+    });
+}
+
+// エントリータイプ選択
+function selectEntryType(type, buttonElement) {
+    console.log('selectEntryType呼び出し:', type);
     selectedEntryType = type;
     
+    // hidden inputに値を設定
     const entryTypeInput = document.getElementById('entry_type');
     if (entryTypeInput) {
         entryTypeInput.value = type;
+        console.log('エントリータイプ設定完了:', entryTypeInput.value);
     }
     
-    // すべてのボタンをリセット
+    // すべてのボタンを未選択状態にリセット
     document.querySelectorAll('.entry-type-btn').forEach(btn => {
-        btn.classList.remove('border-blue-500', 'bg-blue-900/30');
+        btn.classList.remove('selected', 'border-blue-500', 'bg-blue-900/30');
         btn.classList.add('border-gray-600', 'bg-gray-700');
     });
     
     // 選択されたボタンをハイライト
-    let currentButton = null;
-    if (event && event.currentTarget) {
-        currentButton = event.currentTarget;
-    } else {
-        // fallback: 該当するボタンを探す
-        const buttons = document.querySelectorAll('.entry-type-btn');
-        buttons.forEach(btn => {
-            const h3 = btn.querySelector('h3');
-            if (h3) {
-                const btnText = h3.textContent;
-                const typeMap = {
-                    '決算分析': 'ANALYSIS',
-                    'ニュース': 'NEWS', 
-                    '計算結果': 'CALCULATION',
-                    'メモ': 'MEMO',
-                    '投資目標': 'GOAL'
-                };
-                if (typeMap[btnText] === type) {
-                    currentButton = btn;
-                }
-            }
-        });
-    }
-    
-    if (currentButton) {
-        currentButton.classList.remove('border-gray-600', 'bg-gray-700');
-        currentButton.classList.add('border-blue-500', 'bg-blue-900/30');
+    if (buttonElement) {
+        buttonElement.classList.remove('border-gray-600', 'bg-gray-700');
+        buttonElement.classList.add('selected', 'border-blue-500', 'bg-blue-900/30');
+        console.log('ボタンハイライト完了');
     }
     
     // エントリータイプ固有フォームを生成
     generateEntryTypeForm(type);
-    
-    return false; // onclick イベントの戻り値
 }
 
 // エントリータイプ固有フォーム生成
 function generateEntryTypeForm(type) {
+    console.log('フォーム生成:', type);
     const container = document.getElementById('entry-type-form');
     let formHtml = '';
     
@@ -728,18 +741,60 @@ function generateEntryTypeForm(type) {
     }
     
     container.innerHTML = formHtml;
+    console.log('フォーム生成完了');
 }
 
-// モーダル背景クリック処理
-function handleModalBackgroundClick(event, modalId) {
-    // モーダルの背景（黒い部分）をクリックした場合のみ閉じる
-    if (event.target === event.currentTarget) {
-        if (modalId === 'new-entry-modal') {
-            closeNewEntryModal();
-        } else if (modalId === 'entry-detail-modal') {
-            closeEntryDetail();
-        }
-    }
+// エントリーカードクリック処理
+function handleEntryCardClick(entryId) {
+    console.log('エントリーカードクリック:', entryId);
+    openEntryDetail(entryId);
+}
+
+// エントリー詳細表示
+function openEntryDetail(entryId) {
+    console.log('エントリー詳細表示:', entryId);
+    
+    // ローディング表示
+    document.getElementById('entry-detail-title').textContent = '読み込み中...';
+    document.getElementById('entry-detail-content').innerHTML = '<div class="flex items-center justify-center py-8"><div class="text-gray-400">読み込み中...</div></div>';
+    document.getElementById('entry-detail-modal').classList.remove('hidden');
+    
+    // エントリー詳細をAjaxで取得して表示
+    fetch(`/notes/entry/${entryId}/`)
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('エントリー詳細取得成功:', data);
+            if (data.success) {
+                document.getElementById('entry-detail-title').textContent = data.title;
+                document.getElementById('entry-detail-content').innerHTML = data.html;
+            } else {
+                throw new Error(data.error || 'データの取得に失敗しました');
+            }
+        })
+        .catch(error => {
+            console.error('エントリー詳細取得エラー:', error);
+            document.getElementById('entry-detail-title').textContent = 'エラー';
+            document.getElementById('entry-detail-content').innerHTML = `
+                <div class="text-center py-8">
+                    <div class="text-red-400 mb-2">エントリーの詳細を取得できませんでした</div>
+                    <div class="text-gray-400 text-sm">${error.message}</div>
+                    <button onclick="closeEntryDetail()" class="mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded">
+                        閉じる
+                    </button>
+                </div>
+            `;
+        });
+}
+
+function closeEntryDetail() {
+    console.log('エントリー詳細モーダルを閉じます');
+    document.getElementById('entry-detail-modal').classList.add('hidden');
 }
 
 // モーダル関連の関数
@@ -758,9 +813,6 @@ function openNewEntryModal() {
             titleInput.focus();
         }
     }, 100);
-    
-    // モーダル外部のクリックイベントを一時的に無効化
-    disablePageInteractions();
 }
 
 function closeNewEntryModal() {
@@ -786,156 +838,113 @@ function closeNewEntryModal() {
     
     // エントリータイプボタンをリセット
     document.querySelectorAll('.entry-type-btn').forEach(btn => {
-        btn.classList.remove('border-blue-500', 'bg-blue-900/30');
+        btn.classList.remove('selected', 'border-blue-500', 'bg-blue-900/30');
         btn.classList.add('border-gray-600', 'bg-gray-700');
     });
-    
-    // ページのインタラクションを有効化
-    enablePageInteractions();
 }
 
-// ページのインタラクションを無効化/有効化
-function disablePageInteractions() {
-    const mainContent = document.querySelector('main');
-    if (mainContent) {
-        mainContent.style.pointerEvents = 'none';
-    }
-}
-
-function enablePageInteractions() {
-    const mainContent = document.querySelector('main');
-    if (mainContent) {
-        mainContent.style.pointerEvents = '';
-    }
-}
-
-// エントリーカードのクリックイベント設定
-document.addEventListener('DOMContentLoaded', function() {
-    // CSRFトークンの設定
-    const csrfToken = document.querySelector('[name=csrfmiddlewaretoken]').value;
-    
-    // エントリーカードにクリックイベントを設定
-    const entryCards = document.querySelectorAll('.entry-card');
-    entryCards.forEach(card => {
-        card.addEventListener('click', function(e) {
-            // ボタンやリンククリック時は無視
-            if (e.target.closest('button') || e.target.closest('a')) {
+// フォーム送信処理の設定
+function setupFormSubmission() {
+    const form = document.getElementById('entry-form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            console.log('フォーム送信開始');
+            
+            if (!selectedEntryType) {
+                e.preventDefault();
+                alert('エントリータイプを選択してください。');
                 return;
             }
             
-            const entryId = this.dataset.entryId;
-            if (entryId) {
-                openEntryDetail(entryId);
-            }
-        });
-    });
-    
-    // エントリータイプボタンのイベントリスナー設定（onclick属性の代替）
-    document.querySelectorAll('.entry-type-btn').forEach(btn => {
-        btn.addEventListener('click', function(e) {
-            e.preventDefault();
-            e.stopPropagation();
-            
-            // onclickから取得せずに、直接判定
-            const btnText = this.querySelector('h3').textContent;
-            let entryType = '';
-            
-            switch(btnText) {
-                case '決算分析': entryType = 'ANALYSIS'; break;
-                case 'ニュース': entryType = 'NEWS'; break;
-                case '計算結果': entryType = 'CALCULATION'; break;
-                case 'メモ': entryType = 'MEMO'; break;
-                case '投資目標': entryType = 'GOAL'; break;
+            if (!document.getElementById('entry_title').value.trim()) {
+                e.preventDefault();
+                alert('エントリータイトルを入力してください。');
+                return;
             }
             
-            if (entryType) {
-                selectEntryType(entryType, e);
+            // フォームデータをJSONに変換
+            const contentData = {};
+            
+            // エントリータイプ固有のフィールドを収集
+            const typeForm = document.getElementById('entry-type-form');
+            if (typeForm) {
+                const inputs = typeForm.querySelectorAll('input, textarea, select');
+                inputs.forEach(input => {
+                    if (input.value.trim()) {
+                        contentData[input.name] = input.value;
+                    }
+                });
             }
-        });
-    });
-    
-    // フォーム内の全ての要素でクリックイベントの伝播を防ぐ
-    const entryForm = document.getElementById('entry-form');
-    if (entryForm) {
-        entryForm.addEventListener('click', function(e) {
-            e.stopPropagation();
+            
+            // key_metricsを別途作成（ANALYSIS用）
+            if (selectedEntryType === 'ANALYSIS') {
+                contentData.key_metrics = {};
+                ['revenue', 'operating_profit', 'net_income', 'eps'].forEach(key => {
+                    if (contentData[key]) {
+                        contentData.key_metrics[key] = contentData[key];
+                        delete contentData[key];
+                    }
+                });
+            }
+            
+            // calculationsを別途作成（CALCULATION用）
+            if (selectedEntryType === 'CALCULATION') {
+                contentData.calculations = {};
+                ['per', 'pbr', 'dividend_yield', 'roe'].forEach(key => {
+                    if (contentData[key]) {
+                        contentData.calculations[key] = contentData[key];
+                        delete contentData[key];
+                    }
+                });
+            }
+            
+            // content フィールドにJSONデータを設定
+            const contentInput = document.createElement('input');
+            contentInput.type = 'hidden';
+            contentInput.name = 'content';
+            contentInput.value = JSON.stringify(contentData);
+            this.appendChild(contentInput);
+            
+            console.log('Content data:', contentData);
+            
+            // 送信ボタンを無効化（重複送信防止）
+            const submitButton = this.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.textContent = '作成中...';
+            
+            // 送信後に元に戻す（エラー時のため）
+            setTimeout(() => {
+                submitButton.disabled = false;
+                submitButton.innerHTML = `
+                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    エントリーを作成
+                `;
+            }, 3000);
         });
     }
-    
-    // モーダル内部のクリックイベント伝播を防ぐ
-    const modalContent = document.querySelector('#new-entry-modal .bg-gray-900');
-    if (modalContent) {
-        modalContent.addEventListener('click', function(e) {
-            e.stopPropagation();
+}
+
+// エントリータイプフィルターの設定
+function setupEntryTypeFilter() {
+    const filter = document.getElementById('entry-type-filter');
+    if (filter) {
+        filter.addEventListener('change', function() {
+            const selectedType = this.value;
+            console.log('エントリータイプフィルター:', selectedType);
+            const entries = document.querySelectorAll('.entry-card');
+            
+            entries.forEach(entry => {
+                if (selectedType === '' || entry.dataset.entryType === selectedType) {
+                    entry.style.display = 'block';
+                } else {
+                    entry.style.display = 'none';
+                }
+            });
         });
     }
-    
-    // フォーム送信時のCSRFトークン設定
-    window.csrfToken = csrfToken;
-    
-    // デバッグ用
-    console.log('ノート詳細ページが初期化されました');
-    console.log('エントリーカード数:', entryCards.length);
-    console.log('エントリータイプボタン数:', document.querySelectorAll('.entry-type-btn').length);
-});
-
-// エントリー詳細表示
-function openEntryDetail(entryId) {
-    // ローディング表示
-    document.getElementById('entry-detail-title').textContent = '読み込み中...';
-    document.getElementById('entry-detail-content').innerHTML = '<div class="flex items-center justify-center py-8"><div class="text-gray-400">読み込み中...</div></div>';
-    document.getElementById('entry-detail-modal').classList.remove('hidden');
-    
-    // エントリー詳細をAjaxで取得して表示
-    fetch(`/notes/entry/${entryId}/`)
-        .then(response => {
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            if (data.success) {
-                document.getElementById('entry-detail-title').textContent = data.title;
-                document.getElementById('entry-detail-content').innerHTML = data.html;
-            } else {
-                throw new Error(data.error || 'データの取得に失敗しました');
-            }
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            document.getElementById('entry-detail-title').textContent = 'エラー';
-            document.getElementById('entry-detail-content').innerHTML = `
-                <div class="text-center py-8">
-                    <div class="text-red-400 mb-2">エントリーの詳細を取得できませんでした</div>
-                    <div class="text-gray-400 text-sm">${error.message}</div>
-                    <button onclick="closeEntryDetail()" class="mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded">
-                        閉じる
-                    </button>
-                </div>
-            `;
-        });
 }
-
-function closeEntryDetail() {
-    console.log('エントリー詳細モーダルを閉じます');
-    document.getElementById('entry-detail-modal').classList.add('hidden');
-}
-
-// エントリータイプフィルター
-document.getElementById('entry-type-filter').addEventListener('change', function() {
-    const selectedType = this.value;
-    console.log('エントリータイプフィルター:', selectedType);
-    const entries = document.querySelectorAll('.entry-card');
-    
-    entries.forEach(entry => {
-        if (selectedType === '' || entry.dataset.entryType === selectedType) {
-            entry.style.display = 'block';
-        } else {
-            entry.style.display = 'none';
-        }
-    });
-});
 
 // ページネーション関数
 function previousPage() {
@@ -954,56 +963,19 @@ function goToPage(pageNum) {
     window.location.href = '?page=' + pageNum;
 }
 
-// フォーム送信時の処理
-document.getElementById('entry-form').addEventListener('submit', function(e) {
-    if (!selectedEntryType) {
-        e.preventDefault();
-        alert('エントリータイプを選択してください。');
-        return;
+// ESCキーでモーダルを閉じる
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        const newEntryModal = document.getElementById('new-entry-modal');
+        const entryDetailModal = document.getElementById('entry-detail-modal');
+        
+        if (!newEntryModal.classList.contains('hidden')) {
+            closeNewEntryModal();
+        }
+        if (!entryDetailModal.classList.contains('hidden')) {
+            closeEntryDetail();
+        }
     }
-    
-    if (!document.getElementById('entry_title').value.trim()) {
-        e.preventDefault();
-        alert('エントリータイトルを入力してください。');
-        return;
-    }
-    
-    // フォームデータをJSONに変換
-    const contentData = {};
-    
-    // エントリータイプ固有のフィールドを収集
-    const typeForm = document.getElementById('entry-type-form');
-    if (typeForm) {
-        const inputs = typeForm.querySelectorAll('input, textarea, select');
-        inputs.forEach(input => {
-            if (input.value.trim()) {
-                contentData[input.name] = input.value;
-            }
-        });
-    }
-    
-    // content フィールドにJSONデータを設定
-    const contentInput = document.createElement('input');
-    contentInput.type = 'hidden';
-    contentInput.name = 'content';
-    contentInput.value = JSON.stringify(contentData);
-    this.appendChild(contentInput);
-    
-    // 送信ボタンを無効化（重複送信防止）
-    const submitButton = this.querySelector('button[type="submit"]');
-    submitButton.disabled = true;
-    submitButton.textContent = '作成中...';
-    
-    // 送信後に元に戻す（エラー時のため）
-    setTimeout(() => {
-        submitButton.disabled = false;
-        submitButton.innerHTML = `
-            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-            </svg>
-            エントリーを作成
-        `;
-    }, 3000);
 });
 </script>
 {% endblock %}
