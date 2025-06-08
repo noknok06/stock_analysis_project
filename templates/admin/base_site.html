@@ -1,0 +1,38 @@
+{% extends "admin/base.html" %}
+
+{% block title %}{{ title }} | 株式分析記録アプリ{% endblock %}
+
+{% block branding %}
+<h1 id="site-name">
+    <a href="{% url 'admin:index' %}">
+        株式分析記録アプリ 管理画面
+    </a>
+</h1>
+{% endblock %}
+
+{% block nav-global %}{% endblock %}
+
+{% block extrahead %}
+<style>
+    .module h2, .module caption, .inline-group h2 {
+        background: #2563eb;
+        color: white;
+    }
+    .button, input[type=submit], input[type=button], .submit-row input, a.button {
+        background: #2563eb;
+        border: 1px solid #1d4ed8;
+    }
+    .button:hover, input[type=submit]:hover, input[type=button]:hover, .submit-row input:hover, a.button:hover {
+        background: #1d4ed8;
+    }
+    .selector-chosen h2 {
+        background: #059669;
+    }
+    .delete-confirmation, .deletelink {
+        background: #dc2626;
+    }
+    .deletelink:hover {
+        background: #b91c1c;
+    }
+</style>
+{% endblock %}

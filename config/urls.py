@@ -10,17 +10,19 @@ urlpatterns = [
     path('accounts/', include('apps.accounts.urls')),
     
     # メインアプリ
-    path('', include('apps.dashboard.urls')),
-    path('notes/', include('apps.notes.urls')),
-    path('tags/', include('apps.tags.urls')),
+    path('', include('apps.dashboard.urls')),  # ダッシュボードがルート
+    path('notes/', include('apps.notes.urls')),  # ノート管理
+    path('tags/', include('apps.tags.urls')),   # タグ管理
     
-    # API エンドポイント
-    path('api/', include('apps.dashboard.urls', namespace='api-dashboard')),
-    path('api/notes/', include('apps.notes.urls', namespace='api-notes')),
-    path('api/tags/', include('apps.tags.urls', namespace='api-tags')),
+    # API エンドポイント（統合）
+    path('api/dashboard/', include('apps.dashboard.api_urls')),
+    path('api/notes/', include('apps.notes.api_urls')),
+    path('api/tags/', include('apps.tags.api_urls')),
+    
+    # 外部連携API
+    path('api/external/', include('apps.external.urls')),  # 株価データ等
 ]
 
-# 開発環境での静的ファイル配信
 if settings.DEBUG:
     urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
     urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

@@ -1,0 +1,448 @@
+<!-- ========================================
+templates/notes/template_selection.html - テンプレート選択画面
+======================================== -->
+
+{% extends 'base.html' %}
+
+{% block title %}ノート作成 - テンプレート選択{% endblock %}
+
+{% block extra_css %}
+<style>
+    .template-card {
+        transition: all 0.3s ease;
+        cursor: pointer;
+    }
+    .template-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 12px 30px rgba(59, 130, 246, 0.3);
+    }
+    .template-card.selected {
+        border-color: #3b82f6;
+        background: linear-gradient(135deg, rgba(59, 130, 246, 0.1), rgba(29, 78, 216, 0.05));
+        transform: translateY(-2px);
+    }
+    .template-icon {
+        background: linear-gradient(135deg, #3b82f6, #1d4ed8);
+    }
+    .step-indicator {
+        background: linear-gradient(90deg, #3b82f6 0%, #1d4ed8 100%);
+    }
+    .animate-in {
+        animation: slideInFromBottom 0.5s ease-out;
+    }
+    @keyframes slideInFromBottom {
+        from { transform: translateY(20px); opacity: 0; }
+        to { transform: translateY(0); opacity: 1; }
+    }
+    .fade-in {
+        animation: fadeIn 0.3s ease-out;
+    }
+    @keyframes fadeIn {
+        from { opacity: 0; }
+        to { opacity: 1; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-5xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8 text-center">
+        <div class="flex items-center justify-center space-x-4 mb-4">
+            <a href="{% url 'notes:list' %}" 
+               class="text-gray-400 hover:text-white transition-colors">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                </svg>
+            </a>
+            <h1 class="text-3xl font-bold text-white">新規ノート作成</h1>
+        </div>
+        <p class="text-gray-400 text-lg">目的に応じたテンプレートを選択してください</p>
+    </div>
+
+    <!-- Progress Steps -->
+    <div class="mb-10">
+        <div class="flex items-center justify-center space-x-4">
+            <div class="flex items-center space-x-2">
+                <div class="step-indicator w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold">1</div>
+                <span class="text-white font-medium">テンプレート選択</span>
+            </div>
+            <div class="h-1 w-16 bg-gray-700 rounded"></div>
+            <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-gray-400 text-sm font-bold">2</div>
+                <span class="text-gray-400">ノート設定</span>
+            </div>
+            <div class="h-1 w-16 bg-gray-700 rounded"></div>
+            <div class="flex items-center space-x-2">
+                <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-gray-400 text-sm font-bold">3</div>
+                <span class="text-gray-400">完了</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Template Selection Form -->
+    <form method="POST" id="template-form" class="space-y-8">
+        {% csrf_token %}
+        
+        <!-- Template Cards Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+            <!-- テーマ型（複数銘柄） -->
+            <div class="template-card bg-gray-800 border-2 border-gray-700 rounded-lg p-6 animate-in" 
+                 onclick="selectTemplate('theme_multi', this)"
+                 data-template="theme_multi">
+                <div class="template-icon w-16 h-16 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                    <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold text-white text-center mb-3">テーマ型</h3>
+                <p class="text-gray-300 text-center mb-4 text-sm">複数銘柄をテーマでまとめて分析</p>
+                <div class="text-xs text-gray-400 space-y-1">
+                    <div class="flex items-center">
+                        <span class="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
+                        複数銘柄を統合管理
+                    </div>
+                    <div class="flex items-center">
+                        <span class="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
+                        テーマ別カテゴリ分け
+                    </div>
+                    <div class="flex items-center">
+                        <span class="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
+                        比較分析に最適
+                    </div>
+                </div>
+                <div class="mt-4 text-center">
+                    <span class="inline-block px-3 py-1 text-xs bg-blue-900 text-blue-300 rounded-full">推奨</span>
+                </div>
+            </div>
+
+            <!-- ウォッチリスト -->
+            <div class="template-card bg-gray-800 border-2 border-gray-700 rounded-lg p-6 animate-in" 
+                 onclick="selectTemplate('watchlist', this)"
+                 data-template="watchlist"
+                 style="animation-delay: 0.1s">
+                <div class="template-icon w-16 h-16 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                    <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold text-white text-center mb-3">ウォッチリスト</h3>
+                <p class="text-gray-300 text-center mb-4 text-sm">気になる銘柄の監視・追跡</p>
+                <div class="text-xs text-gray-400 space-y-1">
+                    <div class="flex items-center">
+                        <span class="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                        優先度別管理
+                    </div>
+                    <div class="flex items-center">
+                        <span class="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                        価格アラート連携
+                    </div>
+                    <div class="flex items-center">
+                        <span class="w-2 h-2 bg-green-400 rounded-full mr-2"></span>
+                        投資タイミング記録
+                    </div>
+                </div>
+            </div>
+
+            <!-- ポートフォリオ管理 -->
+            <div class="template-card bg-gray-800 border-2 border-gray-700 rounded-lg p-6 animate-in" 
+                 onclick="selectTemplate('portfolio', this)"
+                 data-template="portfolio"
+                 style="animation-delay: 0.2s">
+                <div class="template-icon w-16 h-16 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                    <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold text-white text-center mb-3">ポートフォリオ</h3>
+                <p class="text-gray-300 text-center mb-4 text-sm">保有銘柄の管理・分析</p>
+                <div class="text-xs text-gray-400 space-y-1">
+                    <div class="flex items-center">
+                        <span class="w-2 h-2 bg-purple-400 rounded-full mr-2"></span>
+                        資産配分管理
+                    </div>
+                    <div class="flex items-center">
+                        <span class="w-2 h-2 bg-purple-400 rounded-full mr-2"></span>
+                        リスク分析
+                    </div>
+                    <div class="flex items-center">
+                        <span class="w-2 h-2 bg-purple-400 rounded-full mr-2"></span>
+                        パフォーマンス追跡
+                    </div>
+                </div>
+            </div>
+
+            <!-- セクター分析 -->
+            <div class="template-card bg-gray-800 border-2 border-gray-700 rounded-lg p-6 animate-in" 
+                 onclick="selectTemplate('sector_analysis', this)"
+                 data-template="sector_analysis"
+                 style="animation-delay: 0.3s">
+                <div class="template-icon w-16 h-16 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                    <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 3.055A9.001 9.001 0 1020.945 13H11V3.055z"></path>
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20.488 9H15V3.512A9.025 9.025 0 0120.488 9z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold text-white text-center mb-3">セクター分析</h3>
+                <p class="text-gray-300 text-center mb-4 text-sm">業界・セクター別の詳細分析</p>
+                <div class="text-xs text-gray-400 space-y-1">
+                    <div class="flex items-center">
+                        <span class="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
+                        業界研究
+                    </div>
+                    <div class="flex items-center">
+                        <span class="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
+                        競合比較
+                    </div>
+                    <div class="flex items-center">
+                        <span class="w-2 h-2 bg-orange-400 rounded-full mr-2"></span>
+                        トレンド分析
+                    </div>
+                </div>
+            </div>
+
+            <!-- イベント追跡 -->
+            <div class="template-card bg-gray-800 border-2 border-gray-700 rounded-lg p-6 animate-in" 
+                 onclick="selectTemplate('event_tracking', this)"
+                 data-template="event_tracking"
+                 style="animation-delay: 0.4s">
+                <div class="template-icon w-16 h-16 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                    <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold text-white text-center mb-3">イベント追跡</h3>
+                <p class="text-gray-300 text-center mb-4 text-sm">決算・IR等イベントの追跡</p>
+                <div class="text-xs text-gray-400 space-y-1">
+                    <div class="flex items-center">
+                        <span class="w-2 h-2 bg-yellow-400 rounded-full mr-2"></span>
+                        決算スケジュール
+                    </div>
+                    <div class="flex items-center">
+                        <span class="w-2 h-2 bg-yellow-400 rounded-full mr-2"></span>
+                        IRイベント管理
+                    </div>
+                    <div class="flex items-center">
+                        <span class="w-2 h-2 bg-yellow-400 rounded-full mr-2"></span>
+                        タイミング分析
+                    </div>
+                </div>
+            </div>
+
+            <!-- リサーチプロジェクト -->
+            <div class="template-card bg-gray-800 border-2 border-gray-700 rounded-lg p-6 animate-in" 
+                 onclick="selectTemplate('research_project', this)"
+                 data-template="research_project"
+                 style="animation-delay: 0.5s">
+                <div class="template-icon w-16 h-16 rounded-lg flex items-center justify-center mb-4 mx-auto">
+                    <svg class="h-8 w-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                    </svg>
+                </div>
+                <h3 class="text-xl font-semibold text-white text-center mb-3">リサーチ</h3>
+                <p class="text-gray-300 text-center mb-4 text-sm">詳細調査・研究プロジェクト</p>
+                <div class="text-xs text-gray-400 space-y-1">
+                    <div class="flex items-center">
+                        <span class="w-2 h-2 bg-red-400 rounded-full mr-2"></span>
+                        深堀り分析
+                    </div>
+                    <div class="flex items-center">
+                        <span class="w-2 h-2 bg-red-400 rounded-full mr-2"></span>
+                        データ収集
+                    </div>
+                    <div class="flex items-center">
+                        <span class="w-2 h-2 bg-red-400 rounded-full mr-2"></span>
+                        投資判断サポート
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Quick Title Input -->
+        <div id="quick-title-section" class="hidden fade-in">
+            <div class="bg-gray-800 border border-gray-700 rounded-lg p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">仮タイトル設定（任意）</h3>
+                <input type="text" 
+                       name="quick_title" 
+                       placeholder="例: 2025年注目決算、米国グロース株ウォッチ"
+                       class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-4 py-3 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                <p class="text-sm text-gray-400 mt-2">後で変更できるので、とりあえずの名前で大丈夫です</p>
+            </div>
+        </div>
+
+        <!-- Hidden Fields -->
+        <input type="hidden" name="template_type" id="selected-template">
+
+        <!-- Action Buttons -->
+        <div class="flex justify-between items-center pt-6 border-t border-gray-700">
+            <a href="{% url 'notes:list' %}" 
+               class="px-6 py-3 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors">
+                キャンセル
+            </a>
+            
+            <button type="submit" 
+                    id="continue-btn"
+                    disabled
+                    class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center">
+                <span class="mr-2">次へ進む</span>
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                </svg>
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Template Info Modal -->
+<div id="template-info-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-2xl max-h-[80vh] overflow-hidden">
+        <div class="flex items-center justify-between p-6 border-b border-gray-700">
+            <h3 class="text-xl font-semibold text-white" id="modal-title">テンプレート詳細</h3>
+            <button onclick="closeInfoModal()" class="text-gray-400 hover:text-white">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        <div id="modal-content" class="p-6 overflow-y-auto max-h-[60vh]">
+            <!-- 動的コンテンツ -->
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+let selectedTemplate = null;
+
+function selectTemplate(templateType, cardElement) {
+    selectedTemplate = templateType;
+    
+    // すべてのカードを未選択状態にリセット
+    document.querySelectorAll('.template-card').forEach(card => {
+        card.classList.remove('selected');
+    });
+    
+    // 選択されたカードをハイライト
+    cardElement.classList.add('selected');
+    
+    // hidden inputに値を設定
+    document.getElementById('selected-template').value = templateType;
+    
+    // 次へボタンを有効化
+    document.getElementById('continue-btn').disabled = false;
+    
+    // クイックタイトル入力を表示
+    const quickTitleSection = document.getElementById('quick-title-section');
+    quickTitleSection.classList.remove('hidden');
+    
+    // アニメーション効果
+    setTimeout(() => {
+        quickTitleSection.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }, 100);
+    
+    console.log('選択されたテンプレート:', templateType);
+}
+
+// カード右クリックで詳細表示
+document.querySelectorAll('.template-card').forEach(card => {
+    card.addEventListener('contextmenu', function(e) {
+        e.preventDefault();
+        const template = this.getAttribute('data-template');
+        showTemplateInfo(template);
+    });
+    
+    // ダブルクリックでも詳細表示
+    card.addEventListener('dblclick', function() {
+        const template = this.getAttribute('data-template');
+        showTemplateInfo(template);
+    });
+});
+
+function showTemplateInfo(templateType) {
+    const templateInfo = {
+        'theme_multi': {
+            title: 'テーマ型ノート',
+            description: '複数銘柄をテーマ別にまとめて分析するノートです。',
+            features: [
+                '複数銘柄の統合管理',
+                'テーマ別カテゴリ分け（日本株・米国株・新興国株）',
+                '銘柄間の比較分析',
+                'ポートフォリオ全体の戦略策定'
+            ],
+            suitable: ['分散投資', 'テーマ投資', '比較分析', '戦略策定']
+        },
+        'watchlist': {
+            title: 'ウォッチリスト',
+            description: '投資候補銘柄の監視と分析記録用ノートです。',
+            features: [
+                '優先度別銘柄管理',
+                '価格アラート連携',
+                '投資タイミングの記録',
+                '市場動向の追跡'
+            ],
+            suitable: ['投資機会の発見', '市場監視', 'タイミング投資']
+        }
+        // 他のテンプレートも同様に定義
+    };
+    
+    const info = templateInfo[templateType];
+    if (info) {
+        document.getElementById('modal-title').textContent = info.title;
+        document.getElementById('modal-content').innerHTML = `
+            <div class="space-y-4">
+                <p class="text-gray-300">${info.description}</p>
+                
+                <div>
+                    <h4 class="font-semibold text-white mb-2">主な機能</h4>
+                    <ul class="space-y-1">
+                        ${info.features.map(feature => `
+                            <li class="flex items-center text-gray-300">
+                                <span class="w-2 h-2 bg-blue-400 rounded-full mr-3"></span>
+                                ${feature}
+                            </li>
+                        `).join('')}
+                    </ul>
+                </div>
+                
+                <div>
+                    <h4 class="font-semibold text-white mb-2">適用場面</h4>
+                    <div class="flex flex-wrap gap-2">
+                        ${info.suitable.map(use => `
+                            <span class="px-3 py-1 text-xs bg-blue-900 text-blue-300 rounded-full">${use}</span>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+        document.getElementById('template-info-modal').classList.remove('hidden');
+    }
+}
+
+function closeInfoModal() {
+    document.getElementById('template-info-modal').classList.add('hidden');
+}
+
+// ESCキーでモーダルを閉じる
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        closeInfoModal();
+    }
+});
+
+// フォーム送信時のバリデーション
+document.getElementById('template-form').addEventListener('submit', function(e) {
+    if (!selectedTemplate) {
+        e.preventDefault();
+        alert('テンプレートを選択してください。');
+        return;
+    }
+    
+    // 送信ボタンを無効化（重複送信防止）
+    const submitBtn = document.getElementById('continue-btn');
+    submitBtn.disabled = true;
+    submitBtn.innerHTML = '<span class="mr-2">処理中...</span><svg class="animate-spin h-5 w-5" fill="none" viewBox="0 0 24 24"><circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle><path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>';
+});
+</script>
+{% endblock %}

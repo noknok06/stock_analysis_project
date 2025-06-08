@@ -1,5 +1,5 @@
 # ========================================
-# apps/notes/views.py
+# apps/notes/views.py - 新しいノート構成対応ビュー
 # ========================================
 
 import json
@@ -10,28 +10,41 @@ from django.views.generic import ListView, DetailView, CreateView, UpdateView
 from django.contrib import messages
 from django.urls import reverse_lazy
 from django.http import JsonResponse
-from django.db.models import Q
+from django.db.models import Q, Count, Prefetch
 from django.core.paginator import Paginator
 from django.template.loader import render_to_string
-from apps.notes.models import Notebook, Entry
-from apps.notes.forms import NotebookForm, EntryForm, SearchForm
+from django.utils import timezone
+
+from apps.notes.models import Notebook, SubNotebook, Entry, EntryRelation
+from apps.notes.forms import (
+    NotebookTemplateChoiceForm, NotebookForm, SubNotebookForm, 
+    EntryForm, QuickEntryForm, SearchForm
+)
 from apps.common.mixins import UserOwnerMixin, SearchMixin
-from apps.notes.services import NotebookService
 from apps.common.utils import ContentHelper, TagHelper
 
 
+# ========================================
+# ノートブック関連ビュー
+# ========================================
+
 class NotebookListView(UserOwnerMixin, SearchMixin, ListView):
-    """ノート一覧ビュー"""
+    """ノートブック一覧ビュー（新構造）"""
     model = Notebook
-    template_name = 'notes/index.html'
+    template_name = 'notes/notebook_list.html'
     context_object_name = 'notebooks'
     paginate_by = 12
-    search_fields = ['title', 'subtitle', 'company_name', 'investment_reason']
+    search_fields = ['title', 'subtitle', 'description']
     
     def get_queryset(self):
-        """検索とフィルタリングを適用したクエリセット"""
+        """検索とフィルタリングを適用"""
         queryset = super().get_queryset()
         queryset = self.apply_search(queryset)
+        
+        # ノートタイプフィルター
+        notebook_type = self.request.GET.get('notebook_type')
+        if notebook_type:
+            queryset = queryset.filter(notebook_type=notebook_type)
         
         # ステータスフィルター
         status = self.request.GET.get('status')
@@ -43,491 +56,407 @@ class NotebookListView(UserOwnerMixin, SearchMixin, ListView):
         if tag_ids:
             queryset = queryset.filter(tags__in=tag_ids).distinct()
         
-        return queryset.select_related().prefetch_related('tags')
+        return queryset.prefetch_related('tags', 'sub_notebooks').annotate(
+            recent_entries_count=Count('entries', filter=Q(entries__created_at__gte=timezone.now().date()))
+        )
     
     def get_context_data(self, **kwargs):
-        """コンテキストデータを追加"""
         context = super().get_context_data(**kwargs)
         context['search_form'] = SearchForm(self.request.GET)
         context['search_query'] = self.get_search_query()
+        
+        # 統計情報
+        context['stats'] = {
+            'total_notebooks': self.get_queryset().count(),
+            'active_notebooks': self.get_queryset().filter(status='ACTIVE').count(),
+            'total_entries': Entry.objects.filter(notebook__user=self.request.user).count(),
+        }
+        
         return context
 
 
 class NotebookDetailView(UserOwnerMixin, DetailView):
-    """ノート詳細ビュー"""
+    """ノートブック詳細ビュー（新構造）"""
     model = Notebook
-    template_name = 'notes/detail.html'
+    template_name = 'notes/notebook_detail.html'
     context_object_name = 'notebook'
     
+    def get_queryset(self):
+        return super().get_queryset().prefetch_related(
+            'tags',
+            Prefetch('sub_notebooks', queryset=SubNotebook.objects.order_by('order_index')),
+            Prefetch('entries', queryset=Entry.objects.order_by('-created_at'))
+        )
+    
     def get_context_data(self, **kwargs):
-        """エントリー一覧をページネーション付きで追加"""
         context = super().get_context_data(**kwargs)
         
-        # エントリー一覧をページネーションで取得
+        # エントリー一覧（ページネーション）
         entries_list = self.object.entries.order_by('-created_at')
-        paginator = Paginator(entries_list, 5)  # 1ページ5エントリー
         
+        # エントリータイプフィルター
+        entry_type = self.request.GET.get('entry_type')
+        if entry_type:
+            entries_list = entries_list.filter(entry_type=entry_type)
+        
+        # サブノートフィルター
+        sub_notebook_id = self.request.GET.get('sub_notebook')
+        if sub_notebook_id:
+            entries_list = entries_list.filter(sub_notebook_id=sub_notebook_id)
+        
+        # ブックマークフィルター
+        if self.request.GET.get('bookmarked'):
+            entries_list = entries_list.filter(is_bookmarked=True)
+        
+        paginator = Paginator(entries_list, 10)
         page_number = self.request.GET.get('page')
         entries = paginator.get_page(page_number)
         
         context['entries'] = entries
         context['is_paginated'] = entries.has_other_pages()
         context['page_obj'] = entries
+        
+        # 銘柄一覧
+        context['stock_list'] = self.object.get_stock_list()
+        
+        # サブノート一覧
+        context['sub_notebooks'] = self.object.sub_notebooks.all()
+        
+        # フィルター情報
+        context['current_filters'] = {
+            'entry_type': entry_type,
+            'sub_notebook': sub_notebook_id,
+            'bookmarked': self.request.GET.get('bookmarked')
+        }
+        
         return context
+
+
+@login_required
+def notebook_template_selection_view(request):
+    """ノート作成テンプレート選択ビュー"""
+    if request.method == 'POST':
+        form = NotebookTemplateChoiceForm(request.POST)
+        if form.is_valid():
+            template_type = form.cleaned_data['template_type']
+            quick_title = form.cleaned_data.get('quick_title', '')
+            
+            # テンプレートに応じた初期データを準備
+            initial_data = get_template_initial_data(template_type, quick_title)
+            
+            # ノート作成ページにリダイレクト
+            return redirect('notes:create_with_template', template_type=template_type)
+    else:
+        form = NotebookTemplateChoiceForm()
+    
+    return render(request, 'notes/template_selection.html', {'form': form})
 
 
 class NotebookCreateView(LoginRequiredMixin, CreateView):
-    """ノート作成ビュー"""
+    """ノートブック作成ビュー（新構造）"""
     model = Notebook
     form_class = NotebookForm
-    template_name = 'notes/create.html'
-    success_url = reverse_lazy('notes:list')
+    template_name = 'notes/notebook_create.html'
     
-    def form_valid(self, form):
-        """フォーム有効時の処理"""
-        try:
-            form.instance.user = self.request.user
-            response = super().form_valid(form)
-            messages.success(self.request, f'ノート「{self.object.title}」を作成しました。')
-            
-            # 成功時はノート詳細ページにリダイレクト
-            return redirect('notes:detail', pk=self.object.pk)
-        except Exception as e:
-            messages.error(self.request, f'ノートの作成に失敗しました: {str(e)}')
-            return self.form_invalid(form)
-    
-    def form_invalid(self, form):
-        """フォーム無効時の処理"""
-        for field, errors in form.errors.items():
-            for error in errors:
-                messages.error(self.request, f'{form[field].label}: {error}')
-        return super().form_invalid(form)
-
-class NotebookUpdateView(UserOwnerMixin, UpdateView):
-    """ノート編集ビュー"""
-    model = Notebook
-    form_class = NotebookForm
-    template_name = 'notes/edit.html'
-    
-    def get_success_url(self):
-        return reverse_lazy('notes:detail', kwargs={'pk': self.object.pk})
+    def get_initial(self):
+        initial = super().get_initial()
+        template_type = self.kwargs.get('template_type')
+        
+        if template_type:
+            initial.update(get_template_initial_data(template_type))
+        
+        return initial
     
     def get_context_data(self, **kwargs):
-        """編集用の追加コンテキスト"""
         context = super().get_context_data(**kwargs)
-        # 既存タグをJavaScript用に準備
-        existing_tags = [
-            {'id': tag.pk, 'name': tag.name, 'category': tag.category}
-            for tag in self.object.tags.all()
-        ]
-        context['existing_tags_json'] = json.dumps(existing_tags)
+        context['template_type'] = self.kwargs.get('template_type')
         return context
     
     def form_valid(self, form):
-        """フォーム有効時の処理"""
-        try:
-            response = super().form_valid(form)
-            messages.success(self.request, f'ノート「{self.object.title}」を更新しました。')
-            return response
-        except Exception as e:
-            messages.error(self.request, f'ノートの更新に失敗しました: {str(e)}')
-            return self.form_invalid(form)
+        form.instance.user = self.request.user
+        response = super().form_valid(form)
+        
+        # テンプレートに応じた初期サブノートを作成
+        template_type = self.kwargs.get('template_type')
+        if template_type:
+            create_initial_sub_notebooks(self.object, template_type)
+        
+        messages.success(self.request, f'ノート「{self.object.title}」を作成しました。')
+        return redirect('notes:detail', pk=self.object.pk)
+
+
+class NotebookUpdateView(UserOwnerMixin, UpdateView):
+    """ノートブック編集ビュー"""
+    model = Notebook
+    form_class = NotebookForm
+    template_name = 'notes/notebook_edit.html'
     
-    def form_invalid(self, form):
-        """フォーム無効時の処理"""
-        for field, errors in form.errors.items():
-            for error in errors:
-                messages.error(self.request, f'{form[field].label}: {error}')
-        return super().form_invalid(form)
+    def get_success_url(self):
+        return reverse_lazy('notes:detail', kwargs={'pk': self.object.pk})
 
 
 # ========================================
 # エントリー関連ビュー
 # ========================================
 
+class EntryListView(LoginRequiredMixin, ListView):
+    """全エントリー一覧ビュー（横断検索）"""
+    model = Entry
+    template_name = 'notes/entry_list.html'
+    context_object_name = 'entries'
+    paginate_by = 20
+    
+    def get_queryset(self):
+        queryset = Entry.objects.filter(notebook__user=self.request.user)
+        
+        # 検索
+        q = self.request.GET.get('q')
+        if q:
+            queryset = queryset.filter(
+                Q(title__icontains=q) |
+                Q(summary__icontains=q) |
+                Q(stock_code__icontains=q) |
+                Q(company_name__icontains=q) |
+                Q(tags__name__icontains=q)
+            ).distinct()
+        
+        # フィルター
+        search_form = SearchForm(self.request.GET)
+        if search_form.is_valid():
+            if search_form.cleaned_data.get('entry_type'):
+                queryset = queryset.filter(entry_type=search_form.cleaned_data['entry_type'])
+            
+            if search_form.cleaned_data.get('stock_code'):
+                queryset = queryset.filter(stock_code=search_form.cleaned_data['stock_code'])
+            
+            if search_form.cleaned_data.get('date_from'):
+                queryset = queryset.filter(created_at__gte=search_form.cleaned_data['date_from'])
+            
+            if search_form.cleaned_data.get('date_to'):
+                queryset = queryset.filter(created_at__lte=search_form.cleaned_data['date_to'])
+            
+            if search_form.cleaned_data.get('bookmarked_only'):
+                queryset = queryset.filter(is_bookmarked=True)
+        
+        return queryset.select_related('notebook', 'sub_notebook').prefetch_related('tags').order_by('-created_at')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        context['search_form'] = SearchForm(self.request.GET)
+        context['search_query'] = self.request.GET.get('q', '')
+        return context
+
+
+class EntryDetailView(LoginRequiredMixin, DetailView):
+    """エントリー詳細ビュー"""
+    model = Entry
+    template_name = 'notes/entry_detail.html'
+    context_object_name = 'entry'
+    
+    def get_queryset(self):
+        return Entry.objects.filter(notebook__user=self.request.user).select_related(
+            'notebook', 'sub_notebook'
+        ).prefetch_related('tags')
+    
+    def get_context_data(self, **kwargs):
+        context = super().get_context_data(**kwargs)
+        
+        # 関連エントリー
+        context['related_entries'] = Entry.objects.filter(
+            Q(stock_code=self.object.stock_code, stock_code__isnull=False) |
+            Q(tags__in=self.object.tags.all())
+        ).exclude(pk=self.object.pk).distinct()[:5]
+        
+        # 同じノート内の他エントリー
+        context['notebook_entries'] = self.object.notebook.entries.exclude(
+            pk=self.object.pk
+        ).order_by('-created_at')[:5]
+        
+        return context
+
+
 @login_required
 def entry_create_view(request, notebook_pk):
-    """エントリー作成ビュー"""
+    """エントリー作成ビュー（新構造）"""
+    notebook = get_object_or_404(Notebook, pk=notebook_pk, user=request.user)
+    
+    if request.method == 'POST':
+        form = EntryForm(request.POST, notebook=notebook)
+        if form.is_valid():
+            entry = form.save(commit=False)
+            entry.notebook = notebook
+            entry.save()
+            form.save_m2m()
+            
+            messages.success(request, f'エントリー「{entry.title}」を作成しました。')
+            return redirect('notes:detail', pk=notebook.pk)
+    else:
+        form = EntryForm(notebook=notebook)
+    
+    return render(request, 'notes/entry_create.html', {
+        'form': form,
+        'notebook': notebook
+    })
+
+
+@login_required
+def entry_quick_create_view(request, notebook_pk):
+    """クイックエントリー作成（Ajax対応）"""
     notebook = get_object_or_404(Notebook, pk=notebook_pk, user=request.user)
     
     if request.method == 'POST':
         try:
             # フォームデータを処理
-            entry_type = request.POST.get('entry_type')
             title = request.POST.get('title')
+            entry_type = request.POST.get('entry_type', 'MEMO')
             content_json = request.POST.get('content', '{}')
-            
-            if not entry_type or not title:
-                messages.error(request, 'エントリータイプとタイトルは必須です。')
-                return redirect('notes:detail', pk=notebook_pk)
-            
-            # コンテンツをパースして整形
-            try:
-                content_data = json.loads(content_json)
-            except json.JSONDecodeError:
-                content_data = {}
-            
-            # エントリータイプに応じてコンテンツを整形
-            formatted_content = ContentHelper.format_json_content(content_data, entry_type)
+            stock_code = request.POST.get('stock_code', '')
             
             # エントリーを作成
             entry = Entry.objects.create(
                 notebook=notebook,
-                entry_type=entry_type,
                 title=title,
-                content=formatted_content
+                entry_type=entry_type,
+                stock_code=stock_code,
+                content=json.loads(content_json) if content_json else {},
+                summary=request.POST.get('summary', '')
             )
             
-            # タグの自動推奨
-            suggested_tags = TagHelper.suggest_tags(
-                json.dumps(formatted_content), 
-                notebook.tags.all()
-            )
-            
-            messages.success(request, f'エントリー「{title}」を作成しました。')
-            
-            # 成功時は作成したエントリーが見えるページにリダイレクト
-            return redirect('notes:detail', pk=notebook_pk)
+            return JsonResponse({
+                'success': True,
+                'entry_id': str(entry.id),
+                'message': 'エントリーを作成しました'
+            })
             
         except Exception as e:
-            messages.error(request, f'エントリーの作成に失敗しました: {str(e)}')
-            return redirect('notes:detail', pk=notebook_pk)
+            return JsonResponse({
+                'success': False,
+                'error': str(e)
+            }, status=500)
     
-    return redirect('notes:detail', pk=notebook_pk)
+    return JsonResponse({'success': False, 'error': '無効なリクエスト'}, status=400)
 
 
-@login_required
-def entry_detail_ajax(request, entry_pk):
-    """エントリー詳細をAjaxで返すビュー"""
-    try:
-        entry = get_object_or_404(Entry, pk=entry_pk, notebook__user=request.user)
-        
-        # エントリータイプに応じてHTMLを生成
-        html_content = render_entry_content_html(entry)
-        
-        return JsonResponse({
-            'success': True,
-            'title': entry.title,
-            'entry_type': entry.get_entry_type_display(),
-            'created_at': entry.created_at.strftime('%Y/%m/%d %H:%M'),
-            'html': html_content
-        })
-        
-    except Entry.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'error': 'エントリーが見つかりません'
-        }, status=404)
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': f'エラーが発生しました: {str(e)}'
-        }, status=500)
-
+# ========================================
+# サブノート関連ビュー
+# ========================================
 
 @login_required
-def entry_update_view(request, entry_pk):
-    """エントリー更新ビュー"""
-    entry = get_object_or_404(Entry, pk=entry_pk, notebook__user=request.user)
+def sub_notebook_create_view(request, notebook_pk):
+    """サブノート作成ビュー"""
+    notebook = get_object_or_404(Notebook, pk=notebook_pk, user=request.user)
     
     if request.method == 'POST':
-        try:
-            # 更新処理
-            entry.title = request.POST.get('title', entry.title)
-            content_json = request.POST.get('content', '{}')
+        form = SubNotebookForm(request.POST)
+        if form.is_valid():
+            sub_notebook = form.save(commit=False)
+            sub_notebook.notebook = notebook
+            sub_notebook.save()
             
-            try:
-                content_data = json.loads(content_json)
-                entry.content = ContentHelper.format_json_content(content_data, entry.entry_type)
-                entry.save()
-                
-                messages.success(request, f'エントリー「{entry.title}」を更新しました。')
-                
-            except json.JSONDecodeError:
-                messages.error(request, '無効なデータ形式です。')
-                
-        except Exception as e:
-            messages.error(request, f'エントリーの更新に失敗しました: {str(e)}')
+            messages.success(request, f'サブノート「{sub_notebook.title}」を作成しました。')
+            return redirect('notes:detail', pk=notebook.pk)
+    else:
+        form = SubNotebookForm()
     
-    return redirect('notes:detail', pk=entry.notebook.pk)
+    return render(request, 'notes/sub_notebook_create.html', {
+        'form': form,
+        'notebook': notebook
+    })
 
 
 @login_required
-def entry_delete_view(request, entry_pk):
-    """エントリー削除ビュー"""
-    entry = get_object_or_404(Entry, pk=entry_pk, notebook__user=request.user)
-    notebook_pk = entry.notebook.pk
+def sub_notebook_entries_view(request, notebook_pk, sub_notebook_pk):
+    """サブノート内エントリー一覧ビュー"""
+    notebook = get_object_or_404(Notebook, pk=notebook_pk, user=request.user)
+    sub_notebook = get_object_or_404(SubNotebook, pk=sub_notebook_pk, notebook=notebook)
     
-    if request.method == 'POST':
-        try:
-            entry_title = entry.title
-            entry.delete()
-            
-            # ノートブックのエントリー数を更新
-            entry.notebook.entry_count = entry.notebook.entries.count()
-            entry.notebook.save(update_fields=['entry_count'])
-            
-            messages.success(request, f'エントリー「{entry_title}」を削除しました。')
-            
-        except Exception as e:
-            messages.error(request, f'エントリーの削除に失敗しました: {str(e)}')
+    entries = sub_notebook.entries.order_by('-created_at')
     
-    return redirect('notes:detail', pk=notebook_pk)
+    paginator = Paginator(entries, 10)
+    page_number = request.GET.get('page')
+    page_obj = paginator.get_page(page_number)
+    
+    return render(request, 'notes/sub_notebook_entries.html', {
+        'notebook': notebook,
+        'sub_notebook': sub_notebook,
+        'entries': page_obj,
+        'is_paginated': page_obj.has_other_pages(),
+        'page_obj': page_obj
+    })
 
 
 # ========================================
 # ヘルパー関数
 # ========================================
 
-def render_entry_content_html(entry):
-    """エントリータイプに応じたHTMLコンテンツを生成"""
-    content = entry.content
-    entry_type = entry.entry_type
+def get_template_initial_data(template_type, quick_title=''):
+    """テンプレートタイプに応じた初期データを取得"""
+    template_data = {
+        'theme_multi': {
+            'notebook_type': 'THEME',
+            'title': quick_title or '投資テーマ分析',
+            'subtitle': '複数銘柄のテーマ別分析',
+            'objectives': ['テーマ投資', '分散投資'],
+            'key_themes': ['成長性', '持続可能性']
+        },
+        'watchlist': {
+            'notebook_type': 'WATCHLIST',
+            'title': quick_title or 'ウォッチリスト',
+            'subtitle': '注目銘柄の監視',
+            'objectives': ['市場監視', '投資機会発見'],
+        },
+        'portfolio': {
+            'notebook_type': 'PORTFOLIO',
+            'title': quick_title or 'ポートフォリオ管理',
+            'subtitle': '保有銘柄の管理・分析',
+            'objectives': ['資産管理', 'リスク分析'],
+        },
+        'sector_analysis': {
+            'notebook_type': 'SECTOR',
+            'title': quick_title or 'セクター分析',
+            'subtitle': '業界・セクター別分析',
+            'objectives': ['業界研究', '競合比較'],
+        },
+        'event_tracking': {
+            'notebook_type': 'EVENT',
+            'title': quick_title or 'イベント追跡',
+            'subtitle': '決算・IR等イベント追跡',
+            'objectives': ['イベント分析', 'タイミング投資'],
+        },
+        'research_project': {
+            'notebook_type': 'RESEARCH',
+            'title': quick_title or 'リサーチプロジェクト',
+            'subtitle': '詳細調査・研究',
+            'objectives': ['深堀り分析', '投資判断'],
+        }
+    }
     
-    if entry_type == 'ANALYSIS':
-        return render_analysis_content(content)
-    elif entry_type == 'NEWS':
-        return render_news_content(content)
-    elif entry_type == 'CALCULATION':
-        return render_calculation_content(content)
-    elif entry_type == 'MEMO':
-        return render_memo_content(content)
-    elif entry_type == 'GOAL':
-        return render_goal_content(content)
-    else:
-        return f'<p class="text-gray-300">コンテンツが見つかりません。</p>'
+    return template_data.get(template_type, {})
 
 
-def render_analysis_content(content):
-    """決算分析コンテンツのHTML生成"""
-    html = '<div class="space-y-6">'
+def create_initial_sub_notebooks(notebook, template_type):
+    """テンプレートに応じた初期サブノートを作成"""
+    sub_notebook_templates = {
+        'theme_multi': [
+            {'title': '日本株', 'description': '国内銘柄の分析', 'order_index': 1},
+            {'title': '米国株', 'description': '米国銘柄の分析', 'order_index': 2},
+            {'title': '新興国株', 'description': '新興国銘柄の分析', 'order_index': 3},
+        ],
+        'watchlist': [
+            {'title': '高優先', 'description': '最優先監視銘柄', 'order_index': 1},
+            {'title': '中優先', 'description': '中程度監視銘柄', 'order_index': 2},
+            {'title': '低優先', 'description': '参考程度', 'order_index': 3},
+        ],
+        'sector_analysis': [
+            {'title': '業界概要', 'description': '業界全体の分析', 'order_index': 1},
+            {'title': '主要企業', 'description': 'リーディング企業', 'order_index': 2},
+            {'title': '新興企業', 'description': '成長企業・スタートアップ', 'order_index': 3},
+        ],
+    }
     
-    # サマリー
-    if content.get('summary'):
-        html += f'''
-        <div class="bg-gray-700 p-4 rounded-lg">
-            <h4 class="font-semibold text-white mb-2">サマリー</h4>
-            <p class="text-gray-300">{content["summary"]}</p>
-        </div>
-        '''
-    
-    # 主要指標
-    key_metrics = content.get('key_metrics', {})
-    if any(key_metrics.values()):
-        html += '<div class="grid grid-cols-2 md:grid-cols-4 gap-4">'
-        for key, value in key_metrics.items():
-            if value:
-                display_key = {
-                    'revenue': '売上高',
-                    'operating_profit': '営業利益', 
-                    'net_income': '純利益',
-                    'eps': 'EPS'
-                }.get(key, key)
-                html += f'''
-                <div class="bg-gray-700 p-3 rounded-lg text-center">
-                    <p class="text-sm text-gray-400">{display_key}</p>
-                    <p class="text-lg font-bold text-white">{value}</p>
-                </div>
-                '''
-        html += '</div>'
-    
-    # 分析
-    if content.get('analysis'):
-        html += f'''
-        <div>
-            <h4 class="font-semibold text-white mb-2">分析</h4>
-            <p class="text-gray-300">{content["analysis"]}</p>
-        </div>
-        '''
-    
-    # 今後の見通し
-    if content.get('outlook'):
-        html += f'''
-        <div>
-            <h4 class="font-semibold text-white mb-2">今後の見通し</h4>
-            <p class="text-gray-300">{content["outlook"]}</p>
-        </div>
-        '''
-    
-    html += '</div>'
-    return html
-
-
-def render_news_content(content):
-    """ニュースコンテンツのHTML生成"""
-    html = '<div class="space-y-4">'
-    
-    # ヘッドライン
-    if content.get('headline'):
-        html += f'''
-        <div class="bg-gray-700 p-4 rounded-lg">
-            <h4 class="font-semibold text-white mb-2">{content["headline"]}</h4>
-            {f'<p class="text-gray-300">{content["content"]}</p>' if content.get("content") else ""}
-        </div>
-        '''
-    
-    # 事業への影響
-    if content.get('impact'):
-        html += f'''
-        <div>
-            <h4 class="font-semibold text-white mb-2">事業への影響</h4>
-            <p class="text-gray-300">{content["impact"]}</p>
-        </div>
-        '''
-    
-    # 株価への影響
-    if content.get('stock_impact'):
-        html += f'''
-        <div>
-            <h4 class="font-semibold text-white mb-2">株価への影響</h4>
-            <p class="text-gray-300">{content["stock_impact"]}</p>
-        </div>
-        '''
-    
-    html += '</div>'
-    return html
-
-
-def render_calculation_content(content):
-    """計算結果コンテンツのHTML生成"""
-    html = '<div class="space-y-6">'
-    
-    # 現在株価
-    if content.get('current_price'):
-        html += f'''
-        <div class="text-center bg-gray-700 p-4 rounded-lg">
-            <h4 class="font-semibold text-white mb-2">現在株価</h4>
-            <p class="text-3xl font-bold text-blue-400">{content["current_price"]}</p>
-        </div>
-        '''
-    
-    # 計算結果
-    calculations = content.get('calculations', {})
-    if any(calculations.values()):
-        html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">'
-        for key, value in calculations.items():
-            if value:
-                display_key = {
-                    'per': 'PER',
-                    'pbr': 'PBR',
-                    'dividend_yield': '配当利回り',
-                    'roe': 'ROE',
-                    'roa': 'ROA'
-                }.get(key, key.upper())
-                html += f'''
-                <div class="bg-gray-700 p-3 rounded-lg">
-                    <p class="text-sm text-gray-400">{display_key}</p>
-                    <p class="text-lg font-semibold text-white">{value}</p>
-                </div>
-                '''
-        html += '</div>'
-    
-    # 適正価格
-    if content.get('fair_value'):
-        html += f'''
-        <div class="space-y-2">
-            <h4 class="font-semibold text-white">適正価格</h4>
-            <p class="text-xl font-bold text-green-400">{content["fair_value"]}</p>
-        </div>
-        '''
-    
-    # 推奨
-    if content.get('recommendation'):
-        html += f'''
-        <div class="bg-blue-900/30 p-4 rounded-lg border border-blue-700">
-            <h4 class="font-semibold text-white mb-2">推奨</h4>
-            <p class="text-gray-300">{content["recommendation"]}</p>
-        </div>
-        '''
-    
-    html += '</div>'
-    return html
-
-
-def render_memo_content(content):
-    """メモコンテンツのHTML生成"""
-    html = '<div class="space-y-4">'
-    
-    # 観察事項
-    if content.get('observation'):
-        html += f'''
-        <div>
-            <h4 class="font-semibold text-white mb-2">観察事項</h4>
-            <p class="text-gray-300">{content["observation"]}</p>
-        </div>
-        '''
-    
-    # 市場トレンド
-    if content.get('market_trend'):
-        html += f'''
-        <div>
-            <h4 class="font-semibold text-white mb-2">市場トレンド</h4>
-            <p class="text-gray-300">{content["market_trend"]}</p>
-        </div>
-        '''
-    
-    # 個人的メモ
-    if content.get('personal_note'):
-        html += f'''
-        <div>
-            <h4 class="font-semibold text-white mb-2">個人的メモ</h4>
-            <p class="text-gray-300">{content["personal_note"]}</p>
-        </div>
-        '''
-    
-    # 次のアクション
-    if content.get('next_action'):
-        html += f'''
-        <div class="bg-yellow-900/30 p-4 rounded-lg border border-yellow-700">
-            <h4 class="font-semibold text-white mb-2">次のアクション</h4>
-            <p class="text-gray-300">{content["next_action"]}</p>
-        </div>
-        '''
-    
-    html += '</div>'
-    return html
-
-
-def render_goal_content(content):
-    """投資目標コンテンツのHTML生成"""
-    html = '<div class="space-y-6">'
-    
-    # 目標情報
-    if content.get('target_price') or content.get('sell_timing'):
-        html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">'
-        if content.get('target_price'):
-            html += f'''
-            <div class="space-y-2">
-                <h4 class="font-semibold text-white">目標株価</h4>
-                <p class="text-2xl font-bold text-green-400">{content["target_price"]}</p>
-            </div>
-            '''
-        if content.get('sell_timing'):
-            html += f'''
-            <div class="space-y-2">
-                <h4 class="font-semibold text-white">売却タイミング</h4>
-                <p class="text-gray-300">{content["sell_timing"]}</p>
-            </div>
-            '''
-        html += '</div>'
-    
-    # 投資理由
-    if content.get('investment_reason'):
-        html += f'''
-        <div class="space-y-2">
-            <h4 class="font-semibold text-white">投資理由</h4>
-            <p class="text-gray-300">{content["investment_reason"]}</p>
-        </div>
-        '''
-    
-    # 期待される効果
-    if content.get('expected_effect'):
-        html += f'''
-        <div class="bg-purple-900/30 p-4 rounded-lg border border-purple-700">
-            <h4 class="font-semibold text-white mb-2">期待される効果</h4>
-            <p class="text-gray-300">{content["expected_effect"]}</p>
-        </div>
-        '''
-    
-    html += '</div>'
-    return html
+    templates = sub_notebook_templates.get(template_type, [])
+    for template in templates:
+        SubNotebook.objects.create(
+            notebook=notebook,
+            **template
+        )

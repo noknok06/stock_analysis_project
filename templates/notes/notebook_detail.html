@@ -1,0 +1,590 @@
+<!-- ========================================
+templates/notes/notebook_detail.html - 新しいノートブック詳細画面
+======================================== -->
+
+{% extends 'base.html' %}
+
+{% block title %}{{ notebook.title }} - ノートブック詳細{% endblock %}
+
+{% block extra_css %}
+<style>
+    .notebook-header {
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+    }
+    .sub-notebook-tab {
+        transition: all 0.2s ease;
+        border-bottom: 3px solid transparent;
+    }
+    .sub-notebook-tab.active {
+        border-bottom-color: #3b82f6;
+        background-color: rgba(59, 130, 246, 0.1);
+    }
+    .entry-card {
+        transition: all 0.2s ease-in-out;
+    }
+    .entry-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+    .stats-card {
+        background: linear-gradient(135deg, #374151 0%, #1f2937 100%);
+    }
+    .stock-chip {
+        transition: all 0.2s ease;
+    }
+    .stock-chip:hover {
+        transform: scale(1.05);
+        box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
+    }
+    .filter-sidebar {
+        backdrop-filter: blur(8px);
+        background: rgba(31, 41, 55, 0.95);
+    }
+    .entry-type-icon {
+        width: 40px;
+        height: 40px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .animate-in {
+        animation: slideInFromRight 0.3s ease-out;
+    }
+    @keyframes slideInFromRight {
+        from { transform: translateX(20px); opacity: 0; }
+        to { transform: translateX(0); opacity: 1; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto">
+    <!-- Notebook Header -->
+    <div class="notebook-header border border-gray-700 rounded-lg mb-6">
+        <div class="p-6 border-b border-gray-700">
+            <!-- Breadcrumb & Title -->
+            <div class="flex items-center justify-between mb-4">
+                <div class="flex items-center space-x-4">
+                    <a href="{% url 'notes:list' %}" 
+                       class="text-gray-400 hover:text-white transition-colors">
+                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                    </a>
+                    <div>
+                        <h1 class="text-2xl font-bold text-white">{{ notebook.title }}</h1>
+                        {% if notebook.subtitle %}
+                            <p class="text-gray-400">{{ notebook.subtitle }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+                
+                <!-- Actions -->
+                <div class="flex items-center space-x-3">
+                    <span class="px-3 py-1 text-sm rounded-full
+                               {% if notebook.status == 'ACTIVE' %}bg-green-900 text-green-300
+                               {% elif notebook.status == 'MONITORING' %}bg-yellow-900 text-yellow-300
+                               {% elif notebook.status == 'ARCHIVED' %}bg-gray-700 text-gray-300
+                               {% else %}bg-blue-900 text-blue-300{% endif %}">
+                        {{ notebook.get_status_display }}
+                    </span>
+                    
+                    <button onclick="openQuickEntryModal()" 
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                        クイック記録
+                    </button>
+                    
+                    <button onclick="openEntryCreateModal()" 
+                            class="px-4 py-2 border border-gray-600 text-gray-300 hover:bg-gray-700 rounded-lg transition-colors">
+                        新規エントリー
+                    </button>
+                    
+                    <a href="{% url 'notes:edit' notebook.pk %}" 
+                       class="p-2 text-gray-400 hover:text-white transition-colors">
+                        <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                        </svg>
+                    </a>
+                </div>
+            </div>
+            
+            <!-- Notebook Info Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                <!-- Stats Cards -->
+                <div class="stats-card p-4 rounded-lg">
+                    <div class="text-2xl font-bold text-white">{{ notebook.entry_count }}</div>
+                    <div class="text-sm text-gray-400">総エントリー数</div>
+                </div>
+                <div class="stats-card p-4 rounded-lg">
+                    <div class="text-2xl font-bold text-blue-400">{{ notebook.stock_count }}</div>
+                    <div class="text-sm text-gray-400">対象銘柄数</div>
+                </div>
+                <div class="stats-card p-4 rounded-lg">
+                    <div class="text-2xl font-bold text-green-400">{{ notebook.sub_notebooks.count }}</div>
+                    <div class="text-sm text-gray-400">サブノート数</div>
+                </div>
+                <div class="stats-card p-4 rounded-lg">
+                    <div class="text-2xl font-bold text-purple-400">{{ notebook.last_entry_date|timesince|default:"未記録" }}</div>
+                    <div class="text-sm text-gray-400">最終更新</div>
+                </div>
+            </div>
+            
+            <!-- Description -->
+            {% if notebook.description %}
+                <div class="mb-4">
+                    <p class="text-gray-300">{{ notebook.description }}</p>
+                </div>
+            {% endif %}
+            
+            <!-- Tags -->
+            {% if notebook.tags.all %}
+                <div class="flex flex-wrap gap-2 mb-4">
+                    {% for tag in notebook.tags.all %}
+                        <span class="px-2 py-1 text-xs border border-gray-600 text-gray-300 rounded hover:bg-gray-700 cursor-pointer transition-colors">
+                            {{ tag.name }}
+                        </span>
+                    {% endfor %}
+                </div>
+            {% endif %}
+            
+            <!-- Stock List -->
+            {% if stock_list %}
+                <div>
+                    <h3 class="text-sm font-medium text-gray-300 mb-2">対象銘柄</h3>
+                    <div class="flex flex-wrap gap-2">
+                        {% for stock in stock_list %}
+                            <div class="stock-chip px-3 py-1 bg-gray-700 border border-gray-600 rounded-lg cursor-pointer hover:bg-gray-600 transition-colors"
+                                 onclick="filterByStock('{{ stock.stock_code }}')">
+                                <span class="text-white font-medium">{{ stock.stock_code }}</span>
+                                {% if stock.company_name %}
+                                    <span class="text-gray-300 ml-1">{{ stock.company_name }}</span>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Sub-Notebook Tabs -->
+        {% if sub_notebooks %}
+            <div class="px-6 py-4 border-b border-gray-700">
+                <div class="flex items-center space-x-1 overflow-x-auto">
+                    <button onclick="filterBySubNotebook('')" 
+                            class="sub-notebook-tab px-4 py-2 text-sm text-gray-300 hover:text-white transition-colors whitespace-nowrap {% if not current_filters.sub_notebook %}active{% endif %}">
+                        すべて
+                    </button>
+                    {% for sub_notebook in sub_notebooks %}
+                        <button onclick="filterBySubNotebook('{{ sub_notebook.pk }}')" 
+                                class="sub-notebook-tab px-4 py-2 text-sm text-gray-300 hover:text-white transition-colors whitespace-nowrap {% if current_filters.sub_notebook == sub_notebook.pk|stringformat:'s' %}active{% endif %}">
+                            {{ sub_notebook.title }}
+                            <span class="ml-2 px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded-full">{{ sub_notebook.entry_count }}</span>
+                        </button>
+                    {% endfor %}
+                    
+                    <!-- Add Sub-Notebook Button -->
+                    <button onclick="openSubNotebookModal()" 
+                            class="px-3 py-2 text-gray-400 hover:text-white transition-colors whitespace-nowrap">
+                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                        </svg>
+                    </button>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+
+    <!-- Content Area -->
+    <div class="grid grid-cols-1 lg:grid-cols-4 gap-6">
+        <!-- Main Content -->
+        <div class="lg:col-span-3">
+            <!-- Filters Bar -->
+            <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 mb-6">
+                <div class="flex flex-wrap items-center gap-4">
+                    <div class="flex items-center space-x-2">
+                        <label class="text-sm text-gray-300">エントリータイプ:</label>
+                        <select id="entry-type-filter" 
+                                onchange="applyFilters()"
+                                class="bg-gray-700 border border-gray-600 text-white rounded px-3 py-1 text-sm">
+                            <option value="">すべて</option>
+                            <option value="STOCK_ANALYSIS">銘柄分析</option>
+                            <option value="EARNINGS">決算分析</option>
+                            <option value="NEWS_EVENT">ニュース・イベント</option>
+                            <option value="VALUATION">バリュエーション</option>
+                            <option value="MEMO">メモ・気づき</option>
+                        </select>
+                    </div>
+                    
+                    <div class="flex items-center space-x-2">
+                        <label class="text-sm text-gray-300">表示順:</label>
+                        <select id="sort-order" 
+                                onchange="applyFilters()"
+                                class="bg-gray-700 border border-gray-600 text-white rounded px-3 py-1 text-sm">
+                            <option value="-created_at">作成日新しい順</option>
+                            <option value="created_at">作成日古い順</option>
+                            <option value="-importance">重要度順</option>
+                            <option value="stock_code">銘柄コード順</option>
+                        </select>
+                    </div>
+                    
+                    <label class="flex items-center space-x-2 text-sm text-gray-300">
+                        <input type="checkbox" 
+                               id="bookmarked-only" 
+                               onchange="applyFilters()"
+                               class="text-blue-600 bg-gray-700 border-gray-600 rounded">
+                        <span>ブックマークのみ</span>
+                    </label>
+                    
+                    <!-- Quick Search -->
+                    <div class="flex-1 max-w-md">
+                        <input type="text" 
+                               id="quick-search" 
+                               placeholder="銘柄名、タイトルで検索..."
+                               class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded px-3 py-1 text-sm">
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Entries List -->
+            <div id="entries-container" class="space-y-4">
+                {% for entry in entries %}
+                    <div class="entry-card bg-gray-800 border border-gray-700 rounded-lg overflow-hidden hover:bg-gray-750 transition-colors animate-in"
+                         data-entry-type="{{ entry.entry_type }}"
+                         data-stock-code="{{ entry.stock_code }}"
+                         data-sub-notebook="{{ entry.sub_notebook.pk|default:'' }}"
+                         data-bookmarked="{{ entry.is_bookmarked|yesno:'true,false' }}">
+                        <div class="p-6">
+                            <!-- Entry Header -->
+                            <div class="flex items-start justify-between mb-4">
+                                <div class="flex items-start space-x-4 flex-1">
+                                    <!-- Entry Type Icon -->
+                                    <div class="entry-type-icon flex-shrink-0
+                                               {% if entry.entry_type == 'STOCK_ANALYSIS' %}bg-blue-900 text-blue-300
+                                               {% elif entry.entry_type == 'EARNINGS' %}bg-green-900 text-green-300
+                                               {% elif entry.entry_type == 'NEWS_EVENT' %}bg-yellow-900 text-yellow-300
+                                               {% elif entry.entry_type == 'VALUATION' %}bg-orange-900 text-orange-300
+                                               {% elif entry.entry_type == 'MEMO' %}bg-gray-700 text-gray-300
+                                               {% else %}bg-purple-900 text-purple-300{% endif %}">
+                                        {% if entry.entry_type == 'STOCK_ANALYSIS' %}
+                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                                            </svg>
+                                        {% elif entry.entry_type == 'EARNINGS' %}
+                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                            </svg>
+                                        {% elif entry.entry_type == 'NEWS_EVENT' %}
+                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path>
+                                            </svg>
+                                        {% else %}
+                                            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                            </svg>
+                                        {% endif %}
+                                    </div>
+                                    
+                                    <!-- Entry Info -->
+                                    <div class="flex-1 min-w-0">
+                                        <div class="flex items-center space-x-2 mb-1">
+                                            <h3 class="text-lg font-semibold text-white truncate">{{ entry.title }}</h3>
+                                            {% if entry.is_bookmarked %}
+                                                <svg class="h-4 w-4 text-yellow-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                                                </svg>
+                                            {% endif %}
+                                        </div>
+                                        
+                                        <!-- Stock Info -->
+                                        {% if entry.stock_code %}
+                                            <div class="flex items-center space-x-2 mb-2">
+                                                <span class="px-2 py-1 text-xs bg-blue-900 text-blue-300 rounded">{{ entry.stock_code }}</span>
+                                                {% if entry.company_name %}
+                                                    <span class="text-sm text-gray-400">{{ entry.company_name }}</span>
+                                                {% endif %}
+                                                {% if entry.current_price %}
+                                                    <span class="text-sm text-green-400">¥{{ entry.current_price }}</span>
+                                                {% endif %}
+                                            </div>
+                                        {% endif %}
+                                        
+                                        <!-- Meta Info -->
+                                        <div class="flex items-center space-x-4 text-xs text-gray-400">
+                                            <span>{{ entry.get_entry_type_display }}</span>
+                                            <span>{{ entry.created_at|date:"m/d H:i" }}</span>
+                                            {% if entry.sub_notebook %}
+                                                <span>{{ entry.sub_notebook.title }}</span>
+                                            {% endif %}
+                                            {% if entry.importance > 1 %}
+                                                <span class="flex items-center">
+                                                    {% for i in entry.importance|range %}
+                                                        <svg class="h-3 w-3 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
+                                                            <path d="M12 2l3.09 6.26L22 9.27l-5 4.87 1.18 6.88L12 17.77l-6.18 3.25L7 14.14 2 9.27l6.91-1.01L12 2z"></path>
+                                                        </svg>
+                                                    {% endfor %}
+                                                </span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Entry Actions -->
+                                <div class="flex items-center space-x-2 flex-shrink-0">
+                                    {% if entry.tags.all %}
+                                        <div class="flex space-x-1">
+                                            {% for tag in entry.tags.all|slice:":2" %}
+                                                <span class="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded">{{ tag.name }}</span>
+                                            {% endfor %}
+                                            {% if entry.tags.count > 2 %}
+                                                <span class="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded">+{{ entry.tags.count|add:"-2" }}</span>
+                                            {% endif %}
+                                        </div>
+                                    {% endif %}
+                                    
+                                    <button onclick="toggleBookmark('{{ entry.pk }}')" 
+                                            class="p-2 text-gray-400 hover:text-yellow-400 transition-colors">
+                                        <svg class="h-4 w-4" fill="{% if entry.is_bookmarked %}currentColor{% else %}none{% endif %}" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+                                        </svg>
+                                    </button>
+                                    
+                                    <button onclick="openEntryDetail('{{ entry.pk }}')" 
+                                            class="p-2 text-gray-400 hover:text-white transition-colors">
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Entry Content Preview -->
+                            {% if entry.summary %}
+                                <div class="text-sm text-gray-300 line-clamp-2">{{ entry.summary }}</div>
+                            {% endif %}
+                        </div>
+                    </div>
+                {% empty %}
+                    <div class="text-center py-16">
+                        <div class="mx-auto h-24 w-24 text-gray-600 mb-4">
+                            <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                            </svg>
+                        </div>
+                        <h3 class="text-lg font-medium text-gray-400 mb-2">エントリーがありません</h3>
+                        <p class="text-base text-gray-500 mb-6">最初の記録を作成しましょう</p>
+                        <button onclick="openEntryCreateModal()" 
+                                class="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+                            エントリーを作成
+                        </button>
+                    </div>
+                {% endfor %}
+            </div>
+            
+            <!-- Pagination -->
+            {% if is_paginated %}
+                <div class="mt-8 flex justify-center">
+                    <nav class="flex space-x-2">
+                        {% if page_obj.has_previous %}
+                            <a href="?page={{ page_obj.previous_page_number }}" 
+                               class="px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded hover:bg-gray-700 transition-colors">
+                                前へ
+                            </a>
+                        {% endif %}
+                        
+                        <span class="px-3 py-2 bg-blue-600 text-white rounded">
+                            {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                        </span>
+                        
+                        {% if page_obj.has_next %}
+                            <a href="?page={{ page_obj.next_page_number }}" 
+                               class="px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded hover:bg-gray-700 transition-colors">
+                                次へ
+                            </a>
+                        {% endif %}
+                    </nav>
+                </div>
+            {% endif %}
+        </div>
+        
+        <!-- Sidebar -->
+        <div class="lg:col-span-1">
+            <div class="filter-sidebar sticky top-6 border border-gray-700 rounded-lg p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">ノート情報</h3>
+                
+                <!-- Notebook Type -->
+                <div class="mb-4">
+                    <div class="text-sm text-gray-400 mb-1">ノートタイプ</div>
+                    <div class="text-white">{{ notebook.get_notebook_type_display }}</div>
+                </div>
+                
+                <!-- Objectives -->
+                {% if notebook.objectives %}
+                    <div class="mb-4">
+                        <div class="text-sm text-gray-400 mb-2">目的・目標</div>
+                        <div class="space-y-1">
+                            {% for objective in notebook.objectives %}
+                                <div class="flex items-center">
+                                    <span class="w-2 h-2 bg-blue-400 rounded-full mr-2"></span>
+                                    <span class="text-sm text-gray-300">{{ objective }}</span>
+                                </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+                
+                <!-- Key Themes -->
+                {% if notebook.key_themes %}
+                    <div class="mb-4">
+                        <div class="text-sm text-gray-400 mb-2">キーテーマ</div>
+                        <div class="flex flex-wrap gap-1">
+                            {% for theme in notebook.key_themes %}
+                                <span class="px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded">{{ theme }}</span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+                
+                <!-- Notes -->
+                {% if notebook.notes %}
+                    <div class="mb-6">
+                        <div class="text-sm text-gray-400 mb-2">メモ</div>
+                        <div class="text-sm text-gray-300">{{ notebook.notes }}</div>
+                    </div>
+                {% endif %}
+                
+                <!-- Quick Actions -->
+                <div class="border-t border-gray-700 pt-4">
+                    <h4 class="text-sm font-medium text-gray-300 mb-3">クイックアクション</h4>
+                    <div class="space-y-2">
+                        <button onclick="openEntryCreateModal()" 
+                                class="w-full px-3 py-2 text-sm bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors">
+                            新規エントリー
+                        </button>
+                        <button onclick="openSubNotebookModal()" 
+                                class="w-full px-3 py-2 text-sm border border-gray-600 text-gray-300 hover:bg-gray-700 rounded transition-colors">
+                            サブノート追加
+                        </button>
+                        <button onclick="exportNotebook()" 
+                                class="w-full px-3 py-2 text-sm border border-gray-600 text-gray-300 hover:bg-gray-700 rounded transition-colors">
+                            エクスポート
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- モーダル等は省略（既存のものを使用） -->
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// フィルタリング機能
+function applyFilters() {
+    const entryType = document.getElementById('entry-type-filter').value;
+    const sortOrder = document.getElementById('sort-order').value;
+    const bookmarkedOnly = document.getElementById('bookmarked-only').checked;
+    const searchQuery = document.getElementById('quick-search').value.toLowerCase();
+    
+    const entries = document.querySelectorAll('.entry-card');
+    
+    entries.forEach(entry => {
+        let visible = true;
+        
+        // エントリータイプフィルター
+        if (entryType && entry.dataset.entryType !== entryType) {
+            visible = false;
+        }
+        
+        // ブックマークフィルター
+        if (bookmarkedOnly && entry.dataset.bookmarked !== 'true') {
+            visible = false;
+        }
+        
+        // 検索フィルター
+        if (searchQuery) {
+            const title = entry.querySelector('h3').textContent.toLowerCase();
+            const stockCode = entry.dataset.stockCode.toLowerCase();
+            if (!title.includes(searchQuery) && !stockCode.includes(searchQuery)) {
+                visible = false;
+            }
+        }
+        
+        entry.style.display = visible ? 'block' : 'none';
+    });
+}
+
+// サブノートフィルター
+function filterBySubNotebook(subNotebookId) {
+    const entries = document.querySelectorAll('.entry-card');
+    
+    entries.forEach(entry => {
+        if (subNotebookId === '' || entry.dataset.subNotebook === subNotebookId) {
+            entry.style.display = 'block';
+        } else {
+            entry.style.display = 'none';
+        }
+    });
+    
+    // タブの状態更新
+    document.querySelectorAll('.sub-notebook-tab').forEach(tab => {
+        tab.classList.remove('active');
+    });
+    event.target.classList.add('active');
+}
+
+// 銘柄フィルター
+function filterByStock(stockCode) {
+    const entries = document.querySelectorAll('.entry-card');
+    
+    entries.forEach(entry => {
+        if (entry.dataset.stockCode === stockCode) {
+            entry.style.display = 'block';
+        } else {
+            entry.style.display = 'none';
+        }
+    });
+}
+
+// ブックマーク切り替え
+function toggleBookmark(entryId) {
+    // Ajax実装
+    console.log('Toggle bookmark for entry:', entryId);
+}
+
+// エントリー詳細表示
+function openEntryDetail(entryId) {
+    // 詳細モーダル表示
+    console.log('Open entry detail:', entryId);
+}
+
+// その他のモーダル関数
+function openQuickEntryModal() {
+    console.log('Open quick entry modal');
+}
+
+function openEntryCreateModal() {
+    console.log('Open entry create modal');
+}
+
+function openSubNotebookModal() {
+    console.log('Open sub-notebook modal');
+}
+
+function exportNotebook() {
+    console.log('Export notebook');
+}
+
+// リアルタイム検索
+document.getElementById('quick-search').addEventListener('input', function() {
+    clearTimeout(this.searchTimeout);
+    this.searchTimeout = setTimeout(applyFilters, 300);
+});
+</script>
+{% endblock %}
