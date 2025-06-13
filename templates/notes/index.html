@@ -1,215 +1,581 @@
+<!-- ========================================
+templates/notes/index.html - 完全版（トレンドタグ機能実装）
+======================================== -->
+
 {% extends 'base.html' %}
 
 {% block title %}ノート一覧 - 株式分析記録アプリ{% endblock %}
 
-{% block content %}
-<!-- Header -->
-<div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 md:mb-6">
-    <h1 class="text-xl md:text-2xl font-semibold text-white">ノート一覧</h1>
-    <a href="{% url 'notes:create' %}" 
-       title="新規ノート作成"
-       class="inline-flex items-center px-3 md:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors w-full sm:w-auto justify-center">
-        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-        </svg>
-        <span class="hidden sm:inline">新規ノート</span>
-        <span class="sm:hidden">新規作成</span>
-    </a>
-</div>
+{% block extra_css %}
+<style>
+    /* アニメーション定義 */
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
 
-<!-- Search and Filters -->
-<div class="bg-gray-800 border border-gray-700 rounded-lg p-4 md:p-6 mb-4 md:mb-6">
-    <form method="GET" class="space-y-4">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
-            <!-- Search Input -->
-            <div class="md:col-span-2">
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                    <svg class="h-4 w-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                    </svg>
-                    検索
-                </label>
-                <input type="text" 
-                       name="q" 
-                       value="{{ search_query }}"
-                       placeholder="銘柄名、企業名、内容で検索..."
-                       class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.8; }
+    }
+
+    @keyframes tagClick {
+        0% { transform: scale(1); }
+        50% { transform: scale(0.95); }
+        100% { transform: scale(1); }
+    }
+
+    /* カード系のスタイル */
+    .notebook-card {
+        animation: slideIn 0.3s ease-out;
+        transition: all 0.2s ease-in-out;
+    }
+
+    .notebook-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    /* タグ関連のスタイル */
+    .tag-clickable {
+        transition: all 0.2s ease-in-out;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .tag-clickable::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.3s;
+    }
+
+    .tag-clickable:hover::before {
+        left: 100%;
+    }
+
+    .tag-clickable:hover {
+        background-color: rgba(75, 85, 99, 0.7);
+        border-color: #3b82f6;
+        box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+        transform: translateY(-1px) scale(1.02);
+    }
+
+    .tag-clickable:active {
+        animation: tagClick 0.2s ease-in-out;
+    }
+
+    .tag-clickable.clicked {
+        background-color: #3b82f6;
+        border-color: #1d4ed8;
+        color: white;
+        transform: scale(0.95);
+    }
+
+    .tag-clickable.clicked::after {
+        content: ' ✓';
+        font-size: 0.75rem;
+        animation: pulse 0.5s ease-in-out;
+    }
+
+    /* カテゴリー別タグの色分け */
+    .tag-stock { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+    .tag-sector { background: linear-gradient(135deg, #059669, #047857); }
+    .tag-strategy { background: linear-gradient(135deg, #0284c7, #0369a1); }
+    .tag-analysis { background: linear-gradient(135deg, #ea580c, #c2410c); }
+    .tag-market { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
+    .tag-risk { background: linear-gradient(135deg, #eab308, #ca8a04); }
+
+    /* 検索インジケーター */
+    .search-indicator {
+        backdrop-filter: blur(8px);
+        animation: slideIn 0.3s ease-out;
+    }
+
+    /* スマホ用調整 */
+    @media (max-width: 768px) {
+        .tag-clickable {
+            min-height: 36px;
+            min-width: 36px;
+            padding: 0.25rem 0.5rem;
+        }
+
+        .notebook-card {
+            margin-bottom: 0.75rem;
+        }
+
+        /* タップ領域の確保 */
+        .tap-target {
+            min-height: 44px;
+            min-width: 44px;
+        }
+    }
+
+    /* ダークモード対応 */
+    @media (prefers-color-scheme: dark) {
+        .tag-clickable {
+            background-color: #374151;
+            border-color: #4b5563;
+            color: #d1d5db;
+        }
+    }
+
+    /* アクセシビリティ */
+    .tag-clickable:focus {
+        outline: 2px solid #3b82f6;
+        outline-offset: 2px;
+    }
+
+    /* ロード状態 */
+    .loading {
+        opacity: 0.6;
+        pointer-events: none;
+        position: relative;
+    }
+
+    .loading::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 16px;
+        height: 16px;
+        border: 2px solid #3b82f6;
+        border-top: 2px solid transparent;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-7xl mx-auto px-2 sm:px-4">
+    <!-- Header -->
+    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 md:mb-6">
+        <div>
+            <h1 class="text-xl md:text-2xl font-semibold text-white">ノート一覧</h1>
+            <p class="text-sm text-gray-400 mt-1">{{ notebooks.count }}件のノートが見つかりました</p>
+        </div>
+        <a href="{% url 'notes:create' %}" 
+           title="新規ノート作成"
+           class="inline-flex items-center px-3 md:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors w-full sm:w-auto justify-center tap-target">
+            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+            </svg>
+            <span class="hidden sm:inline">新規ノート</span>
+            <span class="sm:hidden">新規作成</span>
+        </a>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 md:p-6 mb-4 md:mb-6">
+        <form method="GET" class="space-y-4" id="search-form">
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4">
+                <!-- Search Input -->
+                <div class="md:col-span-2">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">
+                        <svg class="h-4 w-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        検索
+                    </label>
+                    <input type="text" 
+                           name="q" 
+                           id="search-input"
+                           value="{{ search_query }}"
+                           placeholder="ノート名、戦略、内容で検索..."
+                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                
+                <!-- Quick Filters -->
+                <div class="flex flex-wrap gap-2">
+                    <button type="button" onclick="addQuickFilter('is_favorite', 'true')" 
+                            class="px-3 py-1 text-xs rounded border border-gray-600 text-gray-300 hover:bg-gray-700 transition-colors">
+                        ⭐ お気に入り
+                    </button>
+                    <button type="button" onclick="addQuickFilter('status', 'ACTIVE')" 
+                            class="px-3 py-1 text-xs rounded border border-gray-600 text-gray-300 hover:bg-gray-700 transition-colors">
+                        ● アクティブ
+                    </button>
+                    <button type="button" onclick="addQuickFilter('notebook_type', 'THEME')" 
+                            class="px-3 py-1 text-xs rounded border border-gray-600 text-gray-300 hover:bg-gray-700 transition-colors">
+                        📂 テーマ型
+                    </button>
+                </div>
             </div>
             
-            <!-- Status Filter -->
-            <div>
-                <label class="block text-sm font-medium text-gray-300 mb-2">
-                    <svg class="h-4 w-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.414A1 1 0 013 6.707V4z"></path>
-                    </svg>
-                    ステータス
-                </label>
-                <select name="status" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    <option value="">すべて</option>
-                    <option value="ACTIVE">アクティブ</option>
-                    <option value="MONITORING">監視中</option>
-                    <option value="ATTENTION">要注意</option>
-                </select>
-            </div>
-        </div>
-        
-        <!-- Search Button -->
-        <div class="flex justify-end">
-            <button type="submit" 
-                    class="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg px-4 py-2 transition-colors flex items-center justify-center">
-                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
-                </svg>
-                検索実行
-            </button>
-        </div>
-    </form>
-</div>
-
-<!-- Trending Tags Section -->
-<section class="bg-gray-800 border border-gray-700 rounded-lg mb-4 md:mb-6">
-    <header class="p-4 md:p-6 border-b border-gray-700">
-        <h2 class="text-white font-semibold flex items-center gap-2">
-            <svg class="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a2 2 0 012-2z"></path>
-            </svg>
-            <span class="hidden sm:inline">トレンドタグ</span>
-            <span class="sm:hidden">トレンド</span>
-        </h2>
-    </header>
-    
-    <div class="p-4 md:p-6">
-        <div class="flex flex-wrap gap-1.5 md:gap-2">
-            {% for tag in trending_tags %}
-                <span class="tag-clickable px-2 md:px-3 py-1 text-xs md:text-sm rounded-full border border-gray-600 text-gray-300 hover:bg-gray-700 hover:border-blue-500 cursor-pointer transition-all duration-200 transform hover:scale-105"
-                      data-tag="{{ tag.name }}"
-                      title="クリックして検索">
-                    {% if tag.name|length > 8 %}
-                        <span class="hidden sm:inline">{{ tag.name }} ({{ tag.usage_count }})</span>
-                        <span class="sm:hidden">{{ tag.name|truncatechars:6 }} ({{ tag.usage_count }})</span>
-                    {% else %}
-                        {{ tag.name }} ({{ tag.usage_count }})
-                    {% endif %}
-                </span>
-            {% empty %}
-                <span class="text-gray-400 text-sm">タグがありません</span>
-            {% endfor %}
-        </div>
-        
-        <!-- 検索実行中インジケーター -->
-        <div id="search-indicator" class="hidden mt-3 flex items-center text-blue-400 text-sm">
-            <svg class="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            検索中...
-        </div>
-    </div>
-</section>
-
-<!-- Notebooks Grid -->
-<div class="grid gap-3 md:gap-4">
-    {% for notebook in notebooks %}
-        <div class="bg-gray-800 border border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer rounded-lg"
-             onclick="location.href='{% url 'notes:detail' notebook.pk %}'">
-            <div class="p-4 md:p-6">
-                <div class="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0 mb-3 md:mb-4">
-                    <div class="flex-1 min-w-0">
-                        <h3 class="text-white font-semibold text-base md:text-lg truncate">{{ notebook.title }}</h3>
-                        {% if notebook.subtitle %}
-                            <p class="text-gray-400 text-sm md:text-base truncate">{{ notebook.subtitle }}</p>
-                        {% endif %}
+            <!-- Advanced Filters (Collapsible) -->
+            <div class="hidden" id="advanced-filters">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4 border-t border-gray-700">
+                    <!-- Notebook Type Filter -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">ノートタイプ</label>
+                        <select name="notebook_type" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">すべてのタイプ</option>
+                            <option value="THEME">テーマ型（複数銘柄）</option>
+                            <option value="STOCK_FOCUSED">銘柄特化型（1銘柄集中）</option>
+                            <option value="PORTFOLIO">ポートフォリオ管理</option>
+                            <option value="RESEARCH">調査・研究</option>
+                        </select>
                     </div>
-                    <span class="px-2 py-1 text-xs rounded-full flex-shrink-0
-                               {% if notebook.status == 'ACTIVE' %}bg-green-900 text-green-300
-                               {% elif notebook.status == 'MONITORING' %}bg-yellow-900 text-yellow-300
-                               {% elif notebook.status == 'ATTENTION' %}bg-red-900 text-red-300
-                               {% endif %}">
-                        <span class="hidden sm:inline">{{ notebook.get_status_display }}</span>
+
+                    <!-- Status Filter -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">ステータス</label>
+                        <select name="status" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">すべてのステータス</option>
+                            <option value="ACTIVE">アクティブ</option>
+                            <option value="MONITORING">監視中</option>
+                            <option value="ATTENTION">要注意</option>
+                            <option value="ARCHIVED">アーカイブ</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Search Actions -->
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+                <button type="button" onclick="toggleAdvancedFilters()" 
+                        class="text-blue-400 hover:text-blue-300 text-sm flex items-center">
+                    <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"></path>
+                    </svg>
+                    詳細フィルター
+                </button>
+                
+                <div class="flex gap-2 w-full sm:w-auto">
+                    <button type="button" onclick="clearFilters()" 
+                            class="flex-1 sm:flex-none px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors">
+                        クリア
+                    </button>
+                    <button type="submit" 
+                            class="flex-1 sm:flex-none bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg px-4 py-2 transition-colors flex items-center justify-center">
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+                        </svg>
+                        検索実行
+                    </button>
+                </div>
+            </div>
+        </form>
+    </div>
+
+    <!-- Trending Tags Section -->
+    <section class="bg-gray-800 border border-gray-700 rounded-lg mb-4 md:mb-6">
+        <header class="p-4 md:p-6 border-b border-gray-700">
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+                <h2 class="text-white font-semibold flex items-center gap-2">
+                    <svg class="h-4 w-4 md:h-5 md:w-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
+                    </svg>
+                    <span class="hidden sm:inline">トレンドタグ</span>
+                    <span class="sm:hidden">トレンド</span>
+                    <span class="text-xs text-gray-400 font-normal ml-2">(最近よく使われているタグ)</span>
+                </h2>
+                
+                <!-- タグカテゴリフィルター -->
+                <div class="flex flex-wrap gap-1">
+                    <button onclick="filterTagsByCategory('')" 
+                            class="tag-category-filter active px-2 py-1 text-xs rounded border border-gray-600 text-gray-300"
+                            data-category="">
+                        すべて
+                    </button>
+                    <button onclick="filterTagsByCategory('STRATEGY')" 
+                            class="tag-category-filter px-2 py-1 text-xs rounded border border-gray-600 text-gray-300"
+                            data-category="STRATEGY">
+                        戦略
+                    </button>
+                    <button onclick="filterTagsByCategory('STOCK')" 
+                            class="tag-category-filter px-2 py-1 text-xs rounded border border-gray-600 text-gray-300"
+                            data-category="STOCK">
+                        銘柄
+                    </button>
+                    <button onclick="filterTagsByCategory('SECTOR')" 
+                            class="tag-category-filter px-2 py-1 text-xs rounded border border-gray-600 text-gray-300"
+                            data-category="SECTOR">
+                        セクター
+                    </button>
+                </div>
+            </div>
+        </header>
+        
+        <div class="p-4 md:p-6">
+            <!-- トレンドタグ表示エリア -->
+            <div class="flex flex-wrap gap-1.5 md:gap-2" id="trending-tags-container">
+                {% for tag in trending_tags %}
+                    <span class="tag-clickable px-2 md:px-3 py-1 text-xs md:text-sm rounded-full border border-gray-600 text-gray-300 hover:bg-gray-700 hover:border-blue-500 cursor-pointer transition-all duration-200 transform hover:scale-105 {{ tag.get_color_class }}"
+                          data-tag="{{ tag.name }}"
+                          data-category="{{ tag.category }}"
+                          data-usage="{{ tag.usage_count }}"
+                          title="使用回数: {{ tag.usage_count }}回 - クリックして検索">
+                        <span class="hidden sm:inline">{{ tag.name }} ({{ tag.usage_count }})</span>
                         <span class="sm:hidden">
-                            {% if notebook.status == 'ACTIVE' %}●
-                            {% elif notebook.status == 'MONITORING' %}⚠
-                            {% elif notebook.status == 'ATTENTION' %}⚠
-                            {% else %}○{% endif %}
+                            {% if tag.name|length > 8 %}
+                                {{ tag.name|truncatechars:6 }} ({{ tag.usage_count }})
+                            {% else %}
+                                {{ tag.name }} ({{ tag.usage_count }})
+                            {% endif %}
                         </span>
                     </span>
-                </div>
-                
-                <!-- Tags -->
-                {% if notebook.tags.all %}
-                    <div class="flex flex-wrap gap-1 mb-3">
-                        {% for tag in notebook.tags.all %}
-                            <span class="px-1.5 md:px-2 py-1 text-xs border border-gray-600 text-gray-300 rounded truncate max-w-20 sm:max-w-none">
-                                {{ tag.name }}
-                            </span>
+                {% empty %}
+                    <span class="text-gray-400 text-sm">まだタグがありません</span>
+                {% endfor %}
+            </div>
+            
+            <!-- ロード中インジケーター -->
+            <div id="tags-loading" class="hidden mt-3 flex items-center text-blue-400 text-sm">
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                タグを読み込み中...
+            </div>
+            
+            <!-- 検索実行中インジケーター -->
+            <div id="search-indicator" class="hidden mt-3 flex items-center text-blue-400 text-sm search-indicator">
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                検索中...
+            </div>
+        </div>
+    </section>
+
+    <!-- Quick Stats -->
+    {% if favorite_notebooks or recent_notebooks %}
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-6">
+            <!-- お気に入りノート -->
+            {% if favorite_notebooks %}
+                <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 md:p-6">
+                    <h3 class="text-white font-semibold mb-4 flex items-center">
+                        <svg class="h-4 w-4 md:h-5 md:w-5 mr-2 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+                        </svg>
+                        お気に入りノート
+                    </h3>
+                    <div class="space-y-2">
+                        {% for notebook in favorite_notebooks %}
+                            <a href="{% url 'notes:detail' notebook.pk %}" 
+                               class="block p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
+                                <div class="flex justify-between items-center">
+                                    <h4 class="text-white text-sm font-medium truncate">{{ notebook.title }}</h4>
+                                    <span class="text-xs text-gray-400">{{ notebook.entry_count }}件</span>
+                                </div>
+                            </a>
                         {% endfor %}
                     </div>
-                {% endif %}
-                
-                <!-- Footer -->
-                <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 sm:gap-0 text-xs md:text-sm text-gray-400">
-                    <span>{{ notebook.entry_count }} エントリー</span>
-                    <span>最終更新: {{ notebook.updated_at|date:"m/d"|default:"--/--" }}</span>
+                </div>
+            {% endif %}
+            
+            <!-- 最近更新されたノート -->
+            {% if recent_notebooks %}
+                <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 md:p-6">
+                    <h3 class="text-white font-semibold mb-4 flex items-center">
+                        <svg class="h-4 w-4 md:h-5 md:w-5 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                        </svg>
+                        最近の更新
+                    </h3>
+                    <div class="space-y-2">
+                        {% for notebook in recent_notebooks %}
+                            <a href="{% url 'notes:detail' notebook.pk %}" 
+                               class="block p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
+                                <div class="flex justify-between items-center">
+                                    <h4 class="text-white text-sm font-medium truncate">{{ notebook.title }}</h4>
+                                    <span class="text-xs text-gray-400">{{ notebook.updated_at|date:"m/d" }}</span>
+                                </div>
+                            </a>
+                        {% endfor %}
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    {% endif %}
+
+    <!-- Notebooks Grid -->
+    <div class="grid gap-3 md:gap-4" id="notebooks-container">
+        {% for notebook in notebooks %}
+            <div class="notebook-card bg-gray-800 border border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer rounded-lg"
+                 onclick="location.href='{% url 'notes:detail' notebook.pk %}'">
+                <div class="p-4 md:p-6">
+                    <div class="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0 mb-3 md:mb-4">
+                        <div class="flex-1 min-w-0">
+                            <div class="flex items-center gap-2 mb-1">
+                                <h3 class="text-white font-semibold text-base md:text-lg truncate">{{ notebook.title }}</h3>
+                                {% if notebook.is_favorite %}
+                                    <svg class="h-4 w-4 text-yellow-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
+                                        <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
+                                    </svg>
+                                {% endif %}
+                            </div>
+                            {% if notebook.subtitle %}
+                                <p class="text-gray-400 text-sm md:text-base truncate">{{ notebook.subtitle }}</p>
+                            {% endif %}
+                            <div class="flex flex-wrap gap-1 mt-2">
+                                <span class="px-2 py-1 text-xs bg-gray-600 text-gray-300 rounded">{{ notebook.get_notebook_type_display }}</span>
+                                {% if notebook.stock_count > 0 %}
+                                    <span class="px-2 py-1 text-xs bg-blue-900 text-blue-300 rounded">{{ notebook.stock_count }}銘柄</span>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <span class="px-2 py-1 text-xs rounded-full flex-shrink-0
+                                   {% if notebook.status == 'ACTIVE' %}bg-green-900 text-green-300
+                                   {% elif notebook.status == 'MONITORING' %}bg-yellow-900 text-yellow-300
+                                   {% elif notebook.status == 'ATTENTION' %}bg-red-900 text-red-300
+                                   {% endif %}">
+                            <span class="hidden sm:inline">{{ notebook.get_status_display }}</span>
+                            <span class="sm:hidden">
+                                {% if notebook.status == 'ACTIVE' %}●
+                                {% elif notebook.status == 'MONITORING' %}⚠
+                                {% elif notebook.status == 'ATTENTION' %}⚠
+                                {% else %}○{% endif %}
+                            </span>
+                        </span>
+                    </div>
+                    
+                    <!-- Tags -->
+                    {% if notebook.tags.all %}
+                        <div class="flex flex-wrap gap-1 mb-3">
+                            {% for tag in notebook.tags.all %}
+                                <span class="px-1.5 md:px-2 py-1 text-xs border border-gray-600 text-gray-300 rounded truncate max-w-20 sm:max-w-none">
+                                    {{ tag.name }}
+                                </span>
+                            {% endfor %}
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Investment Strategy Preview -->
+                    {% if notebook.investment_strategy %}
+                        <div class="mb-3">
+                            <p class="text-sm text-gray-300 line-clamp-2">{{ notebook.investment_strategy|truncatewords:20 }}</p>
+                        </div>
+                    {% endif %}
+                    
+                    <!-- Footer -->
+                    <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-1 sm:gap-0 text-xs md:text-sm text-gray-400">
+                        <div class="flex items-center gap-3">
+                            <span>{{ notebook.entry_count }} エントリー</span>
+                            {% if notebook.recent_entries_count > 0 %}
+                                <span class="text-green-400">+{{ notebook.recent_entries_count }} 今月</span>
+                            {% endif %}
+                        </div>
+                        <span>最終更新: {{ notebook.updated_at|date:"m/d"|default:"--/--" }}</span>
+                    </div>
                 </div>
             </div>
-        </div>
-    {% empty %}
-        <div class="text-center py-12 md:py-16">
-            <div class="mx-auto h-16 w-16 md:h-24 md:w-24 text-gray-600 mb-4">
-                <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-6m-2-5.5V9.5a2 2 0 012-2h6a2 2 0 012 2V16"></path>
-                </svg>
+        {% empty %}
+            <div class="text-center py-12 md:py-16">
+                <div class="mx-auto h-16 w-16 md:h-24 md:w-24 text-gray-600 mb-4">
+                    <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-6m-2-5.5V9.5a2 2 0 012-2h6a2 2 0 012 2V16"></path>
+                    </svg>
+                </div>
+                {% if search_query %}
+                    <h3 class="text-base md:text-lg font-medium text-gray-400 mb-2">「{{ search_query }}」に一致するノートが見つかりませんでした</h3>
+                    <p class="text-sm md:text-base text-gray-500 mb-6">検索条件を変更するか、新しいノートを作成してみてください</p>
+                {% else %}
+                    <h3 class="text-base md:text-lg font-medium text-gray-400 mb-2">ノートがありません</h3>
+                    <p class="text-sm md:text-base text-gray-500 mb-6">最初の投資ノートを作成しましょう</p>
+                {% endif %}
+                <a href="{% url 'notes:create' %}" 
+                   class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                    <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
+                    </svg>
+                    {% if search_query %}新しいノートを作成{% else %}最初のノートを作成しましょう{% endif %}
+                </a>
             </div>
-            <p class="text-gray-400 mb-4 text-sm md:text-base">ノートがありません</p>
-            <a href="{% url 'notes:create' %}" 
-               class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
-                <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                </svg>
-                最初のノートを作成しましょう
-            </a>
-        </div>
-    {% endfor %}
-</div>
-
-<!-- Pagination -->
-{% if is_paginated %}
-    <div class="mt-6 md:mt-8 flex justify-center">
-        <nav class="flex space-x-1 md:space-x-2">
-            {% if page_obj.has_previous %}
-                <a href="?page={{ page_obj.previous_page_number }}"
-                   title="前のページ"
-                   class="px-2 md:px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded hover:bg-gray-700 transition-colors">
-                    <svg class="h-4 w-4 md:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
-                    </svg>
-                    <span class="hidden md:inline">前へ</span>
-                </a>
-            {% endif %}
-            
-            <span class="px-2 md:px-3 py-2 bg-blue-600 text-white rounded text-sm md:text-base">
-                {{ page_obj.number }}
-            </span>
-            
-            {% if page_obj.has_next %}
-                <a href="?page={{ page_obj.next_page_number }}"
-                   title="次のページ"
-                   class="px-2 md:px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded hover:bg-gray-700 transition-colors">
-                    <span class="hidden md:inline">次へ</span>
-                    <svg class="h-4 w-4 md:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
-                    </svg>
-                </a>
-            {% endif %}
-        </nav>
+        {% endfor %}
     </div>
-{% endif %}
+
+    <!-- Pagination -->
+    {% if is_paginated %}
+        <div class="mt-6 md:mt-8 flex justify-center">
+            <nav class="flex space-x-1 md:space-x-2">
+                {% if page_obj.has_previous %}
+                    <a href="?page={{ page_obj.previous_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}"
+                       title="前のページ"
+                       class="px-2 md:px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded hover:bg-gray-700 transition-colors">
+                        <svg class="h-4 w-4 md:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"></path>
+                        </svg>
+                        <span class="hidden md:inline">前へ</span>
+                    </a>
+                {% endif %}
+                
+                <span class="px-2 md:px-3 py-2 bg-blue-600 text-white rounded text-sm md:text-base">
+                    {{ page_obj.number }}
+                </span>
+                
+                {% if page_obj.has_next %}
+                    <a href="?page={{ page_obj.next_page_number }}{% if search_query %}&q={{ search_query }}{% endif %}"
+                       title="次のページ"
+                       class="px-2 md:px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded hover:bg-gray-700 transition-colors">
+                        <span class="hidden md:inline">次へ</span>
+                        <svg class="h-4 w-4 md:hidden" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                        </svg>
+                    </a>
+                {% endif %}
+            </nav>
+        </div>
+    {% endif %}
+</div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
+// ========================================
+// グローバル変数
+// ========================================
+let isSearching = false;
+let currentTagCategory = '';
+
+// ========================================
+// 初期化
+// ========================================
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('ノート一覧ページが初期化されました');
+    
     // トレンドタグのクリックイベント設定
+    setupTrendingTags();
+    
+    // 検索フォームの設定
+    setupSearchForm();
+    
+    // URL状態の復元
+    restoreStateFromUrl();
+    
+    // タッチデバイス対応
+    if (isTouchDevice()) {
+        document.body.classList.add('touch-device');
+    }
+    
+    console.log('初期化完了');
+});
+
+// ========================================
+// トレンドタグ機能
+// ========================================
+
+function setupTrendingTags() {
     const clickableTags = document.querySelectorAll('.tag-clickable');
     const searchIndicator = document.getElementById('search-indicator');
     
@@ -218,126 +584,343 @@ document.addEventListener('DOMContentLoaded', function() {
             const tagName = this.getAttribute('data-tag');
             console.log('タグクリック:', tagName);
             
-            // クリック効果の表示
-            this.classList.add('clicked');
+            // 既に検索中の場合は無視
+            if (isSearching) return;
             
-            // 検索インジケーター表示
-            if (searchIndicator) {
-                searchIndicator.classList.remove('hidden');
-            }
-            
-            // 短時間後にノート検索ページに遷移（クエリパラメータ付き）
-            setTimeout(() => {
-                const encodedTag = encodeURIComponent(tagName);
-                const currentUrl = new URL(window.location);
-                currentUrl.searchParams.set('q', tagName);
-                window.location.href = currentUrl.toString();
-            }, 300);
+            searchTagAndNavigate(tagName, this);
         });
         
-        // タッチデバイスでのフィードバック改善
-        tag.addEventListener('touchstart', function() {
-            this.style.transform = 'scale(0.95)';
-        });
-        
-        tag.addEventListener('touchend', function() {
-            setTimeout(() => {
-                this.style.transform = 'scale(1)';
-            }, 100);
-        });
+        // タッチデバイス用のフィードバック
+        if (isTouchDevice()) {
+            tag.addEventListener('touchstart', function() {
+                this.style.transform = 'scale(0.95)';
+            });
+            
+            tag.addEventListener('touchend', function() {
+                setTimeout(() => {
+                    this.style.transform = 'scale(1)';
+                }, 100);
+            });
+        }
     });
+}
 
-    // URLパラメータからの検索語ハイライト
+function searchTagAndNavigate(tagName, tagElement) {
+    isSearching = true;
+    
+    // クリック効果の表示
+    tagElement.classList.add('clicked');
+    
+    // 検索インジケーター表示
+    showSearchIndicator();
+    
+    // 短時間後に検索ページに遷移
+    setTimeout(() => {
+        const encodedTag = encodeURIComponent(tagName);
+        const currentUrl = new URL(window.location);
+        currentUrl.searchParams.set('q', tagName);
+        currentUrl.searchParams.delete('page'); // ページネーションをリセット
+        window.location.href = currentUrl.toString();
+    }, 300);
+}
+
+function filterTagsByCategory(category) {
+    console.log('タグカテゴリフィルター:', category);
+    currentTagCategory = category;
+    
+    // カテゴリボタンの見た目を更新
+    updateCategoryButtons(category);
+    
+    // ローディング表示
+    showTagsLoading();
+    
+    // Ajax でタグを取得
+    fetchTrendingTags(category);
+}
+
+function updateCategoryButtons(activeCategory) {
+    document.querySelectorAll('.tag-category-filter').forEach(button => {
+        button.classList.remove('active', 'bg-blue-600', 'text-white');
+        button.classList.add('border-gray-600', 'text-gray-300');
+        
+        if (button.dataset.category === activeCategory) {
+            button.classList.add('active', 'bg-blue-600', 'text-white');
+            button.classList.remove('border-gray-600', 'text-gray-300');
+        }
+    });
+}
+
+function fetchTrendingTags(category) {
+    const url = `/notes/trending-tags/?category=${encodeURIComponent(category)}&limit=15`;
+    
+    fetch(url)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                updateTrendingTagsDisplay(data.tags);
+            } else {
+                throw new Error(data.error || 'タグの取得に失敗しました');
+            }
+        })
+        .catch(error => {
+            console.error('トレンドタグ取得エラー:', error);
+            showNotification(error.message, 'error');
+        })
+        .finally(() => {
+            hideTagsLoading();
+        });
+}
+
+function updateTrendingTagsDisplay(tags) {
+    const container = document.getElementById('trending-tags-container');
+    if (!container) return;
+    
+    if (tags.length === 0) {
+        container.innerHTML = '<span class="text-gray-400 text-sm">このカテゴリーにはタグがありません</span>';
+        return;
+    }
+    
+    container.innerHTML = '';
+    tags.forEach(tag => {
+        const tagElement = createTagElement(tag);
+        container.appendChild(tagElement);
+    });
+    
+    // 新しいタグにイベントリスナーを再設定
+    setupTrendingTags();
+}
+
+function createTagElement(tag) {
+    const span = document.createElement('span');
+    span.className = `tag-clickable px-2 md:px-3 py-1 text-xs md:text-sm rounded-full border border-gray-600 text-gray-300 hover:bg-gray-700 hover:border-blue-500 cursor-pointer transition-all duration-200 transform hover:scale-105 ${tag.color_class}`;
+    span.setAttribute('data-tag', tag.name);
+    span.setAttribute('data-category', tag.category);
+    span.setAttribute('data-usage', tag.usage_count);
+    span.title = `使用回数: ${tag.usage_count}回 - クリックして検索`;
+    
+    // レスポンシブ表示
+    const fullText = `${tag.name} (${tag.usage_count})`;
+    const shortText = tag.name.length > 8 ? `${tag.name.substring(0, 6)}... (${tag.usage_count})` : fullText;
+    
+    span.innerHTML = `
+        <span class="hidden sm:inline">${fullText}</span>
+        <span class="sm:hidden">${shortText}</span>
+    `;
+    
+    return span;
+}
+
+// ========================================
+// 検索機能
+// ========================================
+
+function setupSearchForm() {
+    const searchForm = document.getElementById('search-form');
+    const searchInput = document.getElementById('search-input');
+    
+    if (searchForm) {
+        // リアルタイム検索の実装
+        let searchTimeout;
+        
+        searchInput?.addEventListener('input', function() {
+            clearTimeout(searchTimeout);
+            const query = this.value.trim();
+            
+            // 2文字以上で予測検索を実行
+            if (query.length >= 2) {
+                searchTimeout = setTimeout(() => {
+                    showSearchSuggestions(query);
+                }, 300);
+            } else {
+                hideSearchSuggestions();
+            }
+        });
+        
+        // フォーム送信時の処理
+        searchForm.addEventListener('submit', function(e) {
+            hideSearchSuggestions();
+            showSearchIndicator();
+        });
+    }
+}
+
+function showSearchSuggestions(query) {
+    // 簡単な実装例（実際のプロジェクトではより詳細な実装を）
+    console.log('検索候補を表示:', query);
+}
+
+function hideSearchSuggestions() {
+    // 検索候補を非表示
+    console.log('検索候補を非表示');
+}
+
+function addQuickFilter(key, value) {
+    const form = document.getElementById('search-form');
+    if (!form) return;
+    
+    // 既存の隠しフィールドを削除
+    const existingInput = form.querySelector(`input[name="${key}"]`);
+    if (existingInput) {
+        existingInput.remove();
+    }
+    
+    // 新しい隠しフィールドを追加
+    const hiddenInput = document.createElement('input');
+    hiddenInput.type = 'hidden';
+    hiddenInput.name = key;
+    hiddenInput.value = value;
+    form.appendChild(hiddenInput);
+    
+    // フォームを送信
+    form.submit();
+}
+
+function clearFilters() {
+    const form = document.getElementById('search-form');
+    if (form) {
+        // フォームをリセット
+        form.reset();
+        
+        // 隠しフィールドを削除
+        const hiddenInputs = form.querySelectorAll('input[type="hidden"]');
+        hiddenInputs.forEach(input => input.remove());
+        
+        // ページをリロード（フィルターなし）
+        window.location.href = window.location.pathname;
+    }
+}
+
+function toggleAdvancedFilters() {
+    const advancedFilters = document.getElementById('advanced-filters');
+    if (advancedFilters) {
+        advancedFilters.classList.toggle('hidden');
+    }
+}
+
+// ========================================
+// UI状態管理
+// ========================================
+
+function showSearchIndicator() {
+    const indicator = document.getElementById('search-indicator');
+    if (indicator) {
+        indicator.classList.remove('hidden');
+    }
+}
+
+function hideSearchIndicator() {
+    const indicator = document.getElementById('search-indicator');
+    if (indicator) {
+        indicator.classList.add('hidden');
+    }
+    isSearching = false;
+}
+
+function showTagsLoading() {
+    const loading = document.getElementById('tags-loading');
+    if (loading) {
+        loading.classList.remove('hidden');
+    }
+}
+
+function hideTagsLoading() {
+    const loading = document.getElementById('tags-loading');
+    if (loading) {
+        loading.classList.add('hidden');
+    }
+}
+
+function showNotification(message, type = 'info') {
+    // 既存の通知を削除
+    const existingNotifications = document.querySelectorAll('.notification');
+    existingNotifications.forEach(notification => notification.remove());
+    
+    const notification = document.createElement('div');
+    notification.className = `notification fixed top-4 right-4 z-50 p-4 rounded-lg text-white max-w-sm transform transition-all duration-300 translate-x-full opacity-0`;
+    
+    const typeClasses = {
+        'error': 'bg-red-600',
+        'warning': 'bg-yellow-600',
+        'success': 'bg-green-600',
+        'info': 'bg-blue-600'
+    };
+    
+    notification.classList.add(typeClasses[type] || typeClasses.info);
+    notification.innerHTML = `
+        <div class="flex items-start justify-between">
+            <p class="text-sm font-medium">${escapeHtml(message)}</p>
+            <button onclick="this.parentElement.parentElement.remove()" 
+                    class="ml-3 text-white/80 hover:text-white">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // アニメーション
+    setTimeout(() => {
+        notification.classList.remove('translate-x-full', 'opacity-0');
+    }, 100);
+    
+    // 自動削除
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
+        }
+    }, 4000);
+}
+
+// ========================================
+// ユーティリティ関数
+// ========================================
+
+function isTouchDevice() {
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+}
+
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+function restoreStateFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);
     const searchQuery = urlParams.get('q');
+    
     if (searchQuery) {
         // 検索語がある場合、該当するタグをハイライト
+        const clickableTags = document.querySelectorAll('.tag-clickable');
         clickableTags.forEach(tag => {
             if (tag.getAttribute('data-tag') === searchQuery) {
                 tag.classList.add('bg-blue-600', 'border-blue-500', 'text-white');
             }
         });
+        
+        // 検索インジケーターを一時的に表示
+        setTimeout(() => {
+            hideSearchIndicator();
+        }, 1000);
     }
+}
+
+// ページロード完了時の処理
+window.addEventListener('load', function() {
+    hideSearchIndicator();
+    hideTagsLoading();
 });
-
-// タッチデバイス検出
-function isTouchDevice() {
-    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-}
-
-// デバイスに応じたインタラクション調整
-if (isTouchDevice()) {
-    document.body.classList.add('touch-device');
-}
 </script>
-
-<style>
-/* スマホ用の追加スタイル */
-@media (max-width: 768px) {
-    /* タップ領域の確保 */
-    .tag-clickable {
-        min-height: 36px;
-        min-width: 36px;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-    }
-    
-    /* アクティブ状態の視覚的フィードバック */
-    .tag-clickable:active {
-        background-color: rgba(75, 85, 99, 0.5);
-        transform: scale(0.95);
-    }
-    
-    /* ノートカードのタップ領域 */
-    .cursor-pointer {
-        min-height: 44px;
-    }
-}
-
-/* ホバー効果の改善 */
-@media (hover: hover) {
-    .tag-clickable:hover {
-        background-color: rgba(75, 85, 99, 0.7);
-        border-color: #3b82f6;
-        box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
-    }
-}
-
-/* タグクリック時のアニメーション */
-.tag-clickable.clicked {
-    background-color: #3b82f6;
-    border-color: #1d4ed8;
-    color: white;
-    transform: scale(0.95);
-}
-
-.tag-clickable.clicked::after {
-    content: ' ✓';
-    font-size: 0.75rem;
-}
-
-/* レスポンシブテキスト調整 */
-.truncate {
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-/* アニメーション */
-@keyframes slideIn {
-    from {
-        opacity: 0;
-        transform: translateY(10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-.bg-gray-800 {
-    animation: slideIn 0.3s ease-out;
-}
-</style>
 {% endblock %}

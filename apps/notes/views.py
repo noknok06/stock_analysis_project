@@ -13,17 +13,19 @@ from django.http import JsonResponse
 from django.db.models import Q, Count, Prefetch
 from django.core.paginator import Paginator
 from django.template.loader import render_to_string
-from apps.notes.models import Notebook, Entry, SubNotebook, NotebookTemplate
+from apps.notes.models import Notebook, Entry, SubNotebook, NotebookTemplate, Tag
 from apps.notes.forms import NotebookForm, EntryForm, SubNotebookForm, NotebookSearchForm
 from apps.common.mixins import UserOwnerMixin, SearchMixin
 from apps.notes.services import NotebookService
 from apps.common.utils import ContentHelper, TagHelper
 from django.utils import timezone
 from datetime import datetime, timedelta
+from django.http import JsonResponse
+from django.views.decorators.http import require_http_methods
 
 
 class NotebookListView(UserOwnerMixin, SearchMixin, ListView):
-    """ノート一覧ビュー（テーマ単位）"""
+    """ノート一覧ビュー（トレンドタグ機能追加）"""
     model = Notebook
     template_name = 'notes/index.html'
     context_object_name = 'notebooks'
@@ -70,10 +72,18 @@ class NotebookListView(UserOwnerMixin, SearchMixin, ListView):
         )
     
     def get_context_data(self, **kwargs):
-        """コンテキストデータを追加"""
+        """コンテキストデータを追加（トレンドタグ追加）"""
         context = super().get_context_data(**kwargs)
         context['search_form'] = NotebookSearchForm(self.request.GET)
         context['search_query'] = self.get_search_query()
+        
+        # ★ トレンドタグを追加
+        context['trending_tags'] = Tag.objects.get_trending_tags(limit=15)
+        
+        # カテゴリ別タグ
+        context['popular_strategy_tags'] = Tag.objects.get_tags_by_category('STRATEGY', limit=8)
+        context['popular_stock_tags'] = Tag.objects.get_tags_by_category('STOCK', limit=8)
+        context['popular_sector_tags'] = Tag.objects.get_tags_by_category('SECTOR', limit=8)
         
         # お気に入りノートの表示
         context['favorite_notebooks'] = self.model.objects.filter(
@@ -87,6 +97,119 @@ class NotebookListView(UserOwnerMixin, SearchMixin, ListView):
         ).order_by('-updated_at')[:5]
         
         return context
+
+
+# ========================================
+# トレンドタグ専用Ajax View
+# ========================================
+
+@login_required
+def trending_tags_ajax(request):
+    """トレンドタグをAjaxで取得"""
+    try:
+        category = request.GET.get('category', '')
+        limit = int(request.GET.get('limit', 10))
+        
+        if category:
+            tags = Tag.objects.get_tags_by_category(category, limit=limit)
+        else:
+            tags = Tag.objects.get_trending_tags(limit=limit)
+        
+        # タグデータをシリアライズ
+        tags_data = []
+        for tag in tags:
+            # そのタグを使用しているノートブック数を取得
+            notebook_count = tag.notebook_set.filter(user=request.user).count()
+            entry_count = tag.entry_set.filter(notebook__user=request.user).count()
+            
+            tags_data.append({
+                'id': tag.pk,
+                'name': tag.name,
+                'category': tag.category,
+                'category_display': tag.get_category_display(),
+                'description': tag.description,
+                'usage_count': tag.usage_count,
+                'color_class': tag.get_color_class(),
+                'notebook_count': notebook_count,
+                'entry_count': entry_count,
+                'search_url': f"{reverse('notes:list')}?q={tag.name}"
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'tags': tags_data,
+            'category': category,
+            'count': len(tags_data)
+        })
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"トレンドタグ取得エラー: {e}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': 'トレンドタグの取得に失敗しました'
+        }, status=500)
+
+
+@login_required
+def tag_search_ajax(request):
+    """タグ検索Ajax"""
+    query = request.GET.get('q', '').strip()
+    category = request.GET.get('category', '')
+    limit = int(request.GET.get('limit', 20))
+    
+    try:
+        if query:
+            # テキスト検索
+            tags = Tag.objects.search_tags(query)
+            if category:
+                tags = tags.filter(category=category)
+            tags = tags[:limit]
+        else:
+            # カテゴリ別取得
+            if category:
+                tags = Tag.objects.get_tags_by_category(category, limit=limit)
+            else:
+                tags = Tag.objects.get_popular_tags(limit=limit)
+        
+        # 結果をシリアライズ
+        results = []
+        for tag in tags:
+            # ユーザーの関連ノートブック・エントリー数
+            user_notebook_count = tag.notebook_set.filter(user=request.user).count()
+            user_entry_count = tag.entry_set.filter(notebook__user=request.user).count()
+            
+            results.append({
+                'id': tag.pk,
+                'name': tag.name,
+                'category': tag.category,
+                'category_display': tag.get_category_display(),
+                'description': tag.description,
+                'usage_count': tag.usage_count,
+                'color_class': tag.get_color_class(),
+                'user_notebook_count': user_notebook_count,
+                'user_entry_count': user_entry_count,
+                'total_related': user_notebook_count + user_entry_count
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'results': results,
+            'query': query,
+            'category': category,
+            'count': len(results)
+        })
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"タグ検索エラー: {e}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': 'タグ検索中にエラーが発生しました'
+        }, status=500)
+
 
 
 class NotebookDetailView(UserOwnerMixin, DetailView):
@@ -749,3 +872,351 @@ def render_goal_content(content):
     
     html += '</div>'
     return html
+
+@login_required
+def toggle_favorite_view(request, pk):
+    """ノートのお気に入り切り替え"""
+    if request.method == 'POST':
+        try:
+            notebook = get_object_or_404(Notebook, pk=pk, user=request.user)
+            notebook.is_favorite = not notebook.is_favorite
+            notebook.save(update_fields=['is_favorite'])
+            
+            status = 'お気に入りに追加' if notebook.is_favorite else 'お気に入りから削除'
+            return JsonResponse({
+                'success': True,
+                'is_favorite': notebook.is_favorite,
+                'message': f'「{notebook.title}」を{status}しました'
+            })
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"お気に入り切り替えエラー: {e}", exc_info=True)
+            return JsonResponse({
+                'success': False, 
+                'error': 'お気に入りの切り替えに失敗しました'
+            }, status=500)
+    
+    return JsonResponse({'success': False, 'error': '無効なリクエストです'}, status=405)
+
+
+@login_required
+def toggle_bookmark_view(request, entry_pk):
+    """エントリーのブックマーク切り替え"""
+    if request.method == 'POST':
+        try:
+            entry = get_object_or_404(Entry, pk=entry_pk, notebook__user=request.user)
+            entry.is_bookmarked = not entry.is_bookmarked
+            entry.save(update_fields=['is_bookmarked'])
+            
+            status = 'ブックマークに追加' if entry.is_bookmarked else 'ブックマークから削除'
+            return JsonResponse({
+                'success': True,
+                'is_bookmarked': entry.is_bookmarked,
+                'message': f'「{entry.title}」を{status}しました'
+            })
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"ブックマーク切り替えエラー: {e}", exc_info=True)
+            return JsonResponse({
+                'success': False, 
+                'error': 'ブックマークの切り替えに失敗しました'
+            }, status=500)
+    
+    return JsonResponse({'success': False, 'error': '無効なリクエストです'}, status=405)
+
+
+@login_required
+def sub_notebook_create_ajax(request, notebook_pk):
+    """サブノート作成Ajax"""
+    if request.method == 'POST':
+        try:
+            notebook = get_object_or_404(Notebook, pk=notebook_pk, user=request.user)
+            data = json.loads(request.body)
+            
+            title = data.get('title', '').strip()
+            description = data.get('description', '').strip()
+            
+            if not title:
+                return JsonResponse({
+                    'success': False,
+                    'error': 'サブノート名は必須です'
+                }, status=400)
+            
+            # 重複チェック
+            if SubNotebook.objects.filter(notebook=notebook, title=title).exists():
+                return JsonResponse({
+                    'success': False,
+                    'error': '同名のサブノートが既に存在します'
+                }, status=400)
+            
+            # サブノート作成
+            sub_notebook = SubNotebook.objects.create(
+                notebook=notebook,
+                title=title,
+                description=description,
+                order=notebook.sub_notebooks.count()
+            )
+            
+            return JsonResponse({
+                'success': True,
+                'sub_notebook': {
+                    'id': str(sub_notebook.pk),
+                    'title': sub_notebook.title,
+                    'description': sub_notebook.description
+                },
+                'message': f'サブノート「{title}」を作成しました'
+            })
+            
+        except json.JSONDecodeError:
+            return JsonResponse({
+                'success': False,
+                'error': '無効なJSONデータです'
+            }, status=400)
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"サブノート作成エラー: {e}", exc_info=True)
+            return JsonResponse({
+                'success': False,
+                'error': 'サブノートの作成に失敗しました'
+            }, status=500)
+    
+    return JsonResponse({'success': False, 'error': '無効なリクエストです'}, status=405)
+
+
+@login_required
+def get_template_ajax(request, template_pk):
+    """テンプレート情報をAjaxで取得"""
+    try:
+        template = get_object_or_404(NotebookTemplate, pk=template_pk, is_active=True)
+        
+        return JsonResponse({
+            'success': True,
+            'template': {
+                'name': template.name,
+                'description': template.description,
+                'default_title': template.default_title,
+                'default_strategy': template.default_strategy,
+                'default_criteria': template.default_criteria,
+                'suggested_sub_notebooks': template.suggested_sub_notebooks,
+                'suggested_tags': template.suggested_tags
+            }
+        })
+        
+    except NotebookTemplate.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'テンプレートが見つかりません'
+        }, status=404)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"テンプレート取得エラー: {e}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': 'テンプレートの取得に失敗しました'
+        }, status=500)
+
+
+@login_required
+def notebook_search_ajax(request):
+    """ノートブック検索Ajax（リアルタイム検索用）"""
+    query = request.GET.get('q', '').strip()
+    filters = {
+        'notebook_type': request.GET.get('notebook_type', ''),
+        'status': request.GET.get('status', ''),
+        'is_favorite': request.GET.get('is_favorite') == 'true'
+    }
+    
+    try:
+        # 基本クエリセット
+        queryset = Notebook.objects.filter(user=request.user)
+        
+        # 検索クエリの適用
+        if query:
+            queryset = queryset.filter(
+                Q(title__icontains=query) |
+                Q(subtitle__icontains=query) |
+                Q(description__icontains=query) |
+                Q(investment_strategy__icontains=query) |
+                Q(tags__name__icontains=query)
+            ).distinct()
+        
+        # フィルターの適用
+        if filters['notebook_type']:
+            queryset = queryset.filter(notebook_type=filters['notebook_type'])
+        
+        if filters['status']:
+            queryset = queryset.filter(status=filters['status'])
+            
+        if filters['is_favorite']:
+            queryset = queryset.filter(is_favorite=True)
+        
+        # 統計情報付きで取得
+        queryset = queryset.annotate(
+            recent_entries_count=Count(
+                'entries',
+                filter=Q(entries__created_at__gte=timezone.now() - timedelta(days=30))
+            ),
+            stock_count=Count('entries__stock_code', distinct=True)
+        ).select_related().prefetch_related('tags')[:20]  # 最大20件
+        
+        # 結果をシリアライズ
+        results = []
+        for notebook in queryset:
+            results.append({
+                'id': str(notebook.pk),
+                'title': notebook.title,
+                'subtitle': notebook.subtitle,
+                'notebook_type': notebook.get_notebook_type_display(),
+                'status': notebook.get_status_display(),
+                'status_code': notebook.status,
+                'entry_count': notebook.entry_count,
+                'recent_entries_count': notebook.recent_entries_count,
+                'stock_count': notebook.stock_count,
+                'is_favorite': notebook.is_favorite,
+                'updated_at': notebook.updated_at.isoformat(),
+                'tags': [{'id': tag.pk, 'name': tag.name} for tag in notebook.tags.all()],
+                'url': reverse('notes:detail', kwargs={'pk': notebook.pk})
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'results': results,
+            'count': len(results),
+            'query': query
+        })
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"ノートブック検索エラー: {e}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': '検索処理中にエラーが発生しました'
+        }, status=500)
+
+
+@login_required
+def entry_search_ajax(request, notebook_pk):
+    """エントリー検索Ajax（サブノート・フィルター用）"""
+    notebook = get_object_or_404(Notebook, pk=notebook_pk, user=request.user)
+    
+    # フィルターパラメータ
+    filters = {
+        'sub_notebook': request.GET.get('sub_notebook', ''),
+        'entry_type': request.GET.get('entry_type', ''),
+        'stock_code': request.GET.get('stock_code', ''),
+        'is_important': request.GET.get('is_important') == 'true',
+        'is_bookmarked': request.GET.get('is_bookmarked') == 'true',
+        'query': request.GET.get('q', '').strip()
+    }
+    
+    try:
+        # 基本クエリセット
+        queryset = notebook.entries.select_related('sub_notebook').prefetch_related('tags')
+        
+        # フィルターの適用
+        if filters['sub_notebook']:
+            queryset = queryset.filter(sub_notebook_id=filters['sub_notebook'])
+        
+        if filters['entry_type']:
+            queryset = queryset.filter(entry_type=filters['entry_type'])
+        
+        if filters['stock_code']:
+            queryset = queryset.filter(stock_code=filters['stock_code'])
+        
+        if filters['is_important']:
+            queryset = queryset.filter(is_important=True)
+        
+        if filters['is_bookmarked']:
+            queryset = queryset.filter(is_bookmarked=True)
+        
+        # テキスト検索
+        if filters['query']:
+            queryset = queryset.filter(
+                Q(title__icontains=filters['query']) |
+                Q(stock_code__icontains=filters['query']) |
+                Q(company_name__icontains=filters['query'])
+            )
+        
+        # ソート
+        sort_order = request.GET.get('sort', 'newest')
+        if sort_order == 'oldest':
+            queryset = queryset.order_by('created_at')
+        elif sort_order == 'important':
+            queryset = queryset.order_by('-is_important', '-created_at')
+        elif sort_order == 'stock':
+            queryset = queryset.order_by('stock_code', '-created_at')
+        else:  # newest
+            queryset = queryset.order_by('-created_at')
+        
+        # ページネーション
+        page_number = request.GET.get('page', 1)
+        paginator = Paginator(queryset, 10)
+        page_obj = paginator.get_page(page_number)
+        
+        # 結果をシリアライズ
+        results = []
+        for entry in page_obj:
+            results.append({
+                'id': str(entry.pk),
+                'title': entry.title,
+                'entry_type': entry.entry_type,
+                'entry_type_display': entry.get_entry_type_display(),
+                'stock_code': entry.stock_code,
+                'company_name': entry.company_name,
+                'stock_display': entry.get_stock_display(),
+                'sub_notebook': {
+                    'id': str(entry.sub_notebook.pk) if entry.sub_notebook else None,
+                    'title': entry.sub_notebook.title if entry.sub_notebook else None
+                },
+                'is_important': entry.is_important,
+                'is_bookmarked': entry.is_bookmarked,
+                'created_at': entry.created_at.isoformat(),
+                'tags': [{'id': tag.pk, 'name': tag.name} for tag in entry.tags.all()],
+                'content_preview': generate_content_preview(entry)
+            })
+        
+        return JsonResponse({
+            'success': True,
+            'results': results,
+            'pagination': {
+                'page': page_obj.number,
+                'num_pages': page_obj.paginator.num_pages,
+                'has_previous': page_obj.has_previous(),
+                'has_next': page_obj.has_next(),
+                'count': page_obj.paginator.count
+            },
+            'filters': filters
+        })
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"エントリー検索エラー: {e}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': '検索処理中にエラーが発生しました'
+        }, status=500)
+
+
+def generate_content_preview(entry):
+    """エントリーコンテンツのプレビューを生成"""
+    content = entry.content
+    entry_type = entry.entry_type
+    
+    if entry_type == 'ANALYSIS' and content.get('summary'):
+        return content['summary'][:100] + '...' if len(content['summary']) > 100 else content['summary']
+    elif entry_type == 'NEWS' and content.get('headline'):
+        return content['headline']
+    elif entry_type == 'CALCULATION' and content.get('current_price'):
+        return f"現在株価: {content['current_price']}"
+    elif entry_type == 'MEMO' and content.get('observation'):
+        return content['observation'][:100] + '...' if len(content['observation']) > 100 else content['observation']
+    elif entry_type == 'GOAL' and content.get('target_price'):
+        return f"目標株価: {content['target_price']}"
+    
+    return "詳細はクリックして確認してください"

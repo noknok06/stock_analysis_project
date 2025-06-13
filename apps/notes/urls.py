@@ -17,6 +17,18 @@ urlpatterns = [
     # エントリー関連
     path('<uuid:notebook_pk>/entry/create/', views.entry_create_view, name='entry_create'),
     path('entry/<uuid:entry_pk>/', views.entry_detail_ajax, name='entry_detail_ajax'),
-    # path('entry/<uuid:entry_pk>/edit/', views.entry_update_view, name='entry_edit'),
-    # path('entry/<uuid:entry_pk>/delete/', views.entry_delete_view, name='entry_delete'),
+    
+    # ★ 新規追加：ブックマーク・お気に入り機能
+    path('<uuid:pk>/favorite/', views.toggle_favorite_view, name='toggle_favorite'),
+    path('entry/<uuid:entry_pk>/bookmark/', views.toggle_bookmark_view, name='toggle_bookmark'),
+    
+    # ★ 新規追加：サブノート関連
+    path('<uuid:notebook_pk>/sub-notebook/create/', views.sub_notebook_create_ajax, name='sub_notebook_create'),
+    
+    # ★ 新規追加：Ajax検索関連
+    path('search/', views.notebook_search_ajax, name='notebook_search_ajax'),
+    path('<uuid:notebook_pk>/entries/search/', views.entry_search_ajax, name='entry_search_ajax'),
+    
+    # ★ 新規追加：テンプレート関連
+    path('template/<uuid:template_pk>/', views.get_template_ajax, name='get_template_ajax'),
 ]
