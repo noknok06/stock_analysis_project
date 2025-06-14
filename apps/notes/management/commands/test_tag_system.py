@@ -49,7 +49,7 @@ class Command(BaseCommand):
                     'stock_code': '7203',
                     'company_name': 'トヨタ自動車',
                     'investment_reason': 'タグシステムのテスト用ノートです。',
-                    'key_points': ['テスト用ポイント1', 'テスト用ポイント2'],
+                    'key_criteria': ['テスト用ポイント1', 'テスト用ポイント2'],
                     'risk_factors': ['テスト用リスク1'],
                     'status': 'ACTIVE'
                 }

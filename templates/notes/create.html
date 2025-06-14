@@ -1,5 +1,5 @@
 <!-- ========================================
-templates/notes/create.html - 見直し版（テーマ単位ノート対応）
+templates/notes/create.html - 完全版（ヘルプガイド連携対応）
 ======================================== -->
 
 {% extends 'base.html' %}
@@ -34,6 +34,57 @@ templates/notes/create.html - 見直し版（テーマ単位ノート対応）
     @keyframes slideInFromLeft {
         from { transform: translateX(-10px); opacity: 0; }
         to { transform: translateX(0); opacity: 1; }
+    }
+    
+    /* テンプレート適用時のアニメーション */
+    .template-applied {
+        animation: templateHighlight 3s ease-in-out;
+        border: 2px solid #3b82f6 !important;
+    }
+    
+    @keyframes templateHighlight {
+        0% { 
+            background-color: rgba(59, 130, 246, 0.2);
+            transform: scale(1.01);
+        }
+        50% { 
+            background-color: rgba(59, 130, 246, 0.1);
+        }
+        100% { 
+            background-color: transparent;
+            transform: scale(1);
+        }
+    }
+    
+    /* フィールドハイライト */
+    .field-highlight {
+        animation: fieldGlow 2s ease-in-out;
+    }
+    
+    @keyframes fieldGlow {
+        0%, 100% { 
+            box-shadow: 0 0 0 rgba(59, 130, 246, 0);
+        }
+        50% { 
+            box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+        }
+    }
+    
+    /* 成功メッセージのスタイル */
+    .template-success-message {
+        backdrop-filter: blur(8px);
+        animation: slideInRight 0.3s ease-out;
+    }
+    
+    @keyframes slideInRight {
+        from { 
+            transform: translateX(100%);
+            opacity: 0;
+        }
+        to { 
+            transform: translateX(0);
+            opacity: 1;
+        }
     }
 </style>
 {% endblock %}
@@ -393,8 +444,259 @@ let subNotebookCount = 1;
 let tagManager = null;
 let selectedTemplate = null;
 
+// ========================================
+// ヘルプガイドからのテンプレート適用機能
+// ========================================
+
+// ヘルプガイドからのテンプレート適用をチェック
+function checkAndApplyHelpTemplate() {
+    console.log('checkAndApplyHelpTemplate 実行開始');
+    
+    // URLパラメータをチェック
+    const urlParams = new URLSearchParams(window.location.search);
+    const templateParam = urlParams.get('template');
+    
+    // localStorageからテンプレートデータを取得
+    const savedTemplate = localStorage.getItem('selectedTemplate');
+    
+    console.log('URL template param:', templateParam);
+    console.log('localStorage template:', savedTemplate);
+    
+    if (savedTemplate) {
+        try {
+            const templateData = JSON.parse(savedTemplate);
+            console.log('ヘルプガイドからのテンプレートを適用:', templateData);
+            
+            // テンプレートデータをフォームに適用
+            applyHelpTemplateToForm(templateData);
+            
+            // 成功メッセージを表示
+            showTemplateAppliedMessage(templateData.title);
+            
+            // localStorageをクリア（一度だけ適用）
+            localStorage.removeItem('selectedTemplate');
+            
+        } catch (error) {
+            console.error('テンプレートデータの解析エラー:', error);
+            localStorage.removeItem('selectedTemplate');
+        }
+    } else if (templateParam) {
+        // URLパラメータからテンプレートタイプを取得（フォールバック）
+        console.log('URLパラメータからテンプレートタイプを検出:', templateParam);
+        showTemplateHint(templateParam);
+    }
+}
+
+// ヘルプテンプレートをフォームに適用
+function applyHelpTemplateToForm(templateData) {
+    console.log('テンプレートデータをフォームに適用開始');
+    
+    // 基本項目の設定
+    setTimeout(() => {
+        setFormField('id_title', templateData.title);
+        setFormField('id_subtitle', templateData.subtitle);
+        setFormField('id_description', templateData.description);
+        setFormField('id_investment_strategy', templateData.investment_strategy);
+        setFormField('id_target_allocation', templateData.target_allocation);
+        setFormField('id_notebook_type', templateData.notebook_type);
+        setFormField('id_status', templateData.status);
+        
+        // 選定基準の適用
+        if (templateData.key_criteria && Array.isArray(templateData.key_criteria)) {
+            applyDynamicItems('key-criteria-container', 'key-criteria-item', 'key_criteria', templateData.key_criteria, 'removeCriteria');
+            criteriaCount = templateData.key_criteria.length;
+            updateRemoveButtons('key-criteria-item');
+        }
+        
+        // リスク要因の適用
+        if (templateData.risk_factors && Array.isArray(templateData.risk_factors)) {
+            applyDynamicItems('risk-factors-container', 'risk-factor-item', 'risk_factor', templateData.risk_factors, 'removeRiskFactor');
+            riskFactorCount = templateData.risk_factors.length;
+            updateRemoveButtons('risk-factor-item');
+        }
+        
+        // サブノートの適用
+        if (templateData.suggested_sub_notebooks && Array.isArray(templateData.suggested_sub_notebooks)) {
+            applyDynamicItems('sub-notebooks-container', 'sub-notebook-item', 'sub_notebook', templateData.suggested_sub_notebooks, 'removeSubNotebook');
+            subNotebookCount = templateData.suggested_sub_notebooks.length;
+            updateRemoveButtons('sub-notebook-item');
+        }
+        
+        // タグの適用
+        if (templateData.suggested_tags && Array.isArray(templateData.suggested_tags) && tagManager) {
+            setTimeout(() => {
+                templateData.suggested_tags.forEach(tag => {
+                    if (!tagManager.selectedTags.includes(tag)) {
+                        tagManager.addTag(tag);
+                    }
+                });
+                console.log('タグ適用完了:', templateData.suggested_tags);
+            }, 200);
+        }
+        
+        console.log('テンプレートデータの適用完了');
+    }, 100);
+}
+
+// フォームフィールドに値をセット
+function setFormField(fieldId, value) {
+    const field = document.getElementById(fieldId);
+    if (field && value) {
+        field.value = value;
+        console.log(`フィールド ${fieldId} に値を設定:`, value);
+        
+        // フィールドが変更されたことを視覚的に示す
+        field.classList.add('field-highlight');
+        
+        // 親セクションもハイライト
+        const parentSection = field.closest('.form-section');
+        if (parentSection) {
+            parentSection.classList.add('template-applied');
+            setTimeout(() => {
+                parentSection.classList.remove('template-applied');
+            }, 3000);
+        }
+        
+        // フィールドのハイライトを解除
+        setTimeout(() => {
+            field.classList.remove('field-highlight');
+        }, 2000);
+    }
+}
+
+// 動的項目（配列）をフォームに適用
+function applyDynamicItems(containerId, itemClass, namePrefix, items, removeFunction) {
+    const container = document.getElementById(containerId);
+    if (!container || !Array.isArray(items) || items.length === 0) return;
+    
+    console.log(`動的項目を適用: ${containerId}`, items);
+    
+    // 既存の項目をクリア
+    container.innerHTML = '';
+    
+    // 各項目を作成
+    items.forEach((item, index) => {
+        const newItem = document.createElement('div');
+        newItem.className = `${itemClass} flex gap-2 mb-2 animate-in`;
+        newItem.innerHTML = `
+            <input type="text" 
+                   name="${namePrefix}_${index}" 
+                   value="${escapeHtml(item)}"
+                   placeholder="${namePrefix} ${index + 1}"
+                   class="flex-1 bg-blue-900/10 border-2 border-blue-500 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+            <button type="button" 
+                    onclick="${removeFunction}(this)"
+                    class="px-3 py-2 text-red-400 hover:text-red-300 ${items.length === 1 ? 'hidden' : ''}">
+                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecarp="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        `;
+        container.appendChild(newItem);
+        
+        // 一定時間後にハイライトを解除
+        setTimeout(() => {
+            const input = newItem.querySelector('input');
+            if (input) {
+                input.classList.remove('bg-blue-900/10', 'border-2', 'border-blue-500');
+                input.classList.add('bg-gray-700', 'border', 'border-gray-600');
+            }
+        }, 3000);
+    });
+}
+
+// テンプレート適用成功メッセージ
+function showTemplateAppliedMessage(templateTitle) {
+    const messageDiv = document.createElement('div');
+    messageDiv.className = 'template-success-message fixed top-4 right-4 bg-gradient-to-r from-green-600 to-blue-600 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-sm';
+    messageDiv.innerHTML = `
+        <div class="flex items-start space-x-3">
+            <div class="flex-shrink-0">
+                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+            </div>
+            <div class="flex-1">
+                <h4 class="font-semibold text-sm">テンプレート適用完了!</h4>
+                <p class="text-xs mt-1 opacity-90">「${escapeHtml(templateTitle)}」のテンプレートを適用しました</p>
+                <p class="text-xs mt-1 opacity-75">必要に応じて内容を調整してください</p>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()" 
+                    class="flex-shrink-0 text-white/80 hover:text-white">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(messageDiv);
+    
+    // 10秒後に自動削除
+    setTimeout(() => {
+        if (messageDiv.parentNode) {
+            messageDiv.style.transform = 'translateX(100%)';
+            messageDiv.style.opacity = '0';
+            setTimeout(() => {
+                if (messageDiv.parentNode) {
+                    messageDiv.remove();
+                }
+            }, 300);
+        }
+    }, 10000);
+}
+
+// テンプレートヒント表示（URLパラメータのみの場合）
+function showTemplateHint(templateType) {
+    const templateNames = {
+        'high_dividend': '高配当株投資',
+        'growth': '成長株投資',
+        'value': 'バリュー投資'
+    };
+    
+    const templateName = templateNames[templateType] || templateType;
+    
+    const hintDiv = document.createElement('div');
+    hintDiv.className = 'fixed top-4 right-4 bg-blue-600 text-white px-4 py-3 rounded-lg shadow-lg z-50 max-w-sm';
+    hintDiv.innerHTML = `
+        <div class="flex items-center space-x-2">
+            <svg class="h-5 w-5 text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            <span class="text-sm">「${templateName}」テンプレートの作成を開始します</span>
+        </div>
+    `;
+    
+    document.body.appendChild(hintDiv);
+    
+    setTimeout(() => {
+        if (hintDiv.parentNode) {
+            hintDiv.remove();
+        }
+    }, 5000);
+}
+
+// HTMLエスケープ関数
+function escapeHtml(text) {
+    if (!text) return '';
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.toString().replace(/[&<>"']/g, m => map[m]);
+}
+
+// ========================================
+// 従来の機能（テンプレートカード、動的項目管理等）
+// ========================================
+
 // ページ読み込み時の初期化
 document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM読み込み完了');
+    
     // タグマネージャー初期化
     tagManager = initTagManager({
         selectedTagsContainer: 'selected-tags-container',
@@ -406,11 +708,16 @@ document.addEventListener('DOMContentLoaded', function() {
     // テンプレートカードの設定
     setupTemplateCards();
     
+    // ヘルプガイドからのテンプレート適用をチェック
+    checkAndApplyHelpTemplate();
+    
     // その他の初期化
     updateRemoveButtons('key-criteria-item');
     updateRemoveButtons('risk-factor-item');
     updateRemoveButtons('sub-notebook-item');
     setupFormValidation();
+    
+    console.log('初期化完了');
 });
 
 // テンプレートカード設定
@@ -555,7 +862,7 @@ function showTemplatePreview(templateData) {
     const content = document.getElementById('template-content');
     
     if (templateData.template === 'custom') {
-        preview.classList.add('hidden');
+        preview && preview.classList.add('hidden');
         return;
     }
     
@@ -583,8 +890,12 @@ function showTemplatePreview(templateData) {
         } catch (e) {}
     }
     
-    content.innerHTML = previewHtml;
-    preview.classList.remove('hidden');
+    if (content) {
+        content.innerHTML = previewHtml;
+    }
+    if (preview) {
+        preview.classList.remove('hidden');
+    }
 }
 
 // 動的項目管理（DRY原則適用）

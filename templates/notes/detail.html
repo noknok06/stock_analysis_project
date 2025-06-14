@@ -1,5 +1,5 @@
 <!-- ========================================
-templates/notes/detail.html - 更新版（サブノート・ブックマーク機能完全実装）
+templates/notes/detail.html - 改善版（基本情報表示強化）
 ======================================== -->
 
 {% extends 'base.html' %}
@@ -15,6 +15,138 @@ templates/notes/detail.html - 更新版（サブノート・ブックマーク�
         transform: translateY(-2px);
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
     }
+    
+    /* 詳細情報セクションのスタイル */
+    .detail-section {
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        border: 1px solid #374151;
+        transition: all 0.3s ease-in-out;
+    }
+    
+    .detail-section.expanded {
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+    }
+    
+    .expand-button {
+        transition: all 0.2s ease-in-out;
+    }
+    
+    .expand-button:hover {
+        background-color: rgba(75, 85, 99, 0.5);
+    }
+    
+    .expand-button .chevron {
+        transition: transform 0.3s ease-in-out;
+    }
+    
+    .expand-button.expanded .chevron {
+        transform: rotate(180deg);
+    }
+    
+    .detail-content {
+        max-height: 0;
+        overflow: hidden;
+        transition: max-height 0.3s ease-in-out;
+    }
+    
+    .detail-content.expanded {
+        max-height: 1000px; /* 十分大きな値 */
+    }
+    
+    /* 基本情報のスタイル */
+    .info-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+    
+    .info-card {
+        background: rgba(55, 65, 81, 0.5);
+        border: 1px solid #4b5563;
+        border-radius: 0.5rem;
+        padding: 1rem;
+        transition: all 0.2s ease-in-out;
+    }
+    
+    .info-card:hover {
+        background: rgba(55, 65, 81, 0.8);
+        border-color: #6b7280;
+    }
+    
+    .info-label {
+        font-size: 0.75rem;
+        font-weight: 500;
+        color: #9ca3af;
+        text-transform: uppercase;
+        letter-spacing: 0.05em;
+        margin-bottom: 0.25rem;
+    }
+    
+    .info-value {
+        color: #f3f4f6;
+        font-weight: 500;
+    }
+    
+    /* 投資戦略表示の改善 */
+    .strategy-full {
+        background: linear-gradient(135deg, #312e81 0%, #1e1b4b 100%);
+        border: 1px solid #4338ca;
+    }
+    
+    /* リスト表示の改善 */
+    .criteria-list, .risk-list {
+        list-style: none;
+        padding: 0;
+        margin: 0;
+    }
+    
+    .criteria-list li, .risk-list li {
+        background: rgba(34, 197, 94, 0.1);
+        border: 1px solid rgba(34, 197, 94, 0.2);
+        padding: 0.5rem 0.75rem;
+        margin: 0.25rem 0;
+        border-radius: 0.375rem;
+        color: #bbf7d0;
+        font-size: 0.875rem;
+        position: relative;
+        padding-left: 2rem;
+    }
+    
+    .criteria-list li::before {
+        content: "✓";
+        position: absolute;
+        left: 0.75rem;
+        color: #22c55e;
+        font-weight: bold;
+    }
+    
+    .risk-list li {
+        background: rgba(239, 68, 68, 0.1);
+        border-color: rgba(239, 68, 68, 0.2);
+        color: #fecaca;
+    }
+    
+    .risk-list li::before {
+        content: "!";
+        position: absolute;
+        left: 0.75rem;
+        color: #ef4444;
+        font-weight: bold;
+    }
+    
+    /* 統計情報の改善 */
+    .stats-card {
+        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
+        border: 1px solid #374151;
+        transition: all 0.2s ease-in-out;
+    }
+    
+    .stats-card:hover {
+        border-color: #4b5563;
+        transform: translateY(-1px);
+    }
+    
+    /* サブノートタブの改善 */
     .sub-notebook-tab {
         transition: all 0.2s ease-in-out;
         cursor: pointer;
@@ -26,10 +158,43 @@ templates/notes/detail.html - 更新版（サブノート・ブックマーク�
     .sub-notebook-tab:hover:not(.active) {
         background-color: rgba(75, 85, 99, 0.5);
     }
-    .stats-card {
-        background: linear-gradient(135deg, #1f2937 0%, #111827 100%);
-        border: 1px solid #374151;
+    
+    /* レスポンシブ対応 */
+    @media (max-width: 768px) {
+        .info-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .detail-content.expanded {
+            max-height: 2000px; /* モバイルでは高さを大きく */
+        }
+        
+        .info-card {
+            padding: 0.75rem;
+        }
+        
+        .criteria-list li, .risk-list li {
+            font-size: 0.8rem;
+            padding: 0.375rem 0.5rem;
+            padding-left: 1.5rem;
+        }
+        
+        .criteria-list li::before, .risk-list li::before {
+            left: 0.5rem;
+        }
     }
+    
+    /* アニメーション */
+    @keyframes fadeIn {
+        from { opacity: 0; transform: translateY(10px); }
+        to { opacity: 1; transform: translateY(0); }
+    }
+    
+    .entry-card {
+        animation: fadeIn 0.3s ease-out;
+    }
+    
+    /* その他の既存スタイル */
     .filter-chip {
         transition: all 0.2s ease-in-out;
         cursor: pointer;
@@ -55,47 +220,13 @@ templates/notes/detail.html - 更新版（サブノート・ブックマーク�
     .bookmark-icon.active {
         color: #3b82f6;
     }
-    
-    /* アニメーション */
-    @keyframes fadeIn {
-        from { opacity: 0; transform: translateY(10px); }
-        to { opacity: 1; transform: translateY(0); }
-    }
-    
-    .entry-card {
-        animation: fadeIn 0.3s ease-out;
-    }
-    
-    /* 通知スタイル */
-    .notification {
-        backdrop-filter: blur(8px);
-        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-    }
-    
-    /* タッチデバイス用の調整 */
-    @media (max-width: 768px) {
-        .entry-card {
-            margin-bottom: 0.75rem;
-        }
-        
-        /* タップ領域を確保 */
-        button, .cursor-pointer {
-            min-height: 44px;
-            min-width: 44px;
-        }
-        
-        .sub-notebook-tab {
-            min-height: 36px;
-            padding: 0.25rem 0.75rem;
-        }
-    }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-2 sm:px-4" data-notebook-id="{{ notebook.pk }}">
-    <!-- ノートヘッダー -->
-    <div class="bg-gray-800 border border-gray-700 rounded-lg mb-6 md:mb-8">
+    <!-- ノートヘッダー（簡潔版） -->
+    <div class="bg-gray-800 border border-gray-700 rounded-lg mb-4 md:mb-6">
         <div class="p-4 md:p-6 border-b border-gray-700">
             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4">
                 <div class="flex items-center space-x-3 md:space-x-4 min-w-0 flex-1">
@@ -120,27 +251,22 @@ templates/notes/detail.html - 更新版（サブノート・ブックマーク�
                         {% if notebook.subtitle %}
                             <p class="text-sm md:text-base text-gray-400 truncate">{{ notebook.subtitle }}</p>
                         {% endif %}
-                        <span class="inline-block px-2 py-1 text-xs rounded bg-gray-600 text-gray-300 mt-1">
-                            {{ notebook.get_notebook_type_display }}
-                        </span>
+                        <div class="flex flex-wrap gap-2 mt-2">
+                            <span class="inline-block px-2 py-1 text-xs rounded bg-gray-600 text-gray-300">
+                                {{ notebook.get_notebook_type_display }}
+                            </span>
+                            <span class="px-2 py-1 text-xs rounded-full 
+                                       {% if notebook.status == 'ACTIVE' %}bg-green-900 text-green-300
+                                       {% elif notebook.status == 'MONITORING' %}bg-yellow-900 text-yellow-300
+                                       {% elif notebook.status == 'ATTENTION' %}bg-red-900 text-red-300
+                                       {% else %}bg-gray-700 text-gray-300{% endif %}">
+                                {{ notebook.get_status_display }}
+                            </span>
+                        </div>
                     </div>
                 </div>
                 
                 <div class="flex items-center space-x-2 md:space-x-3">
-                    <span class="px-2 md:px-3 py-1 text-xs md:text-sm rounded-full 
-                               {% if notebook.status == 'ACTIVE' %}bg-green-900 text-green-300
-                               {% elif notebook.status == 'MONITORING' %}bg-yellow-900 text-yellow-300
-                               {% elif notebook.status == 'ATTENTION' %}bg-red-900 text-red-300
-                               {% else %}bg-gray-700 text-gray-300{% endif %}">
-                        <span class="hidden sm:inline">{{ notebook.get_status_display }}</span>
-                        <span class="sm:hidden">
-                            {% if notebook.status == 'ACTIVE' %}●
-                            {% elif notebook.status == 'MONITORING' %}⚠
-                            {% elif notebook.status == 'ATTENTION' %}⚠
-                            {% else %}○{% endif %}
-                        </span>
-                    </span>
-                    
                     <button onclick="openNewEntryModal()" 
                             title="新規エントリー作成"
                             class="inline-flex items-center px-2 md:px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
@@ -161,53 +287,156 @@ templates/notes/detail.html - 更新版（サブノート・ブックマーク�
                 </div>
             </div>
             
-            <!-- 統計情報 -->
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-4 mb-4">
-                <div class="stats-card p-3 md:p-4 rounded-lg text-center">
-                    <div class="text-lg md:text-2xl font-bold text-blue-400">{{ stats.total_entries }}</div>
-                    <div class="text-xs md:text-sm text-gray-400">総エントリー数</div>
-                </div>
-                <div class="stats-card p-3 md:p-4 rounded-lg text-center">
-                    <div class="text-lg md:text-2xl font-bold text-green-400">{{ stats.stock_count }}</div>
-                    <div class="text-xs md:text-sm text-gray-400">銘柄数</div>
-                </div>
-                <div class="stats-card p-3 md:p-4 rounded-lg text-center">
-                    <div class="text-lg md:text-2xl font-bold text-purple-400">{{ stats.recent_entries }}</div>
-                    <div class="text-xs md:text-sm text-gray-400">今週の記録</div>
-                </div>
-                <div class="stats-card p-3 md:p-4 rounded-lg text-center">
-                    <div class="text-lg md:text-2xl font-bold text-yellow-400">{{ stats.important_entries }}</div>
-                    <div class="text-xs md:text-sm text-gray-400">重要記録</div>
-                </div>
+            <!-- 詳細情報の展開ボタン -->
+            <div class="border-t border-gray-700 pt-4">
+                <button onclick="toggleDetailSection()" 
+                        id="detail-expand-btn"
+                        class="expand-button w-full flex items-center justify-center gap-2 py-3 px-4 rounded-lg text-sm font-medium text-gray-300 hover:text-white transition-colors">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span>ノート詳細情報を表示</span>
+                    <svg class="h-4 w-4 chevron" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+                    </svg>
+                </button>
             </div>
-            
-            <!-- 投資戦略表示 -->
-            {% if notebook.investment_strategy %}
-                <div class="bg-gray-700 p-4 rounded-lg mb-4">
-                    <h3 class="text-sm font-medium text-white mb-2 flex items-center">
-                        <svg class="h-4 w-4 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                        </svg>
-                        投資戦略
-                    </h3>
-                    <p class="text-sm text-gray-300">{{ notebook.investment_strategy|truncatewords:30 }}</p>
-                </div>
-            {% endif %}
-            
-            <!-- タグ -->
-            {% if notebook.tags.all %}
-                <div class="flex flex-wrap gap-1 md:gap-2">
-                    {% for tag in notebook.tags.all %}
-                        <span class="px-1 md:px-2 py-1 text-xs border border-gray-600 text-gray-300 rounded hover:bg-gray-700 cursor-pointer transition-colors truncate max-w-24 sm:max-w-none">
-                            {{ tag.name }}
-                        </span>
-                    {% endfor %}
-                </div>
-            {% endif %}
         </div>
     </div>
     
-    <!-- フィルター・サブノートタブ -->
+    <!-- 詳細情報セクション（折りたたみ可能） -->
+    <div class="detail-section rounded-lg mb-4 md:mb-6" id="detail-section">
+        <div class="detail-content" id="detail-content">
+            <div class="p-4 md:p-6 space-y-6">
+                
+                <!-- 基本情報グリッド -->
+                <div class="info-grid">
+                    {% if notebook.description %}
+                        <div class="info-card">
+                            <div class="info-label">ノートの説明</div>
+                            <div class="info-value">{{ notebook.description }}</div>
+                        </div>
+                    {% endif %}
+                    
+                    {% if notebook.target_allocation %}
+                        <div class="info-card">
+                            <div class="info-label">目標配分</div>
+                            <div class="info-value">{{ notebook.target_allocation }}</div>
+                        </div>
+                    {% endif %}
+                    
+                    <div class="info-card">
+                        <div class="info-label">作成日</div>
+                        <div class="info-value">{{ notebook.created_at|date:"Y年m月d日" }}</div>
+                    </div>
+                    
+                    <div class="info-card">
+                        <div class="info-label">最終更新</div>
+                        <div class="info-value">{{ notebook.updated_at|date:"Y年m月d日 H:i" }}</div>
+                    </div>
+                </div>
+                
+                <!-- 投資戦略（全文表示） -->
+                {% if notebook.investment_strategy %}
+                    <div class="strategy-full rounded-lg p-6">
+                        <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+                            <svg class="h-5 w-5 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
+                            </svg>
+                            投資戦略・テーマ
+                        </h3>
+                        <div class="text-gray-200 leading-relaxed whitespace-pre-line">{{ notebook.investment_strategy }}</div>
+                    </div>
+                {% endif %}
+                
+                <!-- 選定基準とリスク要因 -->
+                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    <!-- 選定基準 -->
+                    {% if notebook.key_criteria %}
+                        <div>
+                            <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+                                <svg class="h-5 w-5 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                                選定基準
+                            </h3>
+                            <ul class="criteria-list">
+                                {% for criteria in notebook.key_criteria %}
+                                    <li>{{ criteria }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                    
+                    <!-- リスク要因 -->
+                    {% if notebook.risk_factors %}
+                        <div>
+                            <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+                                <svg class="h-5 w-5 mr-2 text-red-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.964-.833-2.732 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                                </svg>
+                                リスク要因
+                            </h3>
+                            <ul class="risk-list">
+                                {% for risk in notebook.risk_factors %}
+                                    <li>{{ risk }}</li>
+                                {% endfor %}
+                            </ul>
+                        </div>
+                    {% endif %}
+                </div>
+                
+                <!-- タグ表示 -->
+                {% if notebook.tags.all %}
+                    <div>
+                        <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+                            <svg class="h-5 w-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a2 2 0 012-2z"></path>
+                            </svg>
+                            関連タグ
+                        </h3>
+                        <div class="flex flex-wrap gap-2">
+                            {% for tag in notebook.tags.all %}
+                                <span class="px-3 py-1 text-sm border border-gray-600 text-gray-300 rounded-full hover:bg-gray-700 cursor-pointer transition-colors {{ tag.get_color_class }}">
+                                    {{ tag.name }}
+                                </span>
+                            {% endfor %}
+                        </div>
+                    </div>
+                {% endif %}
+                
+                <!-- 統計情報（詳細版） -->
+                <div>
+                    <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
+                        <svg class="h-5 w-5 mr-2 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                        </svg>
+                        ノート統計情報
+                    </h3>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="stats-card p-4 rounded-lg text-center">
+                            <div class="text-2xl font-bold text-blue-400">{{ stats.total_entries }}</div>
+                            <div class="text-sm text-gray-400">総エントリー数</div>
+                        </div>
+                        <div class="stats-card p-4 rounded-lg text-center">
+                            <div class="text-2xl font-bold text-green-400">{{ stats.stock_count }}</div>
+                            <div class="text-sm text-gray-400">銘柄数</div>
+                        </div>
+                        <div class="stats-card p-4 rounded-lg text-center">
+                            <div class="text-2xl font-bold text-purple-400">{{ stats.recent_entries }}</div>
+                            <div class="text-sm text-gray-400">今週の記録</div>
+                        </div>
+                        <div class="stats-card p-4 rounded-lg text-center">
+                            <div class="text-2xl font-bold text-yellow-400">{{ stats.important_entries }}</div>
+                            <div class="text-sm text-gray-400">重要記録</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- フィルター・サブノートタブ（既存と同じ） -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg mb-4 md:mb-6">
         <div class="p-4 md:p-6">
             <!-- サブノートタブ -->
@@ -307,7 +536,7 @@ templates/notes/detail.html - 更新版（サブノート・ブックマーク�
         </div>
     </div>
     
-    <!-- エントリー一覧 -->
+    <!-- エントリー一覧（既存と同じ） -->
     <div class="space-y-4 md:space-y-6">
         <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
             <h2 class="text-lg md:text-xl font-semibold text-white flex items-center">
@@ -321,7 +550,7 @@ templates/notes/detail.html - 更新版（サブノート・ブックマーク�
         </div>
         
         {% if entries %}
-            <!-- エントリーカード -->
+            <!-- エントリーカード（既存と同じ） -->
             <div class="space-y-3 md:space-y-4" id="entries-container">
                 {% for entry in entries %}
                     <div class="entry-card bg-gray-800 border border-gray-700 rounded-lg overflow-hidden cursor-pointer hover:bg-gray-750 transition-colors"
@@ -338,7 +567,6 @@ templates/notes/detail.html - 更新版（サブノート・ブックマーク�
                             <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0 mb-4">
                                 <div class="flex items-center space-x-3 min-w-0 flex-1">
                                     <div class="p-2 rounded-lg flex-shrink-0 {% if entry.entry_type == 'ANALYSIS' %}bg-blue-900 text-blue-300{% elif entry.entry_type == 'NEWS' %}bg-green-900 text-green-300{% elif entry.entry_type == 'CALCULATION' %}bg-orange-900 text-orange-300{% elif entry.entry_type == 'MEMO' %}bg-gray-700 text-gray-300{% elif entry.entry_type == 'EARNINGS' %}bg-purple-900 text-purple-300{% elif entry.entry_type == 'IR_EVENT' %}bg-indigo-900 text-indigo-300{% elif entry.entry_type == 'MARKET_EVENT' %}bg-pink-900 text-pink-300{% else %}bg-yellow-900 text-yellow-300{% endif %}">
-                                        <!-- アイコンは既存のコードと同じ -->
                                         <svg class="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
                                         </svg>
@@ -417,7 +645,6 @@ templates/notes/detail.html - 更新版（サブノート・ブックマーク�
                                     <p class="mb-2">{{ entry.content.observation|truncatewords:30 }}</p>
                                 {% endif %}
                                 
-                                <!-- エントリー内容の詳細を表示 -->
                                 <div class="mt-2 md:mt-3 text-xs md:text-sm text-gray-400">
                                     クリックして詳細を表示...
                                 </div>
@@ -427,7 +654,7 @@ templates/notes/detail.html - 更新版（サブノート・ブックマーク�
                 {% endfor %}
             </div>
             
-            <!-- ページネーション -->
+            <!-- ページネーション（既存と同じ） -->
             {% if is_paginated %}
                 <div class="flex items-center justify-center space-x-2 md:space-x-4 mt-8">
                     <button onclick="previousPage()" 
@@ -456,7 +683,7 @@ templates/notes/detail.html - 更新版（サブノート・ブックマーク�
                 </div>
             {% endif %}
         {% else %}
-            <!-- エントリーなしの場合 -->
+            <!-- エントリーなしの場合（既存と同じ） -->
             <div class="text-center py-12 md:py-16">
                 <div class="mx-auto h-16 w-16 md:h-24 md:w-24 text-gray-600 mb-4">
                     <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -478,7 +705,7 @@ templates/notes/detail.html - 更新版（サブノート・ブックマーク�
     </div>
 </div>
 
-<!-- 既存のモーダルは省略（新規エントリーモーダル、エントリー詳細モーダル、サブノート作成モーダル） -->
+<!-- 既存のモーダル（省略） -->
 
 <!-- 新規エントリーモーダル（既存のものを使用） -->
 <div id="new-entry-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 md:p-4">
@@ -681,49 +908,109 @@ templates/notes/detail.html - 更新版（サブノート・ブックマーク�
     </div>
 </div>
 
-<!-- エントリー詳細モーダル -->
-<div id="entry-detail-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 md:p-4">
-    <div class="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-4xl max-h-[95vh] md:max-h-[90vh] overflow-hidden">
-        <div class="flex items-center justify-between p-4 md:p-6 border-b border-gray-700">
-            <h3 class="text-lg md:text-xl font-semibold text-white" id="entry-detail-title">エントリー詳細</h3>
-            <button onclick="closeEntryDetail()" class="text-gray-400 hover:text-white p-2">
-                <svg class="h-5 w-5 md:h-6 md:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+<!-- サブノート作成モーダル -->
+<div id="sub-notebook-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-4">
+    <div class="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-md">
+        <div class="flex items-center justify-between p-6 border-b border-gray-700">
+            <h3 class="text-lg font-semibold text-white">サブノート作成</h3>
+            <button onclick="closeSubNotebookModal()" class="text-gray-400 hover:text-white">
+                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
             </button>
         </div>
-        <div id="entry-detail-content" class="p-4 md:p-6 overflow-y-auto max-h-[calc(95vh-120px)] md:max-h-[60vh]">
-            <!-- エントリー詳細内容がここに表示される -->
+        <div class="p-6">
+            <div class="space-y-4">
+                <div>
+                    <label for="sub-notebook-title" class="block text-sm font-medium text-gray-300 mb-2">サブノート名 *</label>
+                    <input type="text" 
+                           id="sub-notebook-title" 
+                           placeholder="例: 日本株"
+                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label for="sub-notebook-description" class="block text-sm font-medium text-gray-300 mb-2">説明</label>
+                    <textarea id="sub-notebook-description" 
+                              rows="3"
+                              placeholder="サブノートの説明（任意）"
+                              class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+            </div>
+            <div class="flex justify-end space-x-3 mt-6">
+                <button onclick="closeSubNotebookModal()" 
+                        class="px-4 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors">
+                    キャンセル
+                </button>
+                <button onclick="createSubNotebook()" 
+                        class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                    作成
+                </button>
+            </div>
         </div>
     </div>
 </div>
 
-<!-- エントリー詳細モーダル -->
-<div id="entry-detail-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 md:p-4">
-    <div class="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-4xl max-h-[95vh] md:max-h-[90vh] overflow-hidden">
-        <div class="flex items-center justify-between p-4 md:p-6 border-b border-gray-700">
-            <h3 class="text-lg md:text-xl font-semibold text-white" id="entry-detail-title">エントリー詳細</h3>
-            <button onclick="closeEntryDetail()" class="text-gray-400 hover:text-white p-2">
-                <svg class="h-5 w-5 md:h-6 md:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
-        </div>
-        <div id="entry-detail-content" class="p-4 md:p-6 overflow-y-auto max-h-[calc(95vh-120px)] md:max-h-[60vh]">
-            <!-- エントリー詳細内容がここに表示される -->
-        </div>
-    </div>
-</div>
 {% endblock %}
 
 {% block extra_js %}
-<!-- CSRFトークンを取得 -->
-{% csrf_token %}
-
 <script>
 // ========================================
-// グローバル変数
+// 詳細セクション展開機能
 // ========================================
+
+function toggleDetailSection() {
+    const section = document.getElementById('detail-section');
+    const content = document.getElementById('detail-content');
+    const button = document.getElementById('detail-expand-btn');
+    const chevron = button.querySelector('.chevron');
+    const buttonText = button.querySelector('span');
+    
+    const isExpanded = content.classList.contains('expanded');
+    
+    if (isExpanded) {
+        // 折りたたみ
+        content.classList.remove('expanded');
+        section.classList.remove('expanded');
+        button.classList.remove('expanded');
+        buttonText.textContent = 'ノート詳細情報を表示';
+        
+        // ローカルストレージに状態を保存
+        localStorage.setItem('notebookDetailExpanded', 'false');
+    } else {
+        // 展開
+        content.classList.add('expanded');
+        section.classList.add('expanded');
+        button.classList.add('expanded');
+        buttonText.textContent = 'ノート詳細情報を隠す';
+        
+        // ローカルストレージに状態を保存
+        localStorage.setItem('notebookDetailExpanded', 'true');
+    }
+    
+    console.log('詳細セクション状態:', isExpanded ? '折りたたみ' : '展開');
+}
+
+// ページ読み込み時に前回の状態を復元
+function restoreDetailSectionState() {
+    const savedState = localStorage.getItem('notebookDetailExpanded');
+    if (savedState === 'true') {
+        const content = document.getElementById('detail-content');
+        const section = document.getElementById('detail-section');
+        const button = document.getElementById('detail-expand-btn');
+        const buttonText = button.querySelector('span');
+        
+        content.classList.add('expanded');
+        section.classList.add('expanded');
+        button.classList.add('expanded');
+        buttonText.textContent = 'ノート詳細情報を隠す';
+    }
+}
+
+// ========================================
+// 既存の機能（フィルター、ブックマーク、お気に入りなど）
+// ========================================
+
+// グローバル変数
 let selectedEntryType = null;
 let currentFilters = {
     subNotebook: '',
@@ -733,22 +1020,21 @@ let currentFilters = {
     isBookmarked: false
 };
 
-// ========================================
-// 初期化
-// ========================================
+// ページ初期化
 document.addEventListener('DOMContentLoaded', function() {
     console.log('ノート詳細ページが初期化されました');
+    
+    // 詳細セクションの状態復元
+    restoreDetailSectionState();
     
     // フィルター機能の初期化
     setupFilters();
     
     // URLパラメータからフィルターを復元
     restoreFiltersFromUrl();
+    
+    console.log('初期化完了');
 });
-
-// ========================================
-// サブノート・フィルター機能
-// ========================================
 
 // フィルター機能の設定
 function setupFilters() {
@@ -994,63 +1280,6 @@ function restoreFiltersFromUrl() {
     if (subNotebook || entryType || stockCode) {
         applyFilters();
     }
-}
-
-// ========================================
-// ブックマーク・お気に入り機能
-// ========================================
-
-// エントリーブックマーク切り替え
-function toggleEntryBookmark(entryId) {
-    console.log('エントリーブックマーク切り替え:', entryId);
-    
-    // ボタンを無効化（重複クリック防止）
-    const button = document.querySelector(`[onclick="toggleEntryBookmark('${entryId}')"]`);
-    if (button) {
-        button.disabled = true;
-    }
-    
-    fetch(`/notes/entry/${entryId}/bookmark/`, {
-        method: 'POST',
-        headers: {
-            'X-CSRFToken': getCsrfToken(),
-            'Content-Type': 'application/json',
-        },
-        credentials: 'same-origin'
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success) {
-            // ボタンの見た目を更新
-            updateBookmarkButton(entryId, data.is_bookmarked);
-            
-            // エントリーカードのデータ属性を更新
-            const entryCard = document.querySelector(`[data-entry-id="${entryId}"]`);
-            if (entryCard) {
-                entryCard.dataset.bookmarked = data.is_bookmarked.toString();
-            }
-            
-            // 成功メッセージを表示
-            showNotification(data.message, 'success');
-            
-            // ブックマークフィルターが有効な場合はフィルターを再適用
-            if (currentFilters.isBookmarked) {
-                applyFilters();
-            }
-        } else {
-            throw new Error(data.error || 'ブックマーク更新に失敗しました');
-        }
-    })
-    .catch(error => {
-        console.error('ブックマーク更新エラー:', error);
-        showNotification(error.message, 'error');
-    })
-    .finally(() => {
-        // ボタンを有効化
-        if (button) {
-            button.disabled = false;
-        }
-    });
 }
 
 // ノートお気に入り切り替え
@@ -1812,7 +2041,7 @@ function generateEarningsForm() {
             ${createFormField('date', 'earnings_date', '決算発表日')}
             ${createFormField('text', 'quarter', '四半期', '例: 2025年Q1')}
             ${createFormField('textarea', 'expectations', '事前予想', '決算発表前の予想や期待を記述してください')}
-            ${createFormField('textarea', 'key_points', '注目ポイント', '今回の決算で注目すべきポイントを記述してください')}
+            ${createFormField('textarea', 'key_criteria', '注目ポイント', '今回の決算で注目すべきポイントを記述してください')}
         </div>
     `;
 }
