@@ -5,22 +5,12 @@
 import json
 from django import forms
 from django.core.exceptions import ValidationError
-from apps.notes.models import Notebook, Entry, SubNotebook, NotebookTemplate
+from apps.notes.models import Notebook, Entry, SubNotebook
 from apps.tags.models import Tag
 from apps.common.validators import validate_stock_code, validate_json_content
 
 class NotebookForm(forms.ModelForm):
     """ノートブック作成・編集フォーム（テーマ単位）"""
-    
-    # テンプレート選択
-    template = forms.ModelChoiceField(
-        queryset=NotebookTemplate.objects.filter(is_active=True),
-        required=False,
-        empty_label="テンプレートを選択（任意）",
-        widget=forms.Select(attrs={
-            'class': 'w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
-        })
-    )
     
     # JSON配列フィールド
     key_criteria = forms.CharField(required=False, widget=forms.HiddenInput())

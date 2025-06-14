@@ -50,6 +50,13 @@ templates/notes/create.html - 見直し版（テーマ単位ノート対応）
                 </svg>
             </a>
             <h1 class="text-3xl font-bold text-white">新規ノート作成</h1>
+            <!-- 👇 ヘルプボタンを追加 -->
+            <a href="{% url 'notes:help' %}" 
+            target="_blank"
+            class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors">
+                <span>❓</span>
+                <span>記入ガイド</span>
+            </a>
         </div>
         <p class="text-gray-400">投資テーマに沿ったノートを作成して、複数銘柄の分析を体系的に管理しましょう</p>
     </div>
@@ -73,78 +80,6 @@ templates/notes/create.html - 見直し版（テーマ単位ノート対応）
             </div>
         </div>
     </div>
-
-    <!-- テンプレート選択セクション -->
-    <section class="form-section bg-gray-800 border border-gray-700 rounded-lg p-8 mb-8">
-        <h2 class="text-xl font-semibold text-white mb-6 flex items-center">
-            <svg class="h-6 w-6 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 5a1 1 0 011-1h14a1 1 0 011 1v2a1 1 0 01-1 1H5a1 1 0 01-1-1V5zM4 13a1 1 0 011-1h6a1 1 0 011 1v6a1 1 0 01-1 1H5a1 1 0 01-1-1v-6zM16 13a1 1 0 011-1h2a1 1 0 011 1v6a1 1 0 01-1 1h-2a1 1 0 01-1-1v-6z"></path>
-            </svg>
-            テンプレート選択（任意）
-        </h2>
-        
-        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-6">
-            <!-- カスタムノート（デフォルト） -->
-            <div class="template-card p-4 border-2 border-gray-600 bg-gray-700 rounded-lg selected" data-template="custom">
-                <div class="flex items-center mb-3">
-                    <div class="p-2 rounded-lg bg-purple-900 text-purple-300 mr-3">
-                        <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 100 4m0-4v2m0-6V4"></path>
-                        </svg>
-                    </div>
-                    <div>
-                        <h3 class="font-semibold text-white">カスタムノート</h3>
-                        <p class="text-sm text-gray-400">自由にカスタマイズ</p>
-                    </div>
-                </div>
-                <p class="text-sm text-gray-300">独自の投資テーマやアプローチで、自由にノートを構成します。</p>
-            </div>
-            
-            {% for template in templates %}
-                <div class="template-card p-4 border-2 border-gray-600 bg-gray-700 rounded-lg hover:border-blue-500" 
-                     data-template="{{ template.pk }}"
-                     data-title="{{ template.default_title }}"
-                     data-strategy="{{ template.default_strategy }}"
-                     data-criteria="{{ template.default_criteria|safe }}"
-                     data-sub-notebooks="{{ template.suggested_sub_notebooks|safe }}"
-                     data-tags="{{ template.suggested_tags|safe }}">
-                    <div class="flex items-center mb-3">
-                        <div class="p-2 rounded-lg {% if template.template_type == 'HIGH_DIVIDEND' %}bg-green-900 text-green-300{% elif template.template_type == 'GROWTH_STOCKS' %}bg-blue-900 text-blue-300{% elif template.template_type == 'EARNINGS_SEASON' %}bg-orange-900 text-orange-300{% elif template.template_type == 'PORTFOLIO_REVIEW' %}bg-purple-900 text-purple-300{% elif template.template_type == 'SECTOR_ANALYSIS' %}bg-yellow-900 text-yellow-300{% elif template.template_type == 'US_STOCKS' %}bg-red-900 text-red-300{% else %}bg-gray-700 text-gray-300{% endif %} mr-3">
-                            {% if template.template_type == 'HIGH_DIVIDEND' %}
-                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                                </svg>
-                            {% elif template.template_type == 'GROWTH_STOCKS' %}
-                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                                </svg>
-                            {% elif template.template_type == 'EARNINGS_SEASON' %}
-                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                                </svg>
-                            {% else %}
-                                <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-6m-2-5.5V9.5a2 2 0 012-2h6a2 2 0 012 2V16"></path>
-                                </svg>
-                            {% endif %}
-                        </div>
-                        <div>
-                            <h3 class="font-semibold text-white">{{ template.name }}</h3>
-                            <p class="text-sm text-gray-400">{{ template.get_template_type_display }}</p>
-                        </div>
-                    </div>
-                    <p class="text-sm text-gray-300">{{ template.description }}</p>
-                </div>
-            {% endfor %}
-        </div>
-        
-        <div id="template-preview" class="hidden">
-            <h4 class="font-medium text-white mb-2">テンプレートプレビュー</h4>
-            <div class="bg-gray-700 p-4 rounded-lg">
-                <div id="template-content" class="text-gray-300"></div>
-            </div>
-        </div>
-    </section>
 
     <!-- Form -->
     <form method="POST" id="notebook-form" class="space-y-8">

@@ -4,6 +4,7 @@
 
 from django.urls import path
 from apps.notes import views
+import apps.notes.help_views  # ヘルプビューをインポート
 
 app_name = 'notes'
 
@@ -28,7 +29,6 @@ urlpatterns = [
     # ★ 新規追加：Ajax検索関連
     path('search/', views.notebook_search_ajax, name='notebook_search_ajax'),
     path('<uuid:notebook_pk>/entries/search/', views.entry_search_ajax, name='entry_search_ajax'),
-    
-    # ★ 新規追加：テンプレート関連
-    path('template/<uuid:template_pk>/', views.get_template_ajax, name='get_template_ajax'),
+
+    path('help/', apps.notes.help_views.NotebookHelpView.as_view(), name='help'),
 ]

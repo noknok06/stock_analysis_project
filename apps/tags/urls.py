@@ -16,4 +16,5 @@ urlpatterns = [
     path('api/create/', api_views.tag_create_api, name='api_create'),
     path('api/suggestions/', api_views.tag_suggestions_api, name='api_suggestions'),
     path('api/popular/', api_views.popular_tags_api, name='api_popular'),
+    
 ]

@@ -13,7 +13,7 @@ from django.http import JsonResponse
 from django.db.models import Q, Count, Prefetch
 from django.core.paginator import Paginator
 from django.template.loader import render_to_string
-from apps.notes.models import Notebook, Entry, SubNotebook, NotebookTemplate, Tag
+from apps.notes.models import Notebook, Entry, SubNotebook, Tag
 from apps.notes.forms import NotebookForm, EntryForm, SubNotebookForm, NotebookSearchForm
 from apps.common.mixins import UserOwnerMixin, SearchMixin
 from apps.notes.services import NotebookService
@@ -269,43 +269,17 @@ class NotebookDetailView(UserOwnerMixin, DetailView):
 
 
 class NotebookCreateView(LoginRequiredMixin, CreateView):
-    """ノート作成ビュー（テーマ単位）"""
+    """ノート作成ビュー（シンプル版）"""
     model = Notebook
     form_class = NotebookForm
     template_name = 'notes/create.html'
     success_url = reverse_lazy('notes:list')
     
-    def get_context_data(self, **kwargs):
-        """テンプレート情報を追加"""
-        context = super().get_context_data(**kwargs)
-        context['templates'] = NotebookTemplate.objects.filter(is_active=True)
-        return context
-    
     def form_valid(self, form):
         """フォーム有効時の処理"""
         try:
             form.instance.user = self.request.user
-            
-            # テンプレートが選択されている場合、テンプレートの設定を適用
-            template = form.cleaned_data.get('template')
-            if template:
-                if not form.instance.title:
-                    form.instance.title = template.default_title
-                if not form.instance.investment_strategy:
-                    form.instance.investment_strategy = template.default_strategy
-                if not form.instance.key_criteria:
-                    form.instance.key_criteria = template.default_criteria
-            
             response = super().form_valid(form)
-            
-            # テンプレートの推奨サブノートを作成
-            if template and template.suggested_sub_notebooks:
-                for order, sub_notebook_name in enumerate(template.suggested_sub_notebooks):
-                    SubNotebook.objects.create(
-                        notebook=self.object,
-                        title=sub_notebook_name,
-                        order=order
-                    )
             
             messages.success(self.request, f'ノート「{self.object.title}」を作成しました。')
             
@@ -321,7 +295,7 @@ class NotebookCreateView(LoginRequiredMixin, CreateView):
             for error in errors:
                 messages.error(self.request, f'{form[field].label}: {error}')
         return super().form_invalid(form)
-
+    
 
 class NotebookUpdateView(UserOwnerMixin, UpdateView):
     """ノート編集ビュー（テーマ単位）"""
@@ -564,38 +538,6 @@ def sub_notebook_create_ajax(request, notebook_pk):
             }, status=500)
     
     return JsonResponse({'success': False, 'error': '無効なリクエストです'}, status=405)
-
-
-@login_required
-def get_template_ajax(request, template_pk):
-    """テンプレート情報をAjaxで取得"""
-    try:
-        template = get_object_or_404(NotebookTemplate, pk=template_pk, is_active=True)
-        
-        return JsonResponse({
-            'success': True,
-            'template': {
-                'name': template.name,
-                'description': template.description,
-                'default_title': template.default_title,
-                'default_strategy': template.default_strategy,
-                'default_criteria': template.default_criteria,
-                'suggested_sub_notebooks': template.suggested_sub_notebooks,
-                'suggested_tags': template.suggested_tags
-            }
-        })
-        
-    except NotebookTemplate.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'error': 'テンプレートが見つかりません'
-        }, status=404)
-    except Exception as e:
-        return JsonResponse({
-            'success': False,
-            'error': str(e)
-        }, status=500)
-
 
 # ========================================
 # ヘルパー関数（既存のものを流用）
@@ -984,40 +926,6 @@ def sub_notebook_create_ajax(request, notebook_pk):
             }, status=500)
     
     return JsonResponse({'success': False, 'error': '無効なリクエストです'}, status=405)
-
-
-@login_required
-def get_template_ajax(request, template_pk):
-    """テンプレート情報をAjaxで取得"""
-    try:
-        template = get_object_or_404(NotebookTemplate, pk=template_pk, is_active=True)
-        
-        return JsonResponse({
-            'success': True,
-            'template': {
-                'name': template.name,
-                'description': template.description,
-                'default_title': template.default_title,
-                'default_strategy': template.default_strategy,
-                'default_criteria': template.default_criteria,
-                'suggested_sub_notebooks': template.suggested_sub_notebooks,
-                'suggested_tags': template.suggested_tags
-            }
-        })
-        
-    except NotebookTemplate.DoesNotExist:
-        return JsonResponse({
-            'success': False,
-            'error': 'テンプレートが見つかりません'
-        }, status=404)
-    except Exception as e:
-        import logging
-        logger = logging.getLogger(__name__)
-        logger.error(f"テンプレート取得エラー: {e}", exc_info=True)
-        return JsonResponse({
-            'success': False,
-            'error': 'テンプレートの取得に失敗しました'
-        }, status=500)
 
 
 @login_required
