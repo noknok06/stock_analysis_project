@@ -805,7 +805,7 @@ function fetchTrendingTags(category) {
         })
         .catch(error => {
             console.error('トレンドタグ取得エラー:', error);
-            NotificationManager.show(error.message, 'error');
+            showNotification(error.message, 'error');
         })
         .finally(() => {
             hideTagsLoading();
@@ -983,10 +983,72 @@ function hideTagsLoading() {
     }
 }
 
+function showNotification(message, type = 'info') {
+    // 既存の通知を削除
+    const existingNotifications = document.querySelectorAll('.notification');
+    existingNotifications.forEach(notification => notification.remove());
+    
+    const notification = document.createElement('div');
+    notification.className = `notification fixed top-4 right-4 z-50 p-4 rounded-lg text-white max-w-sm transform transition-all duration-300 translate-x-full opacity-0`;
+    
+    const typeClasses = {
+        'error': 'bg-red-600',
+        'warning': 'bg-yellow-600',
+        'success': 'bg-green-600',
+        'info': 'bg-blue-600'
+    };
+    
+    notification.classList.add(typeClasses[type] || typeClasses.info);
+    notification.innerHTML = `
+        <div class="flex items-start justify-between">
+            <p class="text-sm font-medium">${escapeHtml(message)}</p>
+            <button onclick="this.parentElement.parentElement.remove()" 
+                    class="ml-3 text-white/80 hover:text-white">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // アニメーション
+    setTimeout(() => {
+        notification.classList.remove('translate-x-full', 'opacity-0');
+    }, 100);
+    
+    // 自動削除
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
+        }
+    }, 4000);
+}
+
 // ========================================
 // ユーティリティ関数
 // ========================================
 
+function isTouchDevice() {
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+}
+
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
 
 function restoreStateFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);

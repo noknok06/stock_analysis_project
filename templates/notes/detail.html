@@ -706,199 +706,6 @@ templates/notes/detail.html - 改善版（基本情報表示強化）
 </div>
 
 <!-- 既存のモーダル（省略） -->
--<!-- 新規エントリーモーダル（既存のものを使用） -->
--<div id="new-entry-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 md:p-4">
-<!-- 既存のモーダルは省略（新規エントリーモーダル、エントリー詳細モーダル、サブノート作成モーダル） -->
-
-!-- エントリー詳細モーダル -->
-div id="entry-detail-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 md:p-4">
-   <div class="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-4xl max-h-[95vh] md:max-h-[90vh] overflow-hidden">
-       <div class="flex items-center justify-between p-4 md:p-6 border-b border-gray-700">
-           <div>
-               <h2 class="text-lg md:text-2xl font-bold text-white">新規エントリー作成</h2>
-               <p class="text-sm md:text-base text-gray-400">{{ notebook.title }} に新しい記録を追加します</p>
-           </div>
-           <button onclick="closeNewEntryModal()" class="text-gray-400 hover:text-white p-2">
-           <h3 class="text-lg md:text-xl font-semibold text-white" id="entry-detail-title">エントリー詳細</h3>
-           <button onclick="closeEntryDetail()" class="text-gray-400 hover:text-white p-2">
-               <svg class="h-5 w-5 md:h-6 md:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-               </svg>
-           </button>
-       </div>
-       
-       <form id="entry-form" method="POST" action="{% url 'notes:entry_create' notebook.pk %}" class="overflow-y-auto max-h-[calc(95vh-140px)] md:max-h-[calc(90vh-140px)]">
-           {% csrf_token %}
-           <div class="p-4 md:p-6 space-y-4 md:space-y-6">
-               <!-- エントリータイプ選択 -->
-               <div>
-                   <label class="block text-sm font-medium text-gray-300 mb-4">エントリータイプ</label>
-                   <div class="grid grid-cols-2 md:grid-cols-4 gap-2 md:gap-3">
-                       <button type="button" data-entry-type="ANALYSIS" 
-                               class="entry-type-btn p-3 md:p-4 rounded-lg border-2 border-gray-600 bg-gray-700 hover:bg-gray-600 transition-all text-center">
-                           <div class="p-2 rounded-lg bg-blue-900 text-blue-300 mb-2 mx-auto w-fit">
-                               <svg class="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                               </svg>
-                           </div>
-                           <h3 class="font-semibold text-white text-xs md:text-sm">決算分析</h3>
-                           <p class="text-xs text-gray-400 mt-1 hidden md:block">決算情報の分析記録</p>
-                       </button>
-                       
-                       <button type="button" data-entry-type="NEWS" 
-                               class="entry-type-btn p-3 md:p-4 rounded-lg border-2 border-gray-600 bg-gray-700 hover:bg-gray-600 transition-all text-center">
-                           <div class="p-2 rounded-lg bg-green-900 text-green-300 mb-2 mx-auto w-fit">
-                               <svg class="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 20H5a2 2 0 01-2-2V6a2 2 0 012-2h10a2 2 0 012 2v1m2 13a2 2 0 01-2-2V7m2 13a2 2 0 002-2V9.5a2 2 0 00-2-2h-2m-4-3H9M7 16h6M7 8h6v4H7V8z"></path>
-                               </svg>
-                           </div>
-                           <h3 class="font-semibold text-white text-xs md:text-sm">ニュース</h3>
-                           <p class="text-xs text-gray-400 mt-1 hidden md:block">関連ニュースの記録</p>
-                       </button>
-                       
-                       <button type="button" data-entry-type="CALCULATION" 
-                               class="entry-type-btn p-3 md:p-4 rounded-lg border-2 border-gray-600 bg-gray-700 hover:bg-gray-600 transition-all text-center">
-                           <div class="p-2 rounded-lg bg-orange-900 text-orange-300 mb-2 mx-auto w-fit">
-                               <svg class="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                               </svg>
-                           </div>
-                           <h3 class="font-semibold text-white text-xs md:text-sm">計算結果</h3>
-                           <p class="text-xs text-gray-400 mt-1 hidden md:block">バリュエーション計算</p>
-                       </button>
-                       
-                       <button type="button" data-entry-type="MEMO" 
-                               class="entry-type-btn p-3 md:p-4 rounded-lg border-2 border-gray-600 bg-gray-700 hover:bg-gray-600 transition-all text-center">
-                           <div class="p-2 rounded-lg bg-gray-700 text-gray-300 mb-2 mx-auto w-fit">
-                               <svg class="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                   <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z"></path>
-                               </svg>
-                           </div>
-                           <h3 class="font-semibold text-white text-xs md:text-sm">メモ</h3>
-                           <p class="text-xs text-gray-400 mt-1 hidden md:block">個人的な気づき・メモ</p>
-                       </button>
-                   </div>
-                   <input type="hidden" id="entry_type" name="entry_type" required>
-               </div>
-               
-               <!-- 基本情報 -->
-               <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                   <!-- エントリータイトル -->
-                   <div>
-                       <label for="entry_title" class="block text-sm font-medium text-gray-300 mb-2">
-                           エントリータイトル <span class="text-red-400">*</span>
-                       </label>
-                       <input type="text" 
-                              id="entry_title" 
-                              name="title" 
-                              required
-                              placeholder="エントリーのタイトルを入力してください"
-                              class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                   </div>
-                   
-                   <!-- サブノート選択 -->
-                   {% if sub_notebooks %}
-                       <div>
-                           <label for="sub_notebook" class="block text-sm font-medium text-gray-300 mb-2">サブノート</label>
-                           <select id="sub_notebook" 
-                                   name="sub_notebook"
-                                   class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                               <option value="">サブノートを選択（任意）</option>
-                               {% for sub_notebook in sub_notebooks %}
-                                   <option value="{{ sub_notebook.pk }}">{{ sub_notebook.title }}</option>
-                               {% endfor %}
-                           </select>
-                       </div>
-                   {% endif %}
-               </div>
-               
-               <!-- 銘柄情報 -->
-               <div>
-                   <h4 class="text-sm font-medium text-gray-300 mb-3">銘柄情報（任意）</h4>
-                   <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                       <div>
-                           <label for="stock_code" class="block text-sm font-medium text-gray-300 mb-2">銘柄コード</label>
-                           <input type="text" 
-                                  id="stock_code" 
-                                  name="stock_code" 
-                                  placeholder="例: 7203"
-                                  class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                       </div>
-                       
-                       <div>
-                           <label for="company_name" class="block text-sm font-medium text-gray-300 mb-2">企業名</label>
-                           <input type="text" 
-                                  id="company_name" 
-                                  name="company_name" 
-                                  placeholder="例: トヨタ自動車"
-                                  class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                       </div>
-                       
-                       <div>
-                           <label for="market" class="block text-sm font-medium text-gray-300 mb-2">市場</label>
-                           <input type="text" 
-                                  id="market" 
-                                  name="market" 
-                                  placeholder="例: 東証プライム"
-                                  class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                       </div>
-                   </div>
-               </div>
-               
-               <!-- オプション -->
-               <div class="flex flex-wrap gap-4">
-                   <label class="flex items-center">
-                       <input type="checkbox" name="is_important" class="text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
-                       <span class="ml-2 text-sm text-gray-300">重要フラグ</span>
-                   </label>
-                   <label class="flex items-center">
-                       <input type="checkbox" name="is_bookmarked" class="text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
-                       <span class="ml-2 text-sm text-gray-300">ブックマーク</span>
-                   </label>
-                   <div>
-                       <label for="event_date" class="block text-sm font-medium text-gray-300 mb-2">イベント日</label>
-                       <input type="date" 
-                              id="event_date" 
-                              name="event_date"
-                              class="bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                   </div>
-               </div>
-               
-               <!-- エントリー固有フォーム -->
-               <div id="entry-type-form">
-                   <!-- 動的に生成されるフォーム内容 -->
-               </div>
-           </div>
-           
-           <div class="flex flex-col sm:flex-row items-center justify-between p-4 md:p-6 bg-gray-800 border-t border-gray-700 gap-3 sm:gap-0">
-               <div class="text-xs md:text-sm text-gray-400 order-2 sm:order-1">
-                   <svg class="h-3 w-3 md:h-4 md:w-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                       <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
-                   </svg>
-                   作成日: {{ 'now'|date:"Y/m/d" }}
-               </div>
-               <div class="flex space-x-2 md:space-x-3 w-full sm:w-auto order-1 sm:order-2">
-                   <button type="button" onclick="closeNewEntryModal()" 
-                           class="flex-1 sm:flex-none px-4 md:px-6 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors text-sm md:text-base">
-                       キャンセル
-                   </button>
-                   <button type="submit" 
-                           class="flex-1 sm:flex-none px-4 md:px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center justify-center text-sm md:text-base">
-                       <svg class="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                           <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
-                       </svg>
-                       <span class="hidden sm:inline">エントリーを作成</span>
-                       <span class="sm:hidden">作成</span>
-                   </button>
-               </div>
-           </div>
-       </form>
-       <div id="entry-detail-content" class="p-4 md:p-6 overflow-y-auto max-h-[calc(95vh-120px)] md:max-h-[60vh]">
-           <!-- エントリー詳細内容がここに表示される -->
-       </div>
-    </div>
-</div>
-
 
 <!-- 新規エントリーモーダル（既存のものを使用） -->
 <div id="new-entry-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 md:p-4">
@@ -1475,6 +1282,49 @@ function restoreFiltersFromUrl() {
     }
 }
 
+// ノートお気に入り切り替え
+function toggleFavorite() {
+    const notebookId = getNotebookId(); // ページからノートブックIDを取得
+    console.log('ノートお気に入り切り替え:', notebookId);
+    
+    // ボタンを無効化
+    const button = document.querySelector('.favorite-star');
+    if (button) {
+        button.style.pointerEvents = 'none';
+    }
+    
+    fetch(`/notes/${notebookId}/favorite/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': getCsrfToken(),
+            'Content-Type': 'application/json',
+        },
+        credentials: 'same-origin'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // ボタンの見た目を更新
+            updateFavoriteButton(data.is_favorite);
+            
+            // 成功メッセージを表示
+            showNotification(data.message, 'success');
+        } else {
+            throw new Error(data.error || 'お気に入り更新に失敗しました');
+        }
+    })
+    .catch(error => {
+        console.error('お気に入り更新エラー:', error);
+        showNotification(error.message, 'error');
+    })
+    .finally(() => {
+        // ボタンを有効化
+        if (button) {
+            button.style.pointerEvents = 'auto';
+        }
+    });
+}
+
 // ブックマークボタンの見た目を更新
 function updateBookmarkButton(entryId, isBookmarked) {
     const button = document.querySelector(`[onclick="toggleEntryBookmark('${entryId}')"]`);
@@ -1513,6 +1363,24 @@ function updateFavoriteButton(isFavorite) {
 // ユーティリティ関数
 // ========================================
 
+// CSRFトークンを取得
+function getCsrfToken() {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'csrftoken') {
+            return value;
+        }
+    }
+    
+    // フォームからも取得を試行
+    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
+    if (csrfInput) {
+        return csrfInput.value;
+    }
+    
+    return '';
+}
 
 // ノートブックIDを取得（URLまたはページ要素から）
 function getNotebookId() {
@@ -1533,6 +1401,63 @@ function getNotebookId() {
     return null;
 }
 
+// 通知表示
+function showNotification(message, type = 'info') {
+    // 既存の通知を削除
+    const existingNotifications = document.querySelectorAll('.notification');
+    existingNotifications.forEach(notification => notification.remove());
+    
+    const notification = document.createElement('div');
+    notification.className = `notification fixed top-4 right-4 z-50 p-4 rounded-lg text-white max-w-sm transform transition-all duration-300 translate-x-full opacity-0`;
+    
+    const typeClasses = {
+        'error': 'bg-red-600',
+        'warning': 'bg-yellow-600',
+        'success': 'bg-green-600',
+        'info': 'bg-blue-600'
+    };
+    
+    notification.classList.add(typeClasses[type] || typeClasses.info);
+    
+    notification.innerHTML = `
+        <div class="flex items-start justify-between">
+            <div class="flex">
+                <div class="mr-3 mt-0.5">
+                    ${getNotificationIcon(type)}
+                </div>
+                <div>
+                    <p class="text-sm font-medium">${escapeHtml(message)}</p>
+                </div>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()" 
+                    class="ml-3 text-white/80 hover:text-white">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // アニメーション
+    setTimeout(() => {
+        notification.classList.remove('translate-x-full', 'opacity-0');
+    }, 100);
+    
+    // 自動削除
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
+        }
+    }, 4000);
+}
+
 // 通知アイコンを取得
 function getNotificationIcon(type) {
     const icons = {
@@ -1544,15 +1469,36 @@ function getNotificationIcon(type) {
     return icons[type] || icons.info;
 }
 
+// HTMLエスケープ
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
 // エントリーカードクリック処理
 function handleEntryCardClick(entryId) {
     console.log('エントリーカードクリック:', entryId);
     openEntryDetail(entryId);
 }
 
+// エントリー詳細表示
+function openEntryDetail(entryId) {
+    console.log('エントリー詳細表示:', entryId);
+    
+    // 詳細表示の実装（既存のコードを使用）
+    // ここでは簡単な実装のみ
+    showNotification(`エントリー詳細: ${entryId}`, 'info');
+}
+
 // モーダル関連の関数（簡略版）
 function openNewEntryModal() {
-    NotificationManager.show('新規エントリーモーダルを開きます', 'info');
+    showNotification('新規エントリーモーダルを開きます', 'info');
 }
 
 // ページネーション関数
@@ -1579,7 +1525,111 @@ document.addEventListener('keydown', function(e) {
         console.log('ESCキーが押されました');
     }
 });
-
+// ========================================
+// モーダル管理クラス（共通化）
+// ========================================
+class ModalManager {
+    constructor() {
+        this.openModals = new Set();
+        this.setupGlobalListeners();
+    }
+    
+    setupGlobalListeners() {
+        // ESCキーでモーダルを閉じる
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.openModals.size > 0) {
+                this.closeLastModal();
+            }
+        });
+        
+        // モーダル外クリックで閉じる
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('modal-backdrop')) {
+                this.closeModal(e.target.querySelector('.modal-content')?.id || 'unknown');
+            }
+        });
+    }
+    
+    openModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) {
+            console.error(`モーダル ${modalId} が見つかりません`);
+            return false;
+        }
+        
+        modal.classList.remove('hidden');
+        this.openModals.add(modalId);
+        
+        // ページのスクロールを無効化
+        document.body.style.overflow = 'hidden';
+        
+        // フォーカス管理
+        this.setModalFocus(modal);
+        
+        console.log(`モーダル ${modalId} を開きました`);
+        return true;
+    }
+    
+    closeModal(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) {
+            console.error(`モーダル ${modalId} が見つかりません`);
+            return false;
+        }
+        
+        modal.classList.add('hidden');
+        this.openModals.delete(modalId);
+        
+        // 他にモーダルが開いていない場合のみスクロールを有効化
+        if (this.openModals.size === 0) {
+            document.body.style.overflow = '';
+        }
+        
+        console.log(`モーダル ${modalId} を閉じました`);
+        return true;
+    }
+    
+    closeLastModal() {
+        if (this.openModals.size > 0) {
+            const lastModal = Array.from(this.openModals).pop();
+            this.closeModal(lastModal);
+        }
+    }
+    
+    setModalFocus(modal) {
+        setTimeout(() => {
+            const firstInput = modal.querySelector('input, textarea, select, button');
+            if (firstInput) {
+                firstInput.focus();
+            }
+        }, 100);
+    }
+    
+    resetForm(modalId) {
+        const modal = document.getElementById(modalId);
+        if (!modal) return;
+        
+        const forms = modal.querySelectorAll('form');
+        forms.forEach(form => form.reset());
+        
+        // カスタムリセット処理
+        const customResetElements = modal.querySelectorAll('[data-reset]');
+        customResetElements.forEach(element => {
+            const resetType = element.dataset.reset;
+            switch (resetType) {
+                case 'innerHTML':
+                    element.innerHTML = '';
+                    break;
+                case 'value':
+                    element.value = '';
+                    break;
+                case 'selected':
+                    element.classList.remove('selected', 'active');
+                    break;
+            }
+        });
+    }
+}
 
 // グローバルモーダルマネージャーのインスタンス
 const modalManager = new ModalManager();
@@ -1634,6 +1684,48 @@ function resetEntryForm() {
 // エントリー詳細モーダル機能
 // ========================================
 
+function openEntryDetail(entryId) {
+    console.log('エントリー詳細表示:', entryId);
+    
+    if (!modalManager.openModal('entry-detail-modal')) {
+        return;
+    }
+    
+    // ローディング表示
+    updateEntryDetailModal('読み込み中...', '<div class="flex items-center justify-center py-8"><div class="text-gray-400">読み込み中...</div></div>');
+    
+    // エントリー詳細をAjaxで取得して表示
+    fetch(`/notes/entry/${entryId}/`)
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('エントリー詳細取得成功:', data);
+            if (data.success) {
+                updateEntryDetailModal(data.title, data.html);
+            } else {
+                throw new Error(data.error || 'データの取得に失敗しました');
+            }
+        })
+        .catch(error => {
+            console.error('エントリー詳細取得エラー:', error);
+            const errorHtml = `
+                <div class="text-center py-8">
+                    <div class="text-red-400 mb-2">エントリーの詳細を取得できませんでした</div>
+                    <div class="text-gray-400 text-sm">${escapeHtml(error.message)}</div>
+                    <button onclick="closeEntryDetail()" class="mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded">
+                        閉じる
+                    </button>
+                </div>
+            `;
+            updateEntryDetailModal('エラー', errorHtml);
+        });
+}
+
 function closeEntryDetail() {
     console.log('エントリー詳細モーダルを閉じます');
     modalManager.closeModal('entry-detail-modal');
@@ -1682,7 +1774,7 @@ function createSubNotebook() {
     const description = descriptionInput?.value?.trim() || '';
     
     if (!title) {
-        NotificationManager.show('サブノート名を入力してください', 'warning');
+        showNotification('サブノート名を入力してください', 'warning');
         titleInput?.focus();
         return;
     }
@@ -1696,7 +1788,7 @@ function createSubNotebook() {
     
     const notebookId = getNotebookId();
     if (!notebookId) {
-        NotificationManager.show('ノートブックIDが取得できませんでした', 'error');
+        showNotification('ノートブックIDが取得できませんでした', 'error');
         enableCreateButton(createButton);
         return;
     }
@@ -1717,7 +1809,7 @@ function createSubNotebook() {
     .then(data => {
         if (data.success) {
             // 成功メッセージを表示
-            NotificationManager.show(data.message, 'success');
+            showNotification(data.message, 'success');
             
             // サブノートタブを動的に追加
             addSubNotebookTab(data.sub_notebook);
@@ -1735,7 +1827,7 @@ function createSubNotebook() {
     })
     .catch(error => {
         console.error('サブノート作成エラー:', error);
-        NotificationManager.show(error.message, 'error');
+        showNotification(error.message, 'error');
     })
     .finally(() => {
         enableCreateButton(createButton);
@@ -1988,13 +2080,13 @@ function setupFormSubmission() {
             
             if (!selectedEntryType) {
                 e.preventDefault();
-                NotificationManager.show('エントリータイプを選択してください', 'warning');
+                showNotification('エントリータイプを選択してください', 'warning');
                 return;
             }
             
             if (!document.getElementById('entry_title').value.trim()) {
                 e.preventDefault();
-                NotificationManager.show('エントリータイトルを入力してください', 'warning');
+                showNotification('エントリータイトルを入力してください', 'warning');
                 return;
             }
             

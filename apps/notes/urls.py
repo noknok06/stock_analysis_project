@@ -27,10 +27,10 @@ urlpatterns = [
     path('<uuid:notebook_pk>/sub-notebook/create/', views.sub_notebook_create_ajax, name='sub_notebook_create'),
     
     # ★ 新規追加：Ajax検索関連
-    # path('search/', views.notebook_search_ajax, name='search_ajax'),
+    path('search/', views.notebook_search_ajax, name='search_ajax'),
     path('trending-tags/', views.trending_tags_ajax, name='trending_tags_ajax'),
     path('tag-search/', views.tag_search_ajax, name='tag_search_ajax'),
-    # path('<uuid:notebook_pk>/entries/search/', views.entry_search_ajax, name='entry_search_ajax'),
+    path('<uuid:notebook_pk>/entries/search/', views.entry_search_ajax, name='entry_search_ajax'),
 
     path('help/', apps.notes.help_views.NotebookHelpView.as_view(), name='help'),
     
