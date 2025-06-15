@@ -1,5 +1,5 @@
 # ========================================
-# apps/notes/forms.py - 見直し版（テーマ単位ノート対応）
+# apps/notes/forms.py - 最適化版（重複削除）
 # ========================================
 
 import json
@@ -9,65 +9,43 @@ from apps.notes.models import Notebook, Entry, SubNotebook
 from apps.tags.models import Tag
 from apps.common.validators import validate_stock_code, validate_json_content
 
-class NotebookForm(forms.ModelForm):
-    """ノートブック作成・編集フォーム（テーマ単位）"""
+
+class BaseNotebookForm(forms.ModelForm):
+    """ノートブック用ベースフォーム（共通処理を統合）"""
     
     # JSON配列フィールド
     key_criteria = forms.CharField(required=False, widget=forms.HiddenInput())
     risk_factors = forms.CharField(required=False, widget=forms.HiddenInput())
     selected_tags_json = forms.CharField(required=False, widget=forms.HiddenInput())
-    sub_notebooks_json = forms.CharField(required=False, widget=forms.HiddenInput())
     
-    class Meta:
-        model = Notebook
-        fields = [
-            'title', 'subtitle', 'description', 'notebook_type',
-            'investment_strategy', 'target_allocation', 'status'
-        ]
-        widgets = {
-            'title': forms.TextInput(attrs={
-                'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'placeholder': '例: 2025年 高配当株ウォッチ',
-                'required': True
-            }),
-            'subtitle': forms.TextInput(attrs={
-                'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'placeholder': '例: 配当利回り3%以上の安定銘柄を選定'
-            }),
-            'description': forms.Textarea(attrs={
-                'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'rows': 3,
-                'placeholder': 'このノートの目的や投資方針を記述してください'
-            }),
-            'notebook_type': forms.Select(attrs={
-                'class': 'w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
-            }),
-            'investment_strategy': forms.Textarea(attrs={
-                'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'rows': 4,
-                'placeholder': 'このテーマの投資戦略や方針を記述してください',
-                'required': True
-            }),
-            'target_allocation': forms.TextInput(attrs={
-                'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'placeholder': '例: ポートフォリオの30%、月額3万円'
-            }),
-            'status': forms.Select(attrs={
-                'class': 'w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
-            }),
-        }
+    # 共通ウィジェット設定
+    COMMON_WIDGET_ATTRS = {
+        'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+    }
     
     def __init__(self, *args, **kwargs):
-        """フォーム初期化"""
         super().__init__(*args, **kwargs)
-        
-        # 必須フィールドのラベルに * を追加
-        self.fields['title'].label = 'ノートタイトル *'
-        self.fields['investment_strategy'].label = '投資戦略 *'
-        
-        # ヘルプテキストの追加
-        self.fields['notebook_type'].help_text = 'ノートの種類を選択してください'
-        self.fields['investment_strategy'].help_text = 'このテーマでの投資方針や戦略を明確に記述してください'
+        self.apply_common_widget_attrs()
+        self.set_field_labels()
+    
+    def apply_common_widget_attrs(self):
+        """共通ウィジェット属性を適用"""
+        for field_name, field in self.fields.items():
+            if isinstance(field.widget, (forms.TextInput, forms.Textarea, forms.Select)):
+                current_attrs = field.widget.attrs
+                current_attrs.update(self.COMMON_WIDGET_ATTRS)
+                
+                # field固有のplaceholderを保持
+                if hasattr(field, 'placeholder'):
+                    current_attrs['placeholder'] = field.placeholder
+    
+    def set_field_labels(self):
+        """必須フィールドのラベルに * を追加"""
+        required_fields = ['title', 'investment_strategy']
+        for field_name in required_fields:
+            if field_name in self.fields:
+                current_label = self.fields[field_name].label or field_name
+                self.fields[field_name].label = f'{current_label} *'
     
     def clean_title(self):
         """タイトルのバリデーション"""
@@ -75,7 +53,6 @@ class NotebookForm(forms.ModelForm):
         if not title or not title.strip():
             raise forms.ValidationError('ノートタイトルは必須です。')
         
-        # 既存ノートとの重複チェック（編集時は除外）
         title = title.strip()
         existing_notebooks = Notebook.objects.filter(title=title)
         
@@ -94,53 +71,41 @@ class NotebookForm(forms.ModelForm):
         if not investment_strategy or not investment_strategy.strip():
             raise forms.ValidationError('投資戦略は必須です。')
         
-        # 最小文字数チェック
         if len(investment_strategy.strip()) < 10:
             raise forms.ValidationError('投資戦略は10文字以上で入力してください。')
         
         return investment_strategy.strip()
     
+    def clean_json_array_field(self, field_name, default_value=None):
+        """JSON配列フィールドのバリデーション（共通化）"""
+        if default_value is None:
+            default_value = []
+            
+        json_data = self.cleaned_data.get(field_name, '[]')
+        try:
+            parsed_data = json.loads(json_data)
+            if not isinstance(parsed_data, list):
+                raise ValidationError(f'{field_name}は配列形式である必要があります')
+            
+            # 空文字列・None・空白のみの要素を除去し、重複も除去
+            cleaned_data = []
+            for item in parsed_data:
+                if item and isinstance(item, str) and item.strip():
+                    item = item.strip()
+                    if item not in cleaned_data:
+                        cleaned_data.append(item)
+            
+            return cleaned_data
+        except (json.JSONDecodeError, TypeError):
+            return default_value
+    
     def clean_key_criteria(self):
         """選定基準のJSONバリデーション"""
-        key_criteria_json = self.cleaned_data.get('key_criteria', '[]')
-        try:
-            key_criteria = json.loads(key_criteria_json)
-            if not isinstance(key_criteria, list):
-                raise ValidationError('選定基準は配列形式である必要があります')
-            
-            # 空文字列・None・空白のみの要素を除去
-            cleaned_criteria = []
-            for criteria in key_criteria:
-                if criteria and isinstance(criteria, str) and criteria.strip():
-                    cleaned_criteria.append(criteria.strip())
-            
-            # 重複除去
-            cleaned_criteria = list(dict.fromkeys(cleaned_criteria))
-            
-            return cleaned_criteria
-        except (json.JSONDecodeError, TypeError):
-            return []
+        return self.clean_json_array_field('key_criteria')
     
     def clean_risk_factors(self):
         """リスク要因のJSONバリデーション"""
-        risk_factors_json = self.cleaned_data.get('risk_factors', '[]')
-        try:
-            risk_factors = json.loads(risk_factors_json)
-            if not isinstance(risk_factors, list):
-                raise ValidationError('リスク要因は配列形式である必要があります')
-            
-            # 空文字列・None・空白のみの要素を除去
-            cleaned_factors = []
-            for factor in risk_factors:
-                if factor and isinstance(factor, str) and factor.strip():
-                    cleaned_factors.append(factor.strip())
-            
-            # 重複除去
-            cleaned_factors = list(dict.fromkeys(cleaned_factors))
-            
-            return cleaned_factors
-        except (json.JSONDecodeError, TypeError):
-            return []
+        return self.clean_json_array_field('risk_factors')
     
     def clean_selected_tags_json(self):
         """タグJSONのバリデーション"""
@@ -151,12 +116,12 @@ class NotebookForm(forms.ModelForm):
                 raise ValidationError('タグデータは辞書形式である必要があります')
             
             # デフォルト構造を確保
-            if 'selected' not in tags_data:
-                tags_data['selected'] = []
-            if 'changes' not in tags_data:
-                tags_data['changes'] = {'added': [], 'removed': []}
+            default_structure = {'selected': [], 'changes': {'added': [], 'removed': []}}
+            for key, value in default_structure.items():
+                if key not in tags_data:
+                    tags_data[key] = value
             
-            # 選択されたタグの重複除去と検証
+            # 選択されたタグの処理
             selected_tags = []
             for tag_name in tags_data.get('selected', []):
                 if tag_name and isinstance(tag_name, str) and tag_name.strip():
@@ -168,38 +133,12 @@ class NotebookForm(forms.ModelForm):
                         selected_tags.append(tag_name)
             
             tags_data['selected'] = selected_tags
-            
             return tags_data
         except (json.JSONDecodeError, TypeError):
             return {'selected': [], 'changes': {'added': [], 'removed': []}}
     
-    def clean_sub_notebooks_json(self):
-        """サブノートJSONのバリデーション"""
-        sub_notebooks_json = self.cleaned_data.get('sub_notebooks_json', '[]')
-        try:
-            sub_notebooks = json.loads(sub_notebooks_json)
-            if not isinstance(sub_notebooks, list):
-                raise ValidationError('サブノートは配列形式である必要があります')
-            
-            # 有効なサブノート名のみ抽出
-            cleaned_sub_notebooks = []
-            for sub_notebook in sub_notebooks:
-                if isinstance(sub_notebook, str) and sub_notebook.strip():
-                    cleaned_sub_notebooks.append(sub_notebook.strip())
-                elif isinstance(sub_notebook, dict) and 'title' in sub_notebook:
-                    title = sub_notebook['title'].strip()
-                    if title:
-                        cleaned_sub_notebooks.append({
-                            'title': title,
-                            'description': sub_notebook.get('description', '').strip()
-                        })
-            
-            return cleaned_sub_notebooks
-        except (json.JSONDecodeError, TypeError):
-            return []
-    
     def save(self, commit=True):
-        """保存処理でタグとサブノートを処理"""
+        """保存処理でタグを処理"""
         instance = super().save(commit=False)
         
         # JSON配列フィールドを保存
@@ -208,12 +147,7 @@ class NotebookForm(forms.ModelForm):
         
         if commit:
             instance.save()
-            
-            # タグの処理
             self._handle_tags(instance)
-            
-            # サブノートの処理
-            self._handle_sub_notebooks(instance)
         
         return instance
     
@@ -270,6 +204,102 @@ class NotebookForm(forms.ModelForm):
             logger.error(f"タグ処理エラー: {e}", exc_info=True)
             raise forms.ValidationError(f'タグの処理中にエラーが発生しました: {str(e)}')
     
+    def _determine_tag_category(self, tag_name):
+        """タグ名からカテゴリを自動判定"""
+        tag_lower = tag_name.lower()
+        
+        # カテゴリ判定のルール
+        category_rules = {
+            'STRATEGY': ['高配当', '成長株', 'グロース', 'バリュー', 'ポートフォリオ', 'ウォッチ'],
+            'SECTOR': ['自動車', 'it', 'テクノロジー', '金融', '不動産', '製造', 'ヘルスケア'],
+            'ANALYSIS': ['決算', '分析', '計算', 'バリュエーション']
+        }
+        
+        for category, keywords in category_rules.items():
+            if any(keyword in tag_lower for keyword in keywords):
+                return category
+        
+        # 銘柄コードパターン
+        import re
+        if re.match(r'#\d{4}', tag_name):
+            return 'STOCK'
+        
+        return 'STRATEGY'
+    
+    def _generate_tag_description(self, tag_name):
+        """タグ名から自動的に説明文を生成"""
+        category = self._determine_tag_category(tag_name)
+        
+        descriptions = {
+            'STOCK': f'{tag_name}の銘柄タグ',
+            'STRATEGY': f'{tag_name}投資戦略',
+            'SECTOR': f'{tag_name}業界セクター',
+            'ANALYSIS': f'{tag_name}分析手法',
+        }
+        
+        return descriptions.get(category, f'{tag_name}に関するタグ')
+
+
+class NotebookForm(BaseNotebookForm):
+    """ノートブック作成・編集フォーム"""
+    
+    sub_notebooks_json = forms.CharField(required=False, widget=forms.HiddenInput())
+    
+    class Meta:
+        model = Notebook
+        fields = [
+            'title', 'subtitle', 'description', 'notebook_type',
+            'investment_strategy', 'target_allocation', 'status'
+        ]
+        widgets = {
+            'title': forms.TextInput(attrs={'placeholder': '例: 2025年 高配当株ウォッチ', 'required': True}),
+            'subtitle': forms.TextInput(attrs={'placeholder': '例: 配当利回り3%以上の安定銘柄を選定'}),
+            'description': forms.Textarea(attrs={
+                'rows': 3, 
+                'placeholder': 'このノートの目的や投資方針を記述してください'
+            }),
+            'investment_strategy': forms.Textarea(attrs={
+                'rows': 4, 
+                'placeholder': 'このテーマでの投資戦略や方針を記述してください',
+                'required': True
+            }),
+            'target_allocation': forms.TextInput(attrs={'placeholder': '例: ポートフォリオの30%、月額3万円'}),
+        }
+    
+    def clean_sub_notebooks_json(self):
+        """サブノートJSONのバリデーション"""
+        sub_notebooks_json = self.cleaned_data.get('sub_notebooks_json', '[]')
+        try:
+            sub_notebooks = json.loads(sub_notebooks_json)
+            if not isinstance(sub_notebooks, list):
+                raise ValidationError('サブノートは配列形式である必要があります')
+            
+            # 有効なサブノート名のみ抽出
+            cleaned_sub_notebooks = []
+            for sub_notebook in sub_notebooks:
+                if isinstance(sub_notebook, str) and sub_notebook.strip():
+                    cleaned_sub_notebooks.append(sub_notebook.strip())
+                elif isinstance(sub_notebook, dict) and 'title' in sub_notebook:
+                    title = sub_notebook['title'].strip()
+                    if title:
+                        cleaned_sub_notebooks.append({
+                            'title': title,
+                            'description': sub_notebook.get('description', '').strip()
+                        })
+            
+            return cleaned_sub_notebooks
+        except (json.JSONDecodeError, TypeError):
+            return []
+    
+    def save(self, commit=True):
+        """保存処理でサブノートも処理"""
+        instance = super().save(commit)
+        
+        if commit:
+            self._handle_sub_notebooks(instance)
+        
+        return instance
+    
     def _handle_sub_notebooks(self, instance):
         """サブノートの作成・更新処理"""
         try:
@@ -300,43 +330,10 @@ class NotebookForm(forms.ModelForm):
             logger = logging.getLogger(__name__)
             logger.error(f"サブノート処理エラー: {e}", exc_info=True)
             raise forms.ValidationError(f'サブノートの処理中にエラーが発生しました: {str(e)}')
-    
-    def _determine_tag_category(self, tag_name):
-        """タグ名からカテゴリを自動判定（既存メソッドを使用）"""
-        tag_lower = tag_name.lower()
-        
-        # テーマ関連キーワード
-        theme_keywords = ['高配当', '成長株', 'グロース', 'バリュー', 'ポートフォリオ', 'ウォッチ']
-        if any(keyword in tag_lower for keyword in theme_keywords):
-            return 'STRATEGY'
-        
-        # 銘柄コードパターン
-        import re
-        if re.match(r'#\d{4}', tag_name):
-            return 'STOCK'
-        
-        # 業界セクターキーワード
-        sector_keywords = ['自動車', 'it', 'テクノロジー', '金融', '不動産', '製造', 'ヘルスケア']
-        if any(keyword in tag_lower for keyword in sector_keywords):
-            return 'SECTOR'
-        
-        return 'STRATEGY'
-    
-    def _generate_tag_description(self, tag_name):
-        """タグ名から自動的に説明文を生成"""
-        category = self._determine_tag_category(tag_name)
-        
-        category_descriptions = {
-            'STOCK': f'{tag_name}の銘柄タグ',
-            'STRATEGY': f'{tag_name}投資戦略',
-            'SECTOR': f'{tag_name}業界セクター',
-        }
-        
-        return category_descriptions.get(category, f'{tag_name}に関するタグ')
 
 
 class EntryForm(forms.ModelForm):
-    """エントリー作成・編集フォーム（銘柄情報付き）"""
+    """エントリー作成・編集フォーム"""
     
     selected_tags = forms.ModelMultipleChoiceField(
         queryset=Tag.objects.filter(is_active=True),
@@ -345,7 +342,6 @@ class EntryForm(forms.ModelForm):
         label='タグ'
     )
     
-    # エントリータイプ固有フィールド（Ajax送信用）
     content = forms.CharField(widget=forms.HiddenInput(), required=False)
     
     class Meta:
@@ -354,44 +350,34 @@ class EntryForm(forms.ModelForm):
             'entry_type', 'title', 'stock_code', 'company_name', 'market',
             'event_date', 'is_important', 'is_bookmarked', 'sub_notebook'
         ]
-        widgets = {
-            'title': forms.TextInput(attrs={
-                'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'placeholder': 'エントリーのタイトルを入力',
-                'required': True
-            }),
-            'entry_type': forms.Select(attrs={
-                'class': 'w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
-            }),
-            'stock_code': forms.TextInput(attrs={
-                'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'placeholder': '例: 7203'
-            }),
-            'company_name': forms.TextInput(attrs={
-                'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'placeholder': '例: トヨタ自動車'
-            }),
-            'market': forms.TextInput(attrs={
-                'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'placeholder': '例: 東証プライム'
-            }),
-            'event_date': forms.DateInput(attrs={
-                'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'type': 'date'
-            }),
-            'sub_notebook': forms.Select(attrs={
-                'class': 'w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
-            }),
-        }
     
     def __init__(self, *args, **kwargs):
         self.notebook = kwargs.pop('notebook', None)
         super().__init__(*args, **kwargs)
         
+        # 共通ウィジェット属性を適用
+        for field_name, field in self.fields.items():
+            if isinstance(field.widget, (forms.TextInput, forms.Textarea, forms.Select, forms.DateInput)):
+                field.widget.attrs.update({
+                    'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+                })
+        
         # サブノートの選択肢を設定
         if self.notebook:
             self.fields['sub_notebook'].queryset = SubNotebook.objects.filter(notebook=self.notebook)
             self.fields['sub_notebook'].empty_label = "サブノートを選択（任意）"
+        
+        # 特定フィールドのplaceholder設定
+        placeholders = {
+            'title': 'エントリーのタイトルを入力',
+            'stock_code': '例: 7203',
+            'company_name': '例: トヨタ自動車',
+            'market': '例: 東証プライム',
+        }
+        
+        for field_name, placeholder in placeholders.items():
+            if field_name in self.fields:
+                self.fields[field_name].widget.attrs['placeholder'] = placeholder
     
     def clean_stock_code(self):
         """銘柄コードのバリデーション"""
@@ -455,11 +441,16 @@ class SubNotebookForm(forms.ModelForm):
 class NotebookSearchForm(forms.Form):
     """ノートブック検索フォーム"""
     
+    # 基本ウィジェット属性
+    BASE_WIDGET_ATTRS = {
+        'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
+    }
+    
     q = forms.CharField(
         max_length=200,
         required=False,
         widget=forms.TextInput(attrs={
-            'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
+            **BASE_WIDGET_ATTRS,
             'placeholder': 'ノート名、戦略、内容で検索...',
             'autocomplete': 'off'
         }),
@@ -469,18 +460,14 @@ class NotebookSearchForm(forms.Form):
     notebook_type = forms.ChoiceField(
         choices=[('', 'すべてのタイプ')] + Notebook.NOTEBOOK_TYPE_CHOICES,
         required=False,
-        widget=forms.Select(attrs={
-            'class': 'w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
-        }),
+        widget=forms.Select(attrs=BASE_WIDGET_ATTRS),
         label='ノートタイプ'
     )
     
     status = forms.ChoiceField(
         choices=[('', 'すべてのステータス')] + Notebook.STATUS_CHOICES,
         required=False,
-        widget=forms.Select(attrs={
-            'class': 'w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
-        }),
+        widget=forms.Select(attrs=BASE_WIDGET_ATTRS),
         label='ステータス'
     )
     

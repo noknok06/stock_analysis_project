@@ -444,17 +444,6 @@ function isTouchDevice() {
     return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
 }
 
-function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, m => map[m]);
-}
-
 // ページロード完了時の処理
 window.addEventListener('load', function() {
     hideDashboardSearchIndicator();
