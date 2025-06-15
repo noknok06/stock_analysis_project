@@ -77,17 +77,69 @@ input:focus, select:focus, textarea:focus {
         border-color: #3b82f6;
         box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
     }
+}/* タグクリック時のアニメーションと共通スタイル */
+.tag-clickable,
+.dashboard-tag-clickable {
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  position: relative;
+  overflow: hidden;
 }
 
-/* タグクリック時のアニメーション */
-.tag-clickable.clicked {
-    background-color: #3b82f6;
-    border-color: #1d4ed8;
-    color: white;
-    transform: scale(0.95);
+/* グラデーションアニメーション */
+.tag-clickable::before,
+.dashboard-tag-clickable::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.2), transparent);
+  transition: left 0.3s;
 }
 
-.tag-clickable.clicked::after {
-    content: ' ✓';
-    font-size: 0.75rem;
+.tag-clickable:hover::before,
+.dashboard-tag-clickable:hover::before {
+  left: 100%;
+}
+
+/* ホバー時のエフェクト */
+.tag-clickable:hover,
+.dashboard-tag-clickable:hover {
+  background-color: rgba(75, 85, 99, 0.7);
+  border-color: #3b82f6;
+  box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+  transform: translateY(-1px) scale(1.02);
+}
+
+/* アクティブ時 */
+.tag-clickable:active,
+.dashboard-tag-clickable:active {
+  transform: scale(0.95);
+  animation: tagClick 0.2s ease-in-out;
+}
+
+/* クリック済み状態 */
+.tag-clickable.clicked,
+.dashboard-tag-clickable.clicked {
+  background-color: #3b82f6;
+  border-color: #1d4ed8;
+  color: white;
+  transform: scale(0.95);
+}
+
+/* ✓マーク追加 */
+.tag-clickable.clicked::after,
+.dashboard-tag-clickable.clicked::after {
+  content: ' ✓';
+  font-size: 0.75rem;
+  animation: pulse 0.5s ease-in-out;
+}
+
+/* インライン背景色が指定されている場合のホバー調整 */
+.tag-clickable[style*="background-color"]:hover,
+.dashboard-tag-clickable[style*="background-color"]:hover {
+  opacity: 0.8;
+  background-color: inherit !important;
 }

@@ -202,7 +202,7 @@ templates/tags/edit.html - タグ詳細編集ページ
                         <label class="block text-sm font-medium text-gray-300 mb-2">プレビュー</label>
                         <div class="flex items-center space-x-4">
                             <span id="tag-preview" class="preview-tag inline-flex items-center px-3 py-1 rounded-full text-sm text-white"
-                                  style="background-color: {{ object.color|default:'#6b7280' }}">
+                                style="background-color: {{ object.get_effective_color }}; border-color: {{ object.get_effective_color }};">
                                 {{ object.name }}
                             </span>
                             <span class="text-sm text-gray-400">
@@ -374,14 +374,32 @@ function updatePreview() {
     // Update tag name
     preview.textContent = nameInput.value || '{{ object.name }}';
     
-    // Update color
-    const color = colorInput.value || '#6b7280';
+    // Update color - カスタム色を優先、未設定なら現在の色、それもなければデフォルト色
+    let color = colorInput.value;
+    if (!color) {
+        // デフォルトカラーマップ
+        const defaultColors = {
+            'STOCK': '#dc2626',
+            'SECTOR': '#16a34a', 
+            'STRATEGY': '#2563eb',
+            'ANALYSIS': '#ea580c',
+            'MARKET': '#9333ea',
+            'RISK': '#eab308',
+            'EVENT': '#4f46e5',
+            'OTHER': '#6b7280'
+        };
+        color = defaultColors[categorySelect.value] || '#6b7280';
+    }
+    
     preview.style.backgroundColor = color;
+    preview.style.borderColor = color;
+    preview.style.color = 'white';
     
     // Update category display
     const selectedOption = categorySelect.options[categorySelect.selectedIndex];
     categoryPreview.textContent = selectedOption.text;
 }
+
 
 // Set up real-time preview
 document.addEventListener('DOMContentLoaded', function() {
@@ -392,11 +410,14 @@ document.addEventListener('DOMContentLoaded', function() {
     categorySelect.addEventListener('change', updatePreview);
     
     // Set initial color selection
-    const currentColor = '{{ object.color|default:"#6b7280" }}';
+    const currentColor = '{{ object.get_effective_color }}';
     const colorOption = document.querySelector(`[data-color="${currentColor}"]`);
     if (colorOption) {
         colorOption.classList.add('selected');
     }
+    
+    // 初期プレビューを更新
+    updatePreview();
     
     // Add proper classes to form fields
     const inputs = document.querySelectorAll('input[type="text"], textarea, select');
@@ -420,6 +441,7 @@ document.addEventListener('DOMContentLoaded', function() {
         colorInput.style.display = 'none'; // Hide the actual input
     }
 });
+
 
 // Form validation
 document.querySelector('form').addEventListener('submit', function(e) {
@@ -448,6 +470,7 @@ function scheduleAutoSave() {
         console.log('Auto-save scheduled');
     }, 5000);
 }
+
 
 // Listen for changes to schedule auto-save
 document.querySelectorAll('input, textarea, select').forEach(input => {

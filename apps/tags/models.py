@@ -56,7 +56,7 @@ class TagManager(models.Manager):
 
 
 class Tag(BaseModel):
-    """タグモデル（既存のモデルを拡張）"""
+    """タグモデル（色反映修正版）"""
     
     CATEGORY_CHOICES = [
         ('STOCK', '銘柄'),
@@ -105,7 +105,12 @@ class Tag(BaseModel):
         self.refresh_from_db(fields=['usage_count'])
     
     def get_color_class(self):
-        """カテゴリに基づくCSSクラスを取得"""
+        """カスタム色またはカテゴリベースのCSSクラスを取得"""
+        # カスタム色が設定されている場合は使用しない（インラインスタイルで対応）
+        if self.color:
+            return ''  # インラインスタイルを使用するため空文字を返す
+        
+        # カスタム色が未設定の場合はカテゴリベースのデフォルト色
         color_map = {
             'STOCK': 'bg-red-600',
             'SECTOR': 'bg-green-600', 
@@ -118,6 +123,29 @@ class Tag(BaseModel):
         }
         return color_map.get(self.category, 'bg-gray-600')
     
+    def get_default_color(self):
+        """カテゴリベースのデフォルトカラーコードを取得"""
+        color_map = {
+            'STOCK': '#dc2626',    # red-600
+            'SECTOR': '#16a34a',   # green-600
+            'STRATEGY': '#2563eb', # blue-600
+            'ANALYSIS': '#ea580c', # orange-600
+            'MARKET': '#9333ea',   # purple-600
+            'RISK': '#eab308',     # yellow-600
+            'EVENT': '#4f46e5',    # indigo-600
+            'OTHER': '#6b7280',    # gray-600
+        }
+        return color_map.get(self.category, '#6b7280')
+    
+    def get_effective_color(self):
+        """実際に表示に使用する色を取得（カスタム色 > デフォルト色）"""
+        return self.color if self.color else self.get_default_color()
+    
+    def get_tag_style(self):
+        """タグのインラインスタイルを取得"""
+        effective_color = self.get_effective_color()
+        return f"background-color: {effective_color}; color: white; border-color: {effective_color};"
+    
     def get_related_notebooks(self, limit=5):
         """関連ノートブックを取得"""
         return self.notebook_set.filter(
@@ -127,3 +155,9 @@ class Tag(BaseModel):
     def get_related_entries(self, limit=5):
         """関連エントリーを取得"""
         return self.entry_set.select_related('notebook').order_by('-created_at')[:limit]
+    
+    def save(self, *args, **kwargs):
+        """保存時に色が未設定の場合はデフォルト色を設定"""
+        if not self.color:
+            self.color = self.get_default_color()
+        super().save(*args, **kwargs)
