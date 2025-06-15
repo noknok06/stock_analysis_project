@@ -249,6 +249,7 @@ class NotebookForm(forms.ModelForm):
                 # タグを取得または作成
                 tag, created = Tag.objects.get_or_create(
                     name=tag_name,
+                    user=self.instance.user,  # ← ここを追加
                     defaults={
                         'category': self._determine_tag_category(tag_name),
                         'description': self._generate_tag_description(tag_name),

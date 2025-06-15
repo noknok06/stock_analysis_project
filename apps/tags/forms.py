@@ -1,5 +1,5 @@
 # ========================================
-# apps/tags/forms.py - タグ管理フォーム
+# apps/tags/forms.py - ユーザー固有タグ管理フォーム
 # ========================================
 
 from django import forms
@@ -8,7 +8,7 @@ from apps.tags.models import Tag
 
 
 class TagForm(forms.ModelForm):
-    """タグ作成・編集フォーム"""
+    """ユーザー固有タグ作成・編集フォーム"""
     
     class Meta:
         model = Tag
@@ -35,8 +35,13 @@ class TagForm(forms.ModelForm):
             })
         }
     
+    def __init__(self, user=None, *args, **kwargs):
+        """ユーザー情報を受け取る"""
+        self.user = user
+        super().__init__(*args, **kwargs)
+    
     def clean_name(self):
-        """タグ名のバリデーション"""
+        """ユーザー固有タグ名のバリデーション"""
         name = self.cleaned_data.get('name', '').strip()
         
         if not name:
@@ -56,13 +61,14 @@ class TagForm(forms.ModelForm):
             if char in name:
                 raise ValidationError('タグ名に無効な文字が含まれています。')
         
-        # 重複チェック（編集時は現在のインスタンスを除外）
-        existing_tags = Tag.objects.filter(name=name)
-        if self.instance and self.instance.pk:
-            existing_tags = existing_tags.exclude(pk=self.instance.pk)
-        
-        if existing_tags.exists():
-            raise ValidationError('このタグ名は既に使用されています。')
+        # ユーザー内での重複チェック（編集時は現在のインスタンスを除外）
+        if self.user:
+            existing_tags = Tag.objects.filter(user=self.user, name=name)
+            if self.instance and self.instance.pk:
+                existing_tags = existing_tags.exclude(pk=self.instance.pk)
+            
+            if existing_tags.exists():
+                raise ValidationError('このタグ名は既に使用されています。')
         
         return name
     
@@ -89,7 +95,7 @@ class TagForm(forms.ModelForm):
 
 
 class TagSearchForm(forms.Form):
-    """タグ検索フォーム"""
+    """ユーザー固有タグ検索フォーム"""
     
     q = forms.CharField(
         required=False,
@@ -153,7 +159,7 @@ class TagSearchForm(forms.Form):
 
 
 class TagBulkActionForm(forms.Form):
-    """タグ一括操作フォーム"""
+    """ユーザー固有タグ一括操作フォーム"""
     
     ACTION_CHOICES = [
         ('activate', 'アクティブ化'),
@@ -182,8 +188,13 @@ class TagBulkActionForm(forms.Form):
         })
     )
     
+    def __init__(self, user=None, *args, **kwargs):
+        """ユーザー情報を受け取る"""
+        self.user = user
+        super().__init__(*args, **kwargs)
+    
     def clean_tag_ids(self):
-        """タグIDリストのバリデーション"""
+        """ユーザー固有タグIDリストのバリデーション"""
         tag_ids_str = self.cleaned_data.get('tag_ids', '')
         
         if not tag_ids_str:
@@ -197,10 +208,14 @@ class TagBulkActionForm(forms.Form):
         if not tag_ids:
             raise ValidationError('タグが選択されていません。')
         
-        # 存在確認
-        existing_count = Tag.objects.filter(pk__in=tag_ids).count()
-        if existing_count != len(tag_ids):
-            raise ValidationError('選択されたタグの一部が見つかりません。')
+        # ユーザー固有タグの存在確認
+        if self.user:
+            existing_count = Tag.objects.filter(
+                pk__in=tag_ids, 
+                user=self.user
+            ).count()
+            if existing_count != len(tag_ids):
+                raise ValidationError('選択されたタグの一部が見つからないか、アクセス権限がありません。')
         
         return tag_ids
     
@@ -217,7 +232,7 @@ class TagBulkActionForm(forms.Form):
 
 
 class TagImportForm(forms.Form):
-    """タグインポートフォーム"""
+    """ユーザー固有タグインポートフォーム"""
     
     IMPORT_FORMAT_CHOICES = [
         ('csv', 'CSV形式'),
@@ -261,6 +276,11 @@ class TagImportForm(forms.Form):
         })
     )
     
+    def __init__(self, user=None, *args, **kwargs):
+        """ユーザー情報を受け取る"""
+        self.user = user
+        super().__init__(*args, **kwargs)
+    
     def clean_import_file(self):
         """インポートファイルのバリデーション"""
         file = self.cleaned_data.get('import_file')
@@ -283,7 +303,7 @@ class TagImportForm(forms.Form):
 
 
 class TagExportForm(forms.Form):
-    """タグエクスポートフォーム"""
+    """ユーザー固有タグエクスポートフォーム"""
     
     EXPORT_FORMAT_CHOICES = [
         ('csv', 'CSV形式'),
@@ -326,3 +346,8 @@ class TagExportForm(forms.Form):
             'class': 'text-blue-600 focus:ring-blue-500'
         })
     )
+    
+    def __init__(self, user=None, *args, **kwargs):
+        """ユーザー情報を受け取る"""
+        self.user = user
+        super().__init__(*args, **kwargs)

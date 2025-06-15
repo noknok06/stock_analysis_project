@@ -1,5 +1,5 @@
 # ========================================
-# apps/notes/models.py - 見直し版
+# apps/notes/models.py - 統計情報修正版
 # ========================================
 
 import uuid
@@ -7,6 +7,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from apps.common.models import BaseModel
 from apps.tags.models import Tag
+from django.db.models import Count, Q
 
 class Notebook(BaseModel):
     """ノートブック（テーマ単位のフォルダ的役割）"""
@@ -69,17 +70,49 @@ class Notebook(BaseModel):
     def __str__(self):
         return self.title
     
+    def save(self, *args, **kwargs):
+        """保存時にエントリー数を更新"""
+        super().save(*args, **kwargs)
+        self.update_entry_count()
+    
+    def update_entry_count(self):
+        """エントリー数を正確にカウントして更新"""
+        actual_count = self.entries.count()
+        if self.entry_count != actual_count:
+            self.entry_count = actual_count
+            # update_fieldsを使用して無限ループを防ぐ
+            super(Notebook, self).save(update_fields=['entry_count'])
+    
     def get_recent_entries(self, limit=5):
         """最新のエントリーを取得"""
         return self.entries.order_by('-created_at')[:limit]
     
     def get_stock_count(self):
-        """ノート内の銘柄数を取得"""
-        return self.entries.exclude(stock_code='').values('stock_code').distinct().count()
+        """ノート内の銘柄数を取得（修正版）"""
+        return self.entries.exclude(
+            Q(stock_code='') | Q(stock_code__isnull=True)
+        ).values('stock_code').distinct().count()
     
     def get_stocks_list(self):
-        """ノート内の銘柄一覧を取得"""
-        return self.entries.exclude(stock_code='').values('stock_code', 'company_name').distinct()
+        """ノート内の銘柄一覧を取得（修正版）"""
+        return self.entries.exclude(
+            Q(stock_code='') | Q(stock_code__isnull=True)
+        ).values('stock_code', 'company_name').distinct().order_by('stock_code')
+    
+    def get_important_entries_count(self):
+        """重要エントリー数を取得"""
+        return self.entries.filter(is_important=True).count()
+    
+    def get_recent_entries_count(self, days=7):
+        """最近のエントリー数を取得"""
+        from django.utils import timezone
+        from datetime import timedelta
+        since_date = timezone.now() - timedelta(days=days)
+        return self.entries.filter(created_at__gte=since_date).count()
+    
+    def get_bookmarked_entries_count(self):
+        """ブックマーク済みエントリー数を取得"""
+        return self.entries.filter(is_bookmarked=True).count()
 
 
 class SubNotebook(BaseModel):
@@ -104,6 +137,10 @@ class SubNotebook(BaseModel):
     
     def __str__(self):
         return f"{self.notebook.title} - {self.title}"
+    
+    def get_entries_count(self):
+        """このサブノートのエントリー数を取得"""
+        return self.entries.count()
 
 
 class Entry(BaseModel):
@@ -171,16 +208,22 @@ class Entry(BaseModel):
         return f"{self.notebook.title} - {self.title}"
     
     def save(self, *args, **kwargs):
-        """保存時にノートブックのエントリー数を更新"""
-        is_new = self.pk is None
+        """保存時にノートブックのエントリー数を更新（修正版）"""
+        is_new = self._state.adding  # pk is None では正確ではない場合があるため
         super().save(*args, **kwargs)
         
+        # 新規作成時のみエントリー数を更新
         if is_new:
-            self.notebook.entry_count += 1
-            self.notebook.save(update_fields=['entry_count'])
+            self.notebook.update_entry_count()
+    
+    def delete(self, *args, **kwargs):
+        """削除時にノートブックのエントリー数を更新"""
+        notebook = self.notebook
+        super().delete(*args, **kwargs)
+        notebook.update_entry_count()
     
     def get_stock_display(self):
-        """銘柄表示用"""
+        """銘柄表示用（修正版）"""
         if self.stock_code and self.company_name:
             return f"{self.stock_code} {self.company_name}"
         elif self.stock_code:
@@ -188,4 +231,50 @@ class Entry(BaseModel):
         elif self.company_name:
             return self.company_name
         return "銘柄未設定"
+    
+    def get_content_preview(self, max_length=100):
+        """コンテンツプレビューを取得"""
+        if not self.content:
+            return "コンテンツなし"
+        
+        # エントリータイプに応じてプレビューテキストを生成
+        if self.entry_type == 'ANALYSIS' and self.content.get('summary'):
+            text = self.content['summary']
+        elif self.entry_type == 'NEWS' and self.content.get('headline'):
+            text = self.content['headline']
+        elif self.entry_type == 'CALCULATION' and self.content.get('current_price'):
+            text = f"現在株価: {self.content['current_price']}"
+        elif self.entry_type == 'MEMO' and self.content.get('observation'):
+            text = self.content['observation']
+        elif self.entry_type == 'GOAL' and self.content.get('target_price'):
+            text = f"目標株価: {self.content['target_price']}"
+        else:
+            # その他の場合は最初の値を取得
+            values = [v for v in self.content.values() if isinstance(v, str) and v.strip()]
+            text = values[0] if values else "詳細はクリックして確認"
+        
+        return text[:max_length] + '...' if len(text) > max_length else text
+    
+    def has_stock_info(self):
+        """銘柄情報があるかどうか"""
+        return bool(self.stock_code or self.company_name)
 
+
+# シグナルを使用してエントリー数の整合性を保つ
+from django.db.models.signals import post_save, post_delete
+from django.dispatch import receiver
+
+@receiver(post_save, sender=Entry)
+def update_notebook_entry_count_on_save(sender, instance, created, **kwargs):
+    """エントリー保存時にノートブックのエントリー数を更新"""
+    if created:  # 新規作成時のみ
+        instance.notebook.update_entry_count()
+
+@receiver(post_delete, sender=Entry)
+def update_notebook_entry_count_on_delete(sender, instance, **kwargs):
+    """エントリー削除時にノートブックのエントリー数を更新"""
+    try:
+        instance.notebook.update_entry_count()
+    except Notebook.DoesNotExist:
+        # ノートブックが既に削除されている場合は何もしない
+        pass

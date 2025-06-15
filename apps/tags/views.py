@@ -1,5 +1,5 @@
 # ========================================
-# apps/tags/views.py - 改良版タグ管理ビュー
+# apps/tags/views.py - ユーザー固有タグ管理ビュー
 # ========================================
 
 import json
@@ -20,16 +20,17 @@ from apps.tags.models import Tag
 from apps.notes.models import Notebook, Entry
 
 
-class TagListView(ListView):
-    """改良されたタグ一覧ビュー"""
+class TagListView(LoginRequiredMixin, ListView):
+    """ユーザー固有タグ一覧ビュー"""
     model = Tag
     template_name = 'tags/list.html'
     context_object_name = 'tags'
     paginate_by = 50
     
     def get_queryset(self):
-        """検索・フィルター付きクエリセット"""
-        queryset = Tag.objects.all()
+        """ユーザー固有の検索・フィルター付きクエリセット"""
+        # ユーザー固有のタグのみ取得
+        queryset = Tag.objects.get_for_user(self.request.user)
         
         # 検索クエリ
         search_query = self.request.GET.get('q', '').strip()
@@ -71,20 +72,20 @@ class TagListView(ListView):
         """コンテキストデータを追加"""
         context = super().get_context_data(**kwargs)
         
-        # 統計情報
-        all_tags = Tag.objects.all()
+        # ユーザー固有の統計情報
+        user_tags = Tag.objects.get_for_user(self.request.user)
         context['stats'] = {
-            'total_tags': all_tags.count(),
-            'active_tags': all_tags.filter(is_active=True).count(),
-            'used_tags': all_tags.filter(usage_count__gt=0).count(),
-            'total_usage': all_tags.aggregate(total=Sum('usage_count'))['total'] or 0,
+            'total_tags': user_tags.count(),
+            'active_tags': user_tags.filter(is_active=True).count(),
+            'used_tags': user_tags.filter(usage_count__gt=0).count(),
+            'total_usage': user_tags.aggregate(total=Sum('usage_count'))['total'] or 0,
         }
         
-        # カテゴリ別統計
+        # カテゴリ別統計（ユーザー固有）
         context['category_stats'] = []
         for category, display_name in Tag.CATEGORY_CHOICES:
-            count = all_tags.filter(category=category).count()
-            used_count = all_tags.filter(category=category, usage_count__gt=0).count()
+            count = user_tags.filter(category=category).count()
+            used_count = user_tags.filter(category=category, usage_count__gt=0).count()
             context['category_stats'].append({
                 'category': category,
                 'display_name': display_name,
@@ -102,24 +103,28 @@ class TagListView(ListView):
             'sort': self.request.GET.get('sort', '-usage_count'),
         }
         
-        # 最近作成されたタグ
+        # 最近作成されたタグ（ユーザー固有）
         recent_threshold = timezone.now() - timedelta(days=7)
-        context['recent_tags'] = Tag.objects.filter(
+        context['recent_tags'] = user_tags.filter(
             created_at__gte=recent_threshold
         ).order_by('-created_at')[:5]
         
-        # トレンドタグ（最近使用されたタグ）
-        context['trending_tags'] = Tag.objects.get_trending_tags(limit=10)
+        # トレンドタグ（ユーザー固有）
+        context['trending_tags'] = Tag.objects.get_trending_tags(self.request.user, limit=10)
         
         return context
 
 
 class TagUpdateView(LoginRequiredMixin, UpdateView):
-    """タグ編集ビュー"""
+    """ユーザー固有タグ編集ビュー"""
     model = Tag
     fields = ['name', 'category', 'description', 'color', 'is_active']
     template_name = 'tags/edit.html'
     success_url = reverse_lazy('tags:list')
+    
+    def get_queryset(self):
+        """ユーザー固有のタグのみ取得"""
+        return Tag.objects.get_for_user(self.request.user)
     
     def form_valid(self, form):
         """フォーム有効時の処理"""
@@ -135,28 +140,36 @@ class TagUpdateView(LoginRequiredMixin, UpdateView):
         """コンテキストデータを追加"""
         context = super().get_context_data(**kwargs)
         
-        # タグの使用統計
+        # タグの使用統計（ユーザー固有）
         tag = self.object
         context['usage_stats'] = {
-            'notebooks': tag.notebook_set.count(),
-            'entries': tag.entry_set.count(),
+            'notebooks': tag.notebook_set.filter(user=self.request.user).count(),
+            'entries': tag.entry_set.filter(notebook__user=self.request.user).count(),
             'total_usage': tag.usage_count,
         }
         
-        # 関連ノートブック（最新5件）
-        context['related_notebooks'] = tag.notebook_set.select_related('user').order_by('-updated_at')[:5]
+        # 関連ノートブック（ユーザー固有、最新5件）
+        context['related_notebooks'] = tag.notebook_set.filter(
+            user=self.request.user
+        ).select_related('user').order_by('-updated_at')[:5]
         
-        # 関連エントリー（最新5件）
-        context['related_entries'] = tag.entry_set.select_related('notebook').order_by('-created_at')[:5]
+        # 関連エントリー（ユーザー固有、最新5件）
+        context['related_entries'] = tag.entry_set.filter(
+            notebook__user=self.request.user
+        ).select_related('notebook').order_by('-created_at')[:5]
         
         return context
 
 
 class TagDeleteView(LoginRequiredMixin, DeleteView):
-    """タグ削除ビュー"""
+    """ユーザー固有タグ削除ビュー"""
     model = Tag
     template_name = 'tags/delete.html'
     success_url = reverse_lazy('tags:list')
+    
+    def get_queryset(self):
+        """ユーザー固有のタグのみ取得"""
+        return Tag.objects.get_for_user(self.request.user)
     
     def delete(self, request, *args, **kwargs):
         """削除処理"""
@@ -180,8 +193,8 @@ class TagDeleteView(LoginRequiredMixin, DeleteView):
         
         tag = self.object
         context['usage_stats'] = {
-            'notebooks': tag.notebook_set.count(),
-            'entries': tag.entry_set.count(),
+            'notebooks': tag.notebook_set.filter(user=self.request.user).count(),
+            'entries': tag.entry_set.filter(notebook__user=self.request.user).count(),
             'total_usage': tag.usage_count,
         }
         
@@ -191,13 +204,28 @@ class TagDeleteView(LoginRequiredMixin, DeleteView):
 @login_required
 @require_http_methods(["POST"])
 def tag_quick_edit_ajax(request, tag_id):
-    """タグのクイック編集Ajax"""
+    """ユーザー固有タグのクイック編集Ajax"""
     try:
-        tag = get_object_or_404(Tag, pk=tag_id)
+        tag = get_object_or_404(Tag, pk=tag_id, user=request.user)
         data = json.loads(request.body)
         
         # 更新可能なフィールドを制限
         allowed_fields = ['name', 'description', 'category', 'is_active', 'color']
+        
+        # タグ名の重複チェック（ユーザー内で）
+        if 'name' in data:
+            new_name = data['name'].strip()
+            if not new_name.startswith('#'):
+                new_name = '#' + new_name
+            
+            # 同じユーザーの他のタグで重複チェック
+            if Tag.objects.filter(user=request.user, name=new_name).exclude(pk=tag.pk).exists():
+                return JsonResponse({
+                    'success': False,
+                    'error': 'このタグ名は既に使用されています'
+                }, status=400)
+            
+            data['name'] = new_name
         
         for field, value in data.items():
             if field in allowed_fields:
@@ -241,9 +269,9 @@ def tag_quick_edit_ajax(request, tag_id):
 @login_required
 @require_http_methods(["POST"])
 def tag_toggle_status_ajax(request, tag_id):
-    """タグのアクティブ状態切り替えAjax"""
+    """ユーザー固有タグのアクティブ状態切り替えAjax"""
     try:
-        tag = get_object_or_404(Tag, pk=tag_id)
+        tag = get_object_or_404(Tag, pk=tag_id, user=request.user)
         tag.is_active = not tag.is_active
         tag.save(update_fields=['is_active'])
         
@@ -269,7 +297,7 @@ def tag_toggle_status_ajax(request, tag_id):
 @login_required
 @require_http_methods(["POST"])
 def tag_bulk_action_ajax(request):
-    """タグの一括操作Ajax"""
+    """ユーザー固有タグの一括操作Ajax"""
     try:
         data = json.loads(request.body)
         action = data.get('action')
@@ -281,7 +309,8 @@ def tag_bulk_action_ajax(request):
                 'error': 'タグが選択されていません'
             }, status=400)
         
-        tags = Tag.objects.filter(pk__in=tag_ids)
+        # ユーザー固有のタグのみ取得
+        tags = Tag.objects.filter(pk__in=tag_ids, user=request.user)
         count = tags.count()
         
         if action == 'activate':
@@ -319,13 +348,14 @@ def tag_bulk_action_ajax(request):
 
 @login_required
 def tag_search_ajax(request):
-    """タグ検索Ajax（リアルタイム検索用）"""
+    """ユーザー固有タグ検索Ajax（リアルタイム検索用）"""
     query = request.GET.get('q', '').strip()
     category = request.GET.get('category', '')
     limit = int(request.GET.get('limit', 20))
     
     try:
-        tags = Tag.objects.all()
+        # ユーザー固有のタグのみ検索
+        tags = Tag.objects.get_for_user(request.user)
         
         if query:
             tags = tags.filter(
@@ -369,12 +399,12 @@ def tag_search_ajax(request):
 
 @login_required
 def tag_usage_stats_ajax(request, tag_id):
-    """タグ使用統計Ajax"""
+    """ユーザー固有タグ使用統計Ajax"""
     try:
-        tag = get_object_or_404(Tag, pk=tag_id)
+        tag = get_object_or_404(Tag, pk=tag_id, user=request.user)
         
-        # 関連ノートブック
-        notebooks = tag.notebook_set.select_related('user')
+        # 関連ノートブック（ユーザー固有）
+        notebooks = tag.notebook_set.filter(user=request.user).select_related('user')
         notebook_data = [
             {
                 'id': str(nb.pk),
@@ -386,8 +416,10 @@ def tag_usage_stats_ajax(request, tag_id):
             for nb in notebooks[:10]
         ]
         
-        # 関連エントリー
-        entries = tag.entry_set.select_related('notebook')
+        # 関連エントリー（ユーザー固有）
+        entries = tag.entry_set.filter(
+            notebook__user=request.user
+        ).select_related('notebook')
         entry_data = [
             {
                 'id': str(entry.pk),
@@ -430,13 +462,14 @@ def tag_usage_stats_ajax(request, tag_id):
 
 
 def tag_search_ajax_legacy(request):
-    """レガシータグ検索Ajax（既存コードとの互換性用）"""
+    """レガシータグ検索Ajax（既存コードとの互換性用・ユーザー固有）"""
     query = request.GET.get('q', '').strip()
     if not query:
         return JsonResponse({'tags': []})
     
+    # ユーザー固有のタグのみ検索
     tags = Tag.objects.filter(
-        Q(name__icontains=query) & Q(is_active=True)
+        Q(name__icontains=query) & Q(is_active=True) & Q(user=request.user)
     ).values('id', 'name', 'category')[:10]
     
     return JsonResponse({'tags': list(tags)})

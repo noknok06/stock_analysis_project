@@ -145,12 +145,7 @@ class NotebookListView(UserOwnerMixin, ListView):
             context['trending_tags'] = self.get_related_tags_for_search(search_query)
         else:
             # 通常のトレンドタグ
-            context['trending_tags'] = Tag.objects.get_trending_tags(limit=15)
-        
-        # カテゴリ別タグ
-        context['popular_strategy_tags'] = Tag.objects.get_tags_by_category('STRATEGY', limit=8)
-        context['popular_stock_tags'] = Tag.objects.get_tags_by_category('STOCK', limit=8)
-        context['popular_sector_tags'] = Tag.objects.get_tags_by_category('SECTOR', limit=8)
+            context['trending_tags'] = Tag.objects.get_trending_tags(self.request.user, limit=15)
         
         # お気に入りノートの表示
         context['favorite_notebooks'] = self.model.objects.filter(
@@ -216,7 +211,7 @@ class NotebookListView(UserOwnerMixin, ListView):
             return all_tags
         except Exception as e:
             # エラー時は通常のトレンドタグを返す
-            return Tag.objects.get_trending_tags(limit=15)
+            return Tag.objects.get_trending_tags(self.request.user, limit=15)
 
 
 # ========================================
@@ -234,7 +229,7 @@ def trending_tags_ajax(request):
         if category:
             tags = Tag.objects.get_tags_by_category(category, limit=limit)
         else:
-            tags = Tag.objects.get_trending_tags(limit=limit)
+            tags = Tag.objects.get_trending_tags(request.user, limit=limit)
         
         # タグデータをシリアライズ
         tags_data = []
@@ -571,13 +566,13 @@ def search_suggestions_ajax(request):
         }, status=500)
 
 class NotebookDetailView(UserOwnerMixin, DetailView):
-    """ノート詳細ビュー（テーマ単位）"""
+    """ノート詳細ビュー（統計情報修正版）"""
     model = Notebook
     template_name = 'notes/detail.html'
     context_object_name = 'notebook'
     
     def get_context_data(self, **kwargs):
-        """エントリー一覧をページネーション付きで追加"""
+        """エントリー一覧と統計情報をページネーション付きで追加"""
         context = super().get_context_data(**kwargs)
         
         # エントリー一覧をページネーションで取得
@@ -613,18 +608,24 @@ class NotebookDetailView(UserOwnerMixin, DetailView):
         # 銘柄一覧（フィルター用）
         context['stocks'] = self.object.get_stocks_list()
         
-        # 統計情報
+        # 統計情報（修正版）
+        total_entries = self.object.entries.count()
+        recent_entries = self.object.entries.filter(
+            created_at__gte=timezone.now() - timedelta(days=7)
+        ).count()
+        important_entries = self.object.entries.filter(is_important=True).count()
+        stock_count = self.object.entries.exclude(
+            Q(stock_code='') | Q(stock_code__isnull=True)
+        ).values('stock_code').distinct().count()
+        
         context['stats'] = {
-            'total_entries': self.object.entry_count,
-            'stock_count': self.object.get_stock_count(),
-            'recent_entries': self.object.entries.filter(
-                created_at__gte=timezone.now() - timedelta(days=7)
-            ).count(),
-            'important_entries': self.object.entries.filter(is_important=True).count(),
+            'total_entries': total_entries,
+            'stock_count': stock_count,
+            'recent_entries': recent_entries,
+            'important_entries': important_entries,
         }
         
-        return context
-    
+        return context    
 
 class NotebookCreateView(LoginRequiredMixin, CreateView):
     """ノート作成ビュー（シンプル版）"""
@@ -1570,3 +1571,577 @@ def generate_content_preview(entry):
         return f"目標株価: {content['target_price']}"
     
     return "詳細はクリックして確認してください"
+
+# ========================================
+# エントリーブックマーク・削除機能
+# ========================================
+
+@login_required
+@require_http_methods(["POST"])
+def toggle_entry_bookmark(request, entry_pk):
+    """エントリーのブックマーク切り替え（修正版）"""
+    try:
+        entry = get_object_or_404(Entry, pk=entry_pk, notebook__user=request.user)
+        entry.is_bookmarked = not entry.is_bookmarked
+        entry.save(update_fields=['is_bookmarked'])
+        
+        status = 'ブックマークに追加' if entry.is_bookmarked else 'ブックマークから削除'
+        return JsonResponse({
+            'success': True,
+            'is_bookmarked': entry.is_bookmarked,
+            'message': f'「{entry.title}」を{status}しました'
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"エントリーブックマーク切り替えエラー: {e}", exc_info=True)
+        return JsonResponse({
+            'success': False, 
+            'error': 'ブックマークの切り替えに失敗しました'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def delete_entry(request, entry_pk):
+    """エントリー削除"""
+    try:
+        entry = get_object_or_404(Entry, pk=entry_pk, notebook__user=request.user)
+        entry_title = entry.title
+        notebook_pk = entry.notebook.pk
+        
+        # エントリーを削除
+        entry.delete()
+        
+        # ノートブックのエントリー数を更新
+        notebook = entry.notebook
+        notebook.entry_count = notebook.entries.count()
+        notebook.save(update_fields=['entry_count'])
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'エントリー「{entry_title}」を削除しました',
+            'notebook_url': reverse('notes:detail', kwargs={'pk': notebook_pk})
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"エントリー削除エラー: {e}", exc_info=True)
+        return JsonResponse({
+            'success': False, 
+            'error': 'エントリーの削除に失敗しました'
+        }, status=500)
+
+
+@login_required
+def entry_detail_ajax(request, entry_pk):
+    """エントリー詳細をAjaxで返すビュー（修正版）"""
+    try:
+        entry = get_object_or_404(Entry, pk=entry_pk, notebook__user=request.user)
+        
+        # エントリータイプに応じてHTMLを生成
+        html_content = render_entry_content_html(entry)
+        
+        return JsonResponse({
+            'success': True,
+            'entry_id': str(entry.pk),
+            'title': entry.title,
+            'entry_type': entry.get_entry_type_display(),
+            'stock_info': entry.get_stock_display(),
+            'sub_notebook': entry.sub_notebook.title if entry.sub_notebook else None,
+            'created_at': entry.created_at.strftime('%Y/%m/%d %H:%M'),
+            'updated_at': entry.updated_at.strftime('%Y/%m/%d %H:%M'),
+            'is_important': entry.is_important,
+            'is_bookmarked': entry.is_bookmarked,
+            'event_date': entry.event_date.strftime('%Y/%m/%d') if entry.event_date else None,
+            'tags': [{'id': tag.pk, 'name': tag.name} for tag in entry.tags.all()],
+            'html': html_content
+        })
+        
+    except Entry.DoesNotExist:
+        return JsonResponse({
+            'success': False,
+            'error': 'エントリーが見つかりません'
+        }, status=404)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"エントリー詳細取得エラー: {e}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'エラーが発生しました: {str(e)}'
+        }, status=500)
+
+
+# ========================================
+# その他の既存機能
+# ========================================
+
+@login_required
+def toggle_favorite_view(request, pk):
+    """ノートのお気に入り切り替え"""
+    if request.method == 'POST':
+        try:
+            notebook = get_object_or_404(Notebook, pk=pk, user=request.user)
+            notebook.is_favorite = not notebook.is_favorite
+            notebook.save(update_fields=['is_favorite'])
+            
+            status = 'お気に入りに追加' if notebook.is_favorite else 'お気に入りから削除'
+            return JsonResponse({
+                'success': True,
+                'is_favorite': notebook.is_favorite,
+                'message': f'「{notebook.title}」を{status}しました'
+            })
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"お気に入り切り替えエラー: {e}", exc_info=True)
+            return JsonResponse({
+                'success': False, 
+                'error': 'お気に入りの切り替えに失敗しました'
+            }, status=500)
+    
+    return JsonResponse({'success': False, 'error': '無効なリクエストです'}, status=405)
+
+
+def render_entry_content_html(entry):
+    """エントリータイプに応じたHTMLコンテンツを生成（修正版）"""
+    content = entry.content
+    entry_type = entry.entry_type
+    
+    # 銘柄情報を追加
+    stock_info_html = ''
+    if entry.stock_code or entry.company_name:
+        stock_info_html = f'''
+        <div class="bg-gray-700 p-4 rounded-lg mb-4">
+            <h4 class="font-semibold text-white mb-2 flex items-center">
+                <svg class="h-4 w-4 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 8v8m-4-5v5m-4-2v2m-2 4h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z"></path>
+                </svg>
+                銘柄情報
+            </h4>
+            <div class="grid grid-cols-2 gap-4">
+                {f'<div><p class="text-sm text-gray-400">銘柄コード</p><p class="text-white font-semibold">{entry.stock_code}</p></div>' if entry.stock_code else ''}
+                {f'<div><p class="text-sm text-gray-400">企業名</p><p class="text-white font-semibold">{entry.company_name}</p></div>' if entry.company_name else ''}
+                {f'<div><p class="text-sm text-gray-400">市場</p><p class="text-white">{entry.market}</p></div>' if entry.market else ''}
+                {f'<div><p class="text-sm text-gray-400">イベント日</p><p class="text-white">{entry.event_date.strftime("%Y/%m/%d")}</p></div>' if entry.event_date else ''}
+            </div>
+        </div>
+        '''
+    
+    # エントリーメタ情報
+    meta_info_html = f'''
+    <div class="bg-gray-700 p-4 rounded-lg mb-4">
+        <h4 class="font-semibold text-white mb-2 flex items-center">
+            <svg class="h-4 w-4 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            エントリー情報
+        </h4>
+        <div class="grid grid-cols-2 gap-4">
+            <div><p class="text-sm text-gray-400">タイプ</p><p class="text-white">{entry.get_entry_type_display()}</p></div>
+            <div><p class="text-sm text-gray-400">作成日</p><p class="text-white">{entry.created_at.strftime("%Y/%m/%d %H:%M")}</p></div>
+            {f'<div><p class="text-sm text-gray-400">サブノート</p><p class="text-white">{entry.sub_notebook.title}</p></div>' if entry.sub_notebook else ''}
+            <div><p class="text-sm text-gray-400">最終更新</p><p class="text-white">{entry.updated_at.strftime("%Y/%m/%d %H:%M")}</p></div>
+        </div>
+    </div>
+    '''
+    
+    # タグ情報
+    tags_html = ''
+    if entry.tags.exists():
+        tags_list = ', '.join([tag.name for tag in entry.tags.all()])
+        tags_html = f'''
+        <div class="bg-gray-700 p-4 rounded-lg mb-4">
+            <h4 class="font-semibold text-white mb-2 flex items-center">
+                <svg class="h-4 w-4 mr-2 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a2 2 0 012-2z"></path>
+                </svg>
+                関連タグ
+            </h4>
+            <div class="flex flex-wrap gap-2">
+                {' '.join([f'<span class="px-2 py-1 bg-blue-600 text-white text-sm rounded">{tag.name}</span>' for tag in entry.tags.all()])}
+            </div>
+        </div>
+        '''
+    
+    # エントリータイプ別コンテンツ
+    if entry_type == 'ANALYSIS':
+        content_html = render_analysis_content(content)
+    elif entry_type == 'NEWS':
+        content_html = render_news_content(content)
+    elif entry_type == 'CALCULATION':
+        content_html = render_calculation_content(content)
+    elif entry_type == 'MEMO':
+        content_html = render_memo_content(content)
+    elif entry_type == 'GOAL':
+        content_html = render_goal_content(content)
+    elif entry_type == 'EARNINGS':
+        content_html = render_earnings_content(content)
+    elif entry_type == 'IR_EVENT':
+        content_html = render_ir_event_content(content)
+    elif entry_type == 'MARKET_EVENT':
+        content_html = render_market_event_content(content)
+    else:
+        content_html = '<p class="text-gray-300">コンテンツが見つかりません。</p>'
+    
+    # アクションボタン
+    action_buttons_html = f'''
+    <div class="flex justify-end gap-2 mt-6 pt-4 border-t border-gray-600">
+        <button onclick="toggleEntryBookmark('{entry.pk}')" 
+                class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors flex items-center">
+            <svg class="h-4 w-4 mr-2" fill="{'currentColor' if entry.is_bookmarked else 'none'}" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 5a2 2 0 012-2h10a2 2 0 012 2v16l-7-3.5L5 21V5z"></path>
+            </svg>
+            {'ブックマーク済み' if entry.is_bookmarked else 'ブックマーク'}
+        </button>
+        <button onclick="deleteEntry('{entry.pk}')" 
+                class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors flex items-center">
+            <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+            </svg>
+            削除
+        </button>
+    </div>
+    '''
+    
+    return meta_info_html + stock_info_html + tags_html + content_html + action_buttons_html
+
+
+# 新しいエントリータイプ用のレンダー関数
+def render_earnings_content(content):
+    """決算発表コンテンツのHTML生成"""
+    html = '<div class="space-y-4">'
+    
+    if content.get('earnings_date'):
+        html += f'''
+        <div class="bg-purple-900/30 p-4 rounded-lg border border-purple-700">
+            <h4 class="font-semibold text-white mb-2">決算発表日</h4>
+            <p class="text-purple-300 text-lg font-semibold">{content["earnings_date"]}</p>
+        </div>
+        '''
+    
+    if content.get('quarter'):
+        html += f'''
+        <div>
+            <h4 class="font-semibold text-white mb-2">対象四半期</h4>
+            <p class="text-gray-300">{content["quarter"]}</p>
+        </div>
+        '''
+    
+    if content.get('expectations'):
+        html += f'''
+        <div>
+            <h4 class="font-semibold text-white mb-2">事前予想</h4>
+            <p class="text-gray-300">{content["expectations"]}</p>
+        </div>
+        '''
+    
+    if content.get('key_criteria'):
+        html += f'''
+        <div>
+            <h4 class="font-semibold text-white mb-2">注目ポイント</h4>
+            <p class="text-gray-300">{content["key_criteria"]}</p>
+        </div>
+        '''
+    
+    html += '</div>'
+    return html
+
+
+def render_ir_event_content(content):
+    """IRイベントコンテンツのHTML生成"""
+    html = '<div class="space-y-4">'
+    
+    if content.get('event_name'):
+        html += f'''
+        <div class="bg-indigo-900/30 p-4 rounded-lg border border-indigo-700">
+            <h4 class="font-semibold text-white mb-2">イベント名</h4>
+            <p class="text-indigo-300 text-lg font-semibold">{content["event_name"]}</p>
+        </div>
+        '''
+    
+    if content.get('event_datetime'):
+        html += f'''
+        <div>
+            <h4 class="font-semibold text-white mb-2">開催日時</h4>
+            <p class="text-gray-300">{content["event_datetime"]}</p>
+        </div>
+        '''
+    
+    if content.get('agenda'):
+        html += f'''
+        <div>
+            <h4 class="font-semibold text-white mb-2">アジェンダ</h4>
+            <p class="text-gray-300">{content["agenda"]}</p>
+        </div>
+        '''
+    
+    if content.get('key_takeaways'):
+        html += f'''
+        <div>
+            <h4 class="font-semibold text-white mb-2">主要なポイント</h4>
+            <p class="text-gray-300">{content["key_takeaways"]}</p>
+        </div>
+        '''
+    
+    html += '</div>'
+    return html
+
+
+def render_market_event_content(content):
+    """市場イベントコンテンツのHTML生成"""
+    html = '<div class="space-y-4">'
+    
+    if content.get('event_title'):
+        html += f'''
+        <div class="bg-pink-900/30 p-4 rounded-lg border border-pink-700">
+            <h4 class="font-semibold text-white mb-2">イベントタイトル</h4>
+            <p class="text-pink-300 text-lg font-semibold">{content["event_title"]}</p>
+        </div>
+        '''
+    
+    if content.get('event_date'):
+        html += f'''
+        <div>
+            <h4 class="font-semibold text-white mb-2">イベント日</h4>
+            <p class="text-gray-300">{content["event_date"]}</p>
+        </div>
+        '''
+    
+    if content.get('market_impact'):
+        html += f'''
+        <div>
+            <h4 class="font-semibold text-white mb-2">市場への影響</h4>
+            <p class="text-gray-300">{content["market_impact"]}</p>
+        </div>
+        '''
+    
+    if content.get('sector_impact'):
+        html += f'''
+        <div>
+            <h4 class="font-semibold text-white mb-2">セクターへの影響</h4>
+            <p class="text-gray-300">{content["sector_impact"]}</p>
+        </div>
+        '''
+    
+    html += '</div>'
+    return html
+
+
+# 既存のレンダー関数は省略（変更なし）
+def render_analysis_content(content):
+    """決算分析コンテンツのHTML生成"""
+    html = '<div class="space-y-6">'
+    
+    if content.get('summary'):
+        html += f'''
+        <div class="bg-gray-700 p-4 rounded-lg">
+            <h4 class="font-semibold text-white mb-2">サマリー</h4>
+            <p class="text-gray-300">{content["summary"]}</p>
+        </div>
+        '''
+    
+    key_metrics = content.get('key_metrics', {})
+    if any(key_metrics.values()):
+        html += '<div class="grid grid-cols-2 md:grid-cols-4 gap-4">'
+        for key, value in key_metrics.items():
+            if value:
+                display_key = {
+                    'revenue': '売上高',
+                    'operating_profit': '営業利益', 
+                    'net_income': '純利益',
+                    'eps': 'EPS'
+                }.get(key, key)
+                html += f'''
+                <div class="bg-gray-700 p-3 rounded-lg text-center">
+                    <p class="text-sm text-gray-400">{display_key}</p>
+                    <p class="text-lg font-bold text-white">{value}</p>
+                </div>
+                '''
+        html += '</div>'
+    
+    if content.get('analysis'):
+        html += f'''
+        <div>
+            <h4 class="font-semibold text-white mb-2">分析</h4>
+            <p class="text-gray-300">{content["analysis"]}</p>
+        </div>
+        '''
+    
+    if content.get('outlook'):
+        html += f'''
+        <div>
+            <h4 class="font-semibold text-white mb-2">今後の見通し</h4>
+            <p class="text-gray-300">{content["outlook"]}</p>
+        </div>
+        '''
+    
+    html += '</div>'
+    return html
+
+
+def render_news_content(content):
+    """ニュースコンテンツのHTML生成"""
+    html = '<div class="space-y-4">'
+    
+    if content.get('headline'):
+        html += f'''
+        <div class="bg-gray-700 p-4 rounded-lg">
+            <h4 class="font-semibold text-white mb-2">{content["headline"]}</h4>
+            {f'<p class="text-gray-300">{content["content"]}</p>' if content.get("content") else ""}
+        </div>
+        '''
+    
+    if content.get('impact'):
+        html += f'''
+        <div>
+            <h4 class="font-semibold text-white mb-2">事業への影響</h4>
+            <p class="text-gray-300">{content["impact"]}</p>
+        </div>
+        '''
+    
+    if content.get('stock_impact'):
+        html += f'''
+        <div>
+            <h4 class="font-semibold text-white mb-2">株価への影響</h4>
+            <p class="text-gray-300">{content["stock_impact"]}</p>
+        </div>
+        '''
+    
+    html += '</div>'
+    return html
+
+
+def render_calculation_content(content):
+    """計算結果コンテンツのHTML生成"""
+    html = '<div class="space-y-6">'
+    
+    if content.get('current_price'):
+        html += f'''
+        <div class="text-center bg-gray-700 p-4 rounded-lg">
+            <h4 class="font-semibold text-white mb-2">現在株価</h4>
+            <p class="text-3xl font-bold text-blue-400">{content["current_price"]}</p>
+        </div>
+        '''
+    
+    calculations = content.get('calculations', {})
+    if any(calculations.values()):
+        html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">'
+        for key, value in calculations.items():
+            if value:
+                display_key = {
+                    'per': 'PER',
+                    'pbr': 'PBR',
+                    'dividend_yield': '配当利回り',
+                    'roe': 'ROE',
+                    'roa': 'ROA'
+                }.get(key, key.upper())
+                html += f'''
+                <div class="bg-gray-700 p-3 rounded-lg">
+                    <p class="text-sm text-gray-400">{display_key}</p>
+                    <p class="text-lg font-semibold text-white">{value}</p>
+                </div>
+                '''
+        html += '</div>'
+    
+    if content.get('fair_value'):
+        html += f'''
+        <div class="space-y-2">
+            <h4 class="font-semibold text-white">適正価格</h4>
+            <p class="text-xl font-bold text-green-400">{content["fair_value"]}</p>
+        </div>
+        '''
+    
+    if content.get('recommendation'):
+        html += f'''
+        <div class="bg-blue-900/30 p-4 rounded-lg border border-blue-700">
+            <h4 class="font-semibold text-white mb-2">推奨</h4>
+            <p class="text-gray-300">{content["recommendation"]}</p>
+        </div>
+        '''
+    
+    html += '</div>'
+    return html
+
+
+def render_memo_content(content):
+    """メモコンテンツのHTML生成"""
+    html = '<div class="space-y-4">'
+    
+    if content.get('observation'):
+        html += f'''
+        <div>
+            <h4 class="font-semibold text-white mb-2">観察事項</h4>
+            <p class="text-gray-300">{content["observation"]}</p>
+        </div>
+        '''
+    
+    if content.get('market_trend'):
+        html += f'''
+        <div>
+            <h4 class="font-semibold text-white mb-2">市場トレンド</h4>
+            <p class="text-gray-300">{content["market_trend"]}</p>
+        </div>
+        '''
+    
+    if content.get('personal_note'):
+        html += f'''
+        <div>
+            <h4 class="font-semibold text-white mb-2">個人的メモ</h4>
+            <p class="text-gray-300">{content["personal_note"]}</p>
+        </div>
+        '''
+    
+    if content.get('next_action'):
+        html += f'''
+        <div class="bg-yellow-900/30 p-4 rounded-lg border border-yellow-700">
+            <h4 class="font-semibold text-white mb-2">次のアクション</h4>
+            <p class="text-gray-300">{content["next_action"]}</p>
+        </div>
+        '''
+    
+    html += '</div>'
+    return html
+
+
+def render_goal_content(content):
+    """投資目標コンテンツのHTML生成"""
+    html = '<div class="space-y-6">'
+    
+    if content.get('target_price') or content.get('sell_timing'):
+        html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">'
+        if content.get('target_price'):
+            html += f'''
+            <div class="space-y-2">
+                <h4 class="font-semibold text-white">目標株価</h4>
+                <p class="text-2xl font-bold text-green-400">{content["target_price"]}</p>
+            </div>
+            '''
+        if content.get('sell_timing'):
+            html += f'''
+            <div class="space-y-2">
+                <h4 class="font-semibold text-white">売却タイミング</h4>
+                <p class="text-gray-300">{content["sell_timing"]}</p>
+            </div>
+            '''
+        html += '</div>'
+    
+    if content.get('investment_reason'):
+        html += f'''
+        <div class="space-y-2">
+            <h4 class="font-semibold text-white">投資理由</h4>
+            <p class="text-gray-300">{content["investment_reason"]}</p>
+        </div>
+        '''
+    
+    if content.get('expected_effect'):
+        html += f'''
+        <div class="bg-purple-900/30 p-4 rounded-lg border border-purple-700">
+            <h4 class="font-semibold text-white mb-2">期待される効果</h4>
+            <p class="text-gray-300">{content["expected_effect"]}</p>
+        </div>
+        '''
+    
+    html += '</div>'
+    return html

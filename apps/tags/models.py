@@ -1,17 +1,23 @@
 from django.db import models
+from django.contrib.auth.models import User
 from django.utils import timezone
 from datetime import timedelta
 from apps.common.models import BaseModel
 
 class TagManager(models.Manager):
-    """タグマネージャー（カスタムクエリセット）"""
+    """タグマネージャー（ユーザー固有クエリセット）"""
     
-    def get_trending_tags(self, limit=10):
-        """トレンドタグを取得（使用頻度とアクティビティベース）"""
+    def get_for_user(self, user):
+        """指定ユーザーのタグのみを取得"""
+        return self.filter(user=user)
+    
+    def get_trending_tags(self, user, limit=10):
+        """ユーザーのトレンドタグを取得（使用頻度とアクティビティベース）"""
         # 過去30日間でアクティブなタグを優先
         recent_threshold = timezone.now() - timedelta(days=30)
         
         return self.filter(
+            user=user,
             is_active=True,
             usage_count__gt=0
         ).annotate(
@@ -28,35 +34,38 @@ class TagManager(models.Manager):
             '-updated_at'     # 更新日時順
         )[:limit]
     
-    def get_popular_tags(self, limit=20):
-        """人気タグを取得（総使用回数ベース）"""
+    def get_popular_tags(self, user, limit=20):
+        """ユーザーの人気タグを取得（総使用回数ベース）"""
         return self.filter(
+            user=user,
             is_active=True,
             usage_count__gt=0
         ).order_by('-usage_count', '-updated_at')[:limit]
     
-    def get_tags_by_category(self, category, limit=10):
-        """カテゴリー別タグを取得"""
+    def get_tags_by_category(self, user, category, limit=10):
+        """ユーザーのカテゴリー別タグを取得"""
         return self.filter(
+            user=user,
             category=category,
             is_active=True,
             usage_count__gt=0
         ).order_by('-usage_count', '-updated_at')[:limit]
     
-    def search_tags(self, query):
-        """タグを検索"""
+    def search_tags(self, user, query):
+        """ユーザーのタグを検索"""
         if not query:
             return self.none()
         
         return self.filter(
             models.Q(name__icontains=query) |
             models.Q(description__icontains=query),
+            user=user,
             is_active=True
         ).order_by('-usage_count', 'name')
 
 
 class Tag(BaseModel):
-    """タグモデル（色反映修正版）"""
+    """タグモデル（ユーザー固有版）"""
     
     CATEGORY_CHOICES = [
         ('STOCK', '銘柄'),
@@ -69,7 +78,13 @@ class Tag(BaseModel):
         ('OTHER', 'その他'),
     ]
     
-    name = models.CharField(max_length=50, unique=True, verbose_name='タグ名')
+    user = models.ForeignKey(
+        User, 
+        on_delete=models.CASCADE, 
+        verbose_name='ユーザー',
+        help_text='このタグの所有者'
+    )
+    name = models.CharField(max_length=50, verbose_name='タグ名')
     category = models.CharField(
         max_length=20, 
         choices=CATEGORY_CHOICES, 
@@ -88,14 +103,16 @@ class Tag(BaseModel):
         verbose_name = 'タグ'
         verbose_name_plural = 'タグ'
         ordering = ['-usage_count', 'name']
+        # ユーザー内でのタグ名の一意性を保証
+        unique_together = ['user', 'name']
         indexes = [
-            models.Index(fields=['category', 'is_active']),
-            models.Index(fields=['usage_count']),
-            models.Index(fields=['name']),
+            models.Index(fields=['user', 'category', 'is_active']),
+            models.Index(fields=['user', 'usage_count']),
+            models.Index(fields=['user', 'name']),
         ]
     
     def __str__(self):
-        return self.name
+        return f"{self.user.username}:{self.name}"
     
     def increment_usage(self):
         """使用回数をインクリメント"""
@@ -147,17 +164,44 @@ class Tag(BaseModel):
         return f"background-color: {effective_color}; color: white; border-color: {effective_color};"
     
     def get_related_notebooks(self, limit=5):
-        """関連ノートブックを取得"""
+        """関連ノートブックを取得（同一ユーザーのみ）"""
         return self.notebook_set.filter(
+            user=self.user,
             is_public=True
         ).order_by('-updated_at')[:limit]
     
     def get_related_entries(self, limit=5):
-        """関連エントリーを取得"""
-        return self.entry_set.select_related('notebook').order_by('-created_at')[:limit]
+        """関連エントリーを取得（同一ユーザーのみ）"""
+        return self.entry_set.select_related('notebook').filter(
+            notebook__user=self.user
+        ).order_by('-created_at')[:limit]
     
     def save(self, *args, **kwargs):
         """保存時に色が未設定の場合はデフォルト色を設定"""
         if not self.color:
             self.color = self.get_default_color()
         super().save(*args, **kwargs)
+    
+    @classmethod
+    def get_or_create_for_user(cls, user, name, category='OTHER', **kwargs):
+        """ユーザー固有のタグを取得または作成"""
+        # #がない場合は自動で追加
+        if not name.startswith('#'):
+            name = '#' + name
+        
+        tag, created = cls.objects.get_or_create(
+            user=user,
+            name=name,
+            defaults={
+                'category': category,
+                'description': kwargs.get('description', ''),
+                'color': kwargs.get('color', ''),
+                'is_active': kwargs.get('is_active', True),
+            }
+        )
+        
+        if not created:
+            # 既存タグの使用回数をインクリメント
+            tag.increment_usage()
+        
+        return tag, created

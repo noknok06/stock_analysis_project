@@ -1,5 +1,5 @@
 # ========================================
-# apps/tags/api_views.py - タグAPI
+# apps/tags/api_views.py - ユーザー固有タグAPI
 # ========================================
 
 import json
@@ -14,13 +14,14 @@ from apps.common.utils import SearchHelper
 @login_required
 @require_http_methods(["GET"])
 def tag_search_api(request):
-    """タグ検索API"""
+    """ユーザー固有タグ検索API"""
     try:
         query = request.GET.get('q', '').strip()
         category = request.GET.get('category', '')
         limit = int(request.GET.get('limit', 20))
         
-        tags = Tag.objects.filter(is_active=True)
+        # ユーザー固有のタグのみ取得
+        tags = Tag.objects.get_for_user(request.user).filter(is_active=True)
         
         if query:
             tags = tags.filter(name__icontains=query)
@@ -58,11 +59,11 @@ def tag_search_api(request):
 @csrf_exempt
 @require_http_methods(["POST"])
 def tag_create_api(request):
-    """タグ作成API"""
+    """ユーザー固有タグ作成API"""
     try:
         data = json.loads(request.body)
         tag_name = data.get('name', '').strip()
-        category = data.get('category', 'STRATEGY')
+        category = data.get('category', 'OTHER')
         description = data.get('description', '')
         
         if not tag_name:
@@ -75,9 +76,9 @@ def tag_create_api(request):
         if not tag_name.startswith('#'):
             tag_name = '#' + tag_name
         
-        # 重複チェック
-        if Tag.objects.filter(name=tag_name).exists():
-            existing_tag = Tag.objects.get(name=tag_name)
+        # ユーザー内での重複チェック
+        if Tag.objects.filter(user=request.user, name=tag_name).exists():
+            existing_tag = Tag.objects.get(user=request.user, name=tag_name)
             return JsonResponse({
                 'success': True,
                 'tag': {
@@ -90,8 +91,9 @@ def tag_create_api(request):
                 'message': '既存のタグを返します'
             })
         
-        # 新規タグ作成
+        # 新規タグ作成（ユーザー固有）
         tag = Tag.objects.create(
+            user=request.user,
             name=tag_name,
             category=category,
             description=description,
@@ -125,7 +127,7 @@ def tag_create_api(request):
 @login_required
 @require_http_methods(["GET"])
 def tag_suggestions_api(request):
-    """AI支援タグ推奨API"""
+    """ユーザー固有AI支援タグ推奨API"""
     try:
         content = request.GET.get('content', '')
         stock_code = request.GET.get('stock_code', '')
@@ -140,14 +142,18 @@ def tag_suggestions_api(request):
         except:
             existing_tags = []
         
-        # タグ推奨ロジック
-        suggestions = generate_tag_suggestions({
-            'content': content,
-            'stock_code': stock_code,
-            'company_name': company_name,
-            'investment_reason': investment_reason,
-            'status': status
-        }, existing_tags)
+        # ユーザーの既存タグも考慮した推奨ロジック
+        suggestions = generate_tag_suggestions_for_user(
+            request.user,
+            {
+                'content': content,
+                'stock_code': stock_code,
+                'company_name': company_name,
+                'investment_reason': investment_reason,
+                'status': status
+            }, 
+            existing_tags
+        )
         
         return JsonResponse({
             'success': True,
@@ -162,8 +168,8 @@ def tag_suggestions_api(request):
         }, status=500)
 
 
-def generate_tag_suggestions(content_data, existing_tags=None):
-    """タグ推奨ロジック"""
+def generate_tag_suggestions_for_user(user, content_data, existing_tags=None):
+    """ユーザー固有のタグ推奨ロジック"""
     if existing_tags is None:
         existing_tags = []
     
@@ -176,6 +182,12 @@ def generate_tag_suggestions(content_data, existing_tags=None):
         content_data.get('company_name', ''),
         content_data.get('investment_reason', '')
     ]).lower()
+    
+    # ユーザーの既存タグから類似するものを提案
+    user_tags = Tag.objects.get_for_user(user).filter(
+        is_active=True,
+        usage_count__gt=0
+    ).order_by('-usage_count')
     
     # キーワードベースの推奨マッピング
     keyword_mapping = {
@@ -205,6 +217,12 @@ def generate_tag_suggestions(content_data, existing_tags=None):
         if keyword in text:
             suggestions.extend(tags)
     
+    # ユーザーの既存タグから関連するものを提案
+    for tag in user_tags[:10]:  # 上位10個のタグをチェック
+        tag_words = tag.name.replace('#', '').lower()
+        if any(word in text for word in tag_words.split()):
+            suggestions.append(tag.name)
+    
     # ステータスベースの推奨
     status = content_data.get('status', '')
     if status == 'ACTIVE':
@@ -231,19 +249,28 @@ def generate_tag_suggestions(content_data, existing_tags=None):
         if tag not in existing_tags and tag not in unique_suggestions:
             unique_suggestions.append(tag)
     
+    # ユーザーが既に持っているタグを優先
+    prioritized_suggestions = []
+    for suggestion in unique_suggestions:
+        if Tag.objects.filter(user=user, name=suggestion).exists():
+            prioritized_suggestions.insert(0, suggestion)
+        else:
+            prioritized_suggestions.append(suggestion)
+    
     # 最大6個まで
-    return unique_suggestions[:6]
+    return prioritized_suggestions[:6]
 
 
 @login_required 
 @require_http_methods(["GET"])
 def popular_tags_api(request):
-    """人気タグAPI"""
+    """ユーザー固有人気タグAPI"""
     try:
         category = request.GET.get('category', '')
         limit = int(request.GET.get('limit', 10))
         
-        tags = Tag.objects.filter(is_active=True)
+        # ユーザー固有のタグのみ取得
+        tags = Tag.objects.get_for_user(request.user).filter(is_active=True)
         
         if category:
             tags = tags.filter(category=category)
@@ -264,6 +291,43 @@ def popular_tags_api(request):
             'success': True,
             'tags': results,
             'count': len(results)
+        })
+        
+    except Exception as e:
+        return JsonResponse({
+            'success': False,
+            'error': str(e)
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["GET"])
+def user_tag_stats_api(request):
+    """ユーザータグ統計API"""
+    try:
+        user_tags = Tag.objects.get_for_user(request.user)
+        
+        stats = {
+            'total_tags': user_tags.count(),
+            'active_tags': user_tags.filter(is_active=True).count(),
+            'used_tags': user_tags.filter(usage_count__gt=0).count(),
+            'total_usage': sum(user_tags.values_list('usage_count', flat=True)),
+            'categories': {}
+        }
+        
+        # カテゴリ別統計
+        for category, display_name in Tag.CATEGORY_CHOICES:
+            category_tags = user_tags.filter(category=category)
+            stats['categories'][category] = {
+                'display_name': display_name,
+                'count': category_tags.count(),
+                'used_count': category_tags.filter(usage_count__gt=0).count(),
+                'total_usage': sum(category_tags.values_list('usage_count', flat=True))
+            }
+        
+        return JsonResponse({
+            'success': True,
+            'stats': stats
         })
         
     except Exception as e:

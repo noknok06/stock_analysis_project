@@ -1,5 +1,5 @@
 <!-- ========================================
-templates/notes/edit.html（選定基準フィールド統一版）
+templates/notes/edit.html（統一タグ管理版）
 ======================================== -->
 
 {% extends 'base.html' %}
@@ -71,22 +71,37 @@ templates/notes/edit.html（選定基準フィールド統一版）
                 基本情報
             </h2>
             
-            <div class="space-y-6">
-                <!-- ノートタイプ -->
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <!-- 銘柄コード -->
                 <div>
-                    <label for="id_notebook_type" class="block text-sm font-medium text-gray-300 mb-2">ノートタイプ</label>
-                    <select id="id_notebook_type" 
-                            name="notebook_type"
-                            class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="THEME" {% if notebook.notebook_type == 'THEME' %}selected{% endif %}>テーマ型（複数銘柄）</option>
-                        <option value="STOCK_FOCUSED" {% if notebook.notebook_type == 'STOCK_FOCUSED' %}selected{% endif %}>銘柄特化型（1銘柄集中）</option>
-                        <option value="PORTFOLIO" {% if notebook.notebook_type == 'PORTFOLIO' %}selected{% endif %}>ポートフォリオ管理</option>
-                        <option value="RESEARCH" {% if notebook.notebook_type == 'RESEARCH' %}selected{% endif %}>調査・研究</option>
-                    </select>
+                    <label for="id_stock_code" class="block text-sm font-medium text-gray-300 mb-2">銘柄コード</label>
+                    <input type="text" 
+                           id="id_stock_code" 
+                           name="stock_code" 
+                           value="{{ notebook.stock_code }}"
+                           placeholder="例: 7203"
+                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    {% if form.stock_code.errors %}
+                        <p class="text-red-400 text-sm mt-1">{{ form.stock_code.errors.0 }}</p>
+                    {% endif %}
+                </div>
+
+                <!-- 企業名 -->
+                <div>
+                    <label for="id_company_name" class="block text-sm font-medium text-gray-300 mb-2">企業名</label>
+                    <input type="text" 
+                           id="id_company_name" 
+                           name="company_name" 
+                           value="{{ notebook.company_name }}"
+                           placeholder="例: トヨタ自動車"
+                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    {% if form.company_name.errors %}
+                        <p class="text-red-400 text-sm mt-1">{{ form.company_name.errors.0 }}</p>
+                    {% endif %}
                 </div>
 
                 <!-- タイトル -->
-                <div>
+                <div class="md:col-span-2">
                     <label for="id_title" class="block text-sm font-medium text-gray-300 mb-2">
                         ノートタイトル <span class="text-red-400">*</span>
                     </label>
@@ -95,7 +110,7 @@ templates/notes/edit.html（選定基準フィールド統一版）
                            name="title" 
                            value="{{ notebook.title }}"
                            required
-                           placeholder="例: 2025年 高配当株ウォッチ"
+                           placeholder="例: 7203 トヨタ自動車"
                            class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     {% if form.title.errors %}
                         <p class="text-red-400 text-sm mt-1">{{ form.title.errors.0 }}</p>
@@ -103,45 +118,16 @@ templates/notes/edit.html（選定基準フィールド統一版）
                 </div>
 
                 <!-- サブタイトル -->
-                <div>
+                <div class="md:col-span-2">
                     <label for="id_subtitle" class="block text-sm font-medium text-gray-300 mb-2">サブタイトル</label>
                     <input type="text" 
                            id="id_subtitle" 
                            name="subtitle" 
                            value="{{ notebook.subtitle }}"
-                           placeholder="例: 配当利回り3%以上の安定銘柄を選定"
+                           placeholder="例: 長期保有・配当重視"
                            class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                     {% if form.subtitle.errors %}
                         <p class="text-red-400 text-sm mt-1">{{ form.subtitle.errors.0 }}</p>
-                    {% endif %}
-                </div>
-
-                <!-- 説明 -->
-                <div>
-                    <label for="id_description" class="block text-sm font-medium text-gray-300 mb-2">ノートの説明</label>
-                    <textarea id="id_description" 
-                              name="description" 
-                              rows="3"
-                              placeholder="このノートの目的や投資方針を記述してください"
-                              class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">{{ notebook.description }}</textarea>
-                    {% if form.description.errors %}
-                        <p class="text-red-400 text-sm mt-1">{{ form.description.errors.0 }}</p>
-                    {% endif %}
-                </div>
-
-                <!-- ステータス -->
-                <div>
-                    <label for="id_status" class="block text-sm font-medium text-gray-300 mb-2">ステータス</label>
-                    <select id="id_status" 
-                            name="status"
-                            class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="ACTIVE" {% if notebook.status == 'ACTIVE' %}selected{% endif %}>アクティブ</option>
-                        <option value="MONITORING" {% if notebook.status == 'MONITORING' %}selected{% endif %}>監視中</option>
-                        <option value="ATTENTION" {% if notebook.status == 'ATTENTION' %}selected{% endif %}>要注意</option>
-                        <option value="ARCHIVED" {% if notebook.status == 'ARCHIVED' %}selected{% endif %}>アーカイブ</option>
-                    </select>
-                    {% if form.status.errors %}
-                        <p class="text-red-400 text-sm mt-1">{{ form.status.errors.0 }}</p>
                     {% endif %}
                 </div>
             </div>
@@ -150,70 +136,101 @@ templates/notes/edit.html（選定基準フィールド統一版）
         <!-- 投資戦略セクション -->
         <section class="form-section bg-gray-800 border border-gray-700 rounded-lg p-8">
             <h2 class="text-xl font-semibold text-white mb-6 flex items-center">
-                <svg class="h-6 w-6 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="h-6 w-6 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
                 </svg>
-                投資戦略・テーマ
+                投資戦略・目標
             </h2>
 
             <div class="space-y-6">
-                <!-- 投資戦略 -->
+                <!-- 投資理由 -->
                 <div>
-                    <label for="id_investment_strategy" class="block text-sm font-medium text-gray-300 mb-2">
-                        投資戦略 <span class="text-red-400">*</span>
+                    <label for="id_investment_reason" class="block text-sm font-medium text-gray-300 mb-2">
+                        投資理由・戦略 <span class="text-red-400">*</span>
                     </label>
-                    <textarea id="id_investment_strategy" 
-                              name="investment_strategy" 
+                    <textarea id="id_investment_reason" 
+                              name="investment_reason" 
                               required
                               rows="4"
-                              placeholder="このテーマでの投資戦略や方針を記述してください"
-                              class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">{{ notebook.investment_strategy }}</textarea>
-                    {% if form.investment_strategy.errors %}
-                        <p class="text-red-400 text-sm mt-1">{{ form.investment_strategy.errors.0 }}</p>
+                              placeholder="なぜこの銘柄に投資するのか、戦略を記述してください"
+                              class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">{{ notebook.investment_reason }}</textarea>
+                    {% if form.investment_reason.errors %}
+                        <p class="text-red-400 text-sm mt-1">{{ form.investment_reason.errors.0 }}</p>
                     {% endif %}
                 </div>
 
-                <!-- 目標配分 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- 目標株価 -->
+                    <div>
+                        <label for="id_target_price" class="block text-sm font-medium text-gray-300 mb-2">目標株価</label>
+                        <input type="text" 
+                               id="id_target_price" 
+                               name="target_price" 
+                               value="{{ notebook.target_price }}"
+                               placeholder="例: 3,200円"
+                               class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        {% if form.target_price.errors %}
+                            <p class="text-red-400 text-sm mt-1">{{ form.target_price.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+
+                    <!-- ステータス -->
+                    <div>
+                        <label for="id_status" class="block text-sm font-medium text-gray-300 mb-2">ステータス</label>
+                        <select id="id_status" 
+                                name="status"
+                                class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="ACTIVE" {% if notebook.status == 'ACTIVE' %}selected{% endif %}>アクティブ</option>
+                            <option value="MONITORING" {% if notebook.status == 'MONITORING' %}selected{% endif %}>監視中</option>
+                            <option value="ATTENTION" {% if notebook.status == 'ATTENTION' %}selected{% endif %}>要注意</option>
+                            <option value="ARCHIVED" {% if notebook.status == 'ARCHIVED' %}selected{% endif %}>アーカイブ</option>
+                        </select>
+                        {% if form.status.errors %}
+                            <p class="text-red-400 text-sm mt-1">{{ form.status.errors.0 }}</p>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- 売却タイミング -->
                 <div>
-                    <label for="id_target_allocation" class="block text-sm font-medium text-gray-300 mb-2">目標配分</label>
-                    <input type="text" 
-                           id="id_target_allocation" 
-                           name="target_allocation" 
-                           value="{{ notebook.target_allocation }}"
-                           placeholder="例: ポートフォリオの30%、月額3万円"
-                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    {% if form.target_allocation.errors %}
-                        <p class="text-red-400 text-sm mt-1">{{ form.target_allocation.errors.0 }}</p>
+                    <label for="id_sell_timing" class="block text-sm font-medium text-gray-300 mb-2">売却タイミング</label>
+                    <textarea id="id_sell_timing" 
+                              name="sell_timing" 
+                              rows="2"
+                              placeholder="例: 配当利回り3%を下回った時点"
+                              class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">{{ notebook.sell_timing }}</textarea>
+                    {% if form.sell_timing.errors %}
+                        <p class="text-red-400 text-sm mt-1">{{ form.sell_timing.errors.0 }}</p>
                     {% endif %}
                 </div>
 
-                <!-- 選定基準（修正：key_criteriaを使用） -->
+                <!-- 注目ポイント -->
                 <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">選定基準</label>
-                    <div id="key-criteria-container">
-                        {% for criteria in notebook.key_criteria %}
-                            <div class="key-criteria-item flex gap-2 mb-2">
+                    <label class="block text-sm font-medium text-gray-300 mb-2">注目ポイント</label>
+                    <div id="key-points-container">
+                        {% for point in notebook.key_points %}
+                            <div class="key-point-item flex gap-2 mb-2">
                                 <input type="text" 
-                                       name="key_criteria_{{ forloop.counter0 }}" 
-                                       value="{{ criteria }}"
-                                       placeholder="選定基準 {{ forloop.counter }}"
+                                       name="key_point_{{ forloop.counter0 }}" 
+                                       value="{{ point }}"
+                                       placeholder="注目ポイント {{ forloop.counter }}"
                                        class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 <button type="button" 
-                                        onclick="removeCriteria(this)"
-                                        class="px-3 py-2 text-red-400 hover:text-red-300 {% if forloop.first and notebook.key_criteria|length == 1 %}hidden{% endif %}">
+                                        onclick="removeKeyPoint(this)"
+                                        class="px-3 py-2 text-red-400 hover:text-red-300 {% if forloop.first and notebook.key_points|length == 1 %}hidden{% endif %}">
                                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                                     </svg>
                                 </button>
                             </div>
                         {% empty %}
-                            <div class="key-criteria-item flex gap-2 mb-2">
+                            <div class="key-point-item flex gap-2 mb-2">
                                 <input type="text" 
-                                       name="key_criteria_0" 
-                                       placeholder="選定基準 1"
+                                       name="key_point_0" 
+                                       placeholder="注目ポイント 1"
                                        class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                                 <button type="button" 
-                                        onclick="removeCriteria(this)"
+                                        onclick="removeKeyPoint(this)"
                                         class="px-3 py-2 text-red-400 hover:text-red-300 hidden">
                                     <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -223,12 +240,12 @@ templates/notes/edit.html（選定基準フィールド統一版）
                         {% endfor %}
                     </div>
                     <button type="button" 
-                            onclick="addCriteria()"
+                            onclick="addKeyPoint()"
                             class="text-blue-400 hover:text-blue-300 text-sm flex items-center mt-2">
                         <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                         </svg>
-                        基準を追加
+                        ポイントを追加
                     </button>
                 </div>
 
@@ -282,7 +299,7 @@ templates/notes/edit.html（選定基準フィールド統一版）
         <!-- タグ設定セクション -->
         <section class="form-section bg-gray-800 border border-gray-700 rounded-lg p-8">
             <h2 class="text-xl font-semibold text-white mb-6 flex items-center">
-                <svg class="h-6 w-6 mr-2 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <svg class="h-6 w-6 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a2 2 0 012-2z"></path>
                 </svg>
                 タグ設定
@@ -336,9 +353,9 @@ templates/notes/edit.html（選定基準フィールド統一版）
                 </div>
             </div>
 
-            <!-- 隠しフィールド（修正：key_criteriaとrisk_factorsを使用） -->
+            <!-- 隠しフィールド -->
             <input type="hidden" name="selected_tags_json" id="selected-tags-json">
-            <input type="hidden" name="key_criteria" id="key-criteria-hidden">
+            <input type="hidden" name="key_points" id="key-points-hidden">
             <input type="hidden" name="risk_factors" id="risk-factors-hidden">
         </section>
 
@@ -408,8 +425,7 @@ templates/notes/edit.html（選定基準フィールド統一版）
 {% load static %}
 <script src="{% static 'js/tag-manager.js' %}"></script>
 <script>
-// 修正：変数名をkey_criteriaに統一
-let criteriaCount = {{ notebook.key_criteria|length|default:1 }};
+let keyPointCount = {{ notebook.key_points|length|default:1 }};
 let riskFactorCount = {{ notebook.risk_factors|length|default:1 }};
 let tagManager = null;
 
@@ -435,15 +451,15 @@ document.addEventListener('DOMContentLoaded', function() {
     }
     
     // その他の初期化
-    updateRemoveButtons('key-criteria-item');
+    updateRemoveButtons('key-point-item');
     updateRemoveButtons('risk-factor-item');
 });
 
-// 選定基準・リスク要因管理（修正：関数名を統一）
-function addCriteria() {
-    addDynamicItem('key-criteria-container', 'key-criteria-item', 'key_criteria', criteriaCount, '選定基準', 'removeCriteria');
-    criteriaCount++;
-    updateRemoveButtons('key-criteria-item');
+// 注目ポイント・リスク要因管理（DRY原則適用）
+function addKeyPoint() {
+    addDynamicItem('key-points-container', 'key-point-item', 'key_point', keyPointCount, '注目ポイント', 'removeKeyPoint');
+    keyPointCount++;
+    updateRemoveButtons('key-point-item');
 }
 
 function addRiskFactor() {
@@ -472,10 +488,9 @@ function addDynamicItem(containerId, itemClass, namePrefix, count, placeholder, 
     container.appendChild(newItem);
 }
 
-// 修正：関数名をcriteriaに統一
-function removeCriteria(button) {
-    button.closest('.key-criteria-item').remove();
-    updateRemoveButtons('key-criteria-item');
+function removeKeyPoint(button) {
+    button.closest('.key-point-item').remove();
+    updateRemoveButtons('key-point-item');
 }
 
 function removeRiskFactor(button) {
@@ -525,8 +540,7 @@ function closePreview() {
 }
 
 function collectFormData() {
-    // 修正：選定基準のフィールド名を統一
-    const keyCriteria = Array.from(document.querySelectorAll('input[name^="key_criteria_"]'))
+    const keyPoints = Array.from(document.querySelectorAll('input[name^="key_point_"]'))
         .map(input => input.value)
         .filter(value => value.trim());
         
@@ -537,12 +551,13 @@ function collectFormData() {
     return {
         title: document.getElementById('id_title').value,
         subtitle: document.getElementById('id_subtitle').value,
-        description: document.getElementById('id_description').value,
-        notebookType: document.getElementById('id_notebook_type').value,
-        investmentStrategy: document.getElementById('id_investment_strategy').value,
-        targetAllocation: document.getElementById('id_target_allocation').value,
+        stockCode: document.getElementById('id_stock_code').value,
+        companyName: document.getElementById('id_company_name').value,
+        investmentReason: document.getElementById('id_investment_reason').value,
+        targetPrice: document.getElementById('id_target_price').value,
+        sellTiming: document.getElementById('id_sell_timing').value,
         status: document.getElementById('id_status').value,
-        keyCriteria: keyCriteria,  // 修正：変数名を統一
+        keyPoints: keyPoints,
         riskFactors: riskFactors,
         selectedTags: tagManager ? tagManager.selectedTags : []
     };
@@ -554,13 +569,6 @@ function generatePreviewHtml(data) {
         'MONITORING': '監視中',
         'ATTENTION': '要注意',
         'ARCHIVED': 'アーカイブ'
-    };
-    
-    const typeLabels = {
-        'THEME': 'テーマ型（複数銘柄）',
-        'STOCK_FOCUSED': '銘柄特化型（1銘柄集中）',
-        'PORTFOLIO': 'ポートフォリオ管理',
-        'RESEARCH': '調査・研究'
     };
     
     const statusColors = {
@@ -576,35 +584,35 @@ function generatePreviewHtml(data) {
                 <div>
                     <h4 class="text-xl font-semibold text-white">${data.title}</h4>
                     ${data.subtitle ? `<p class="text-gray-400">${data.subtitle}</p>` : ''}
-                    <span class="inline-block px-2 py-1 text-xs rounded bg-gray-600 text-gray-300 mt-1">${typeLabels[data.notebookType]}</span>
+                    ${data.stockCode && data.companyName ? `<p class="text-sm text-gray-300 mt-1">${data.stockCode} ${data.companyName}</p>` : ''}
                 </div>
                 <span class="px-3 py-1 text-sm rounded-full ${statusColors[data.status]}">${statusLabels[data.status]}</span>
             </div>
             
-            ${data.description ? `
+            ${data.targetPrice ? `
             <div>
-                <h5 class="font-medium text-white mb-2">説明</h5>
-                <p class="text-gray-300">${data.description}</p>
+                <h5 class="font-medium text-white mb-2">目標株価</h5>
+                <p class="text-green-400 font-semibold">${data.targetPrice}</p>
             </div>
             ` : ''}
             
             <div>
-                <h5 class="font-medium text-white mb-2">投資戦略</h5>
-                <p class="text-gray-300">${data.investmentStrategy}</p>
+                <h5 class="font-medium text-white mb-2">投資理由</h5>
+                <p class="text-gray-300">${data.investmentReason}</p>
             </div>
             
-            ${data.targetAllocation ? `
+            ${data.sellTiming ? `
             <div>
-                <h5 class="font-medium text-white mb-2">目標配分</h5>
-                <p class="text-green-400 font-semibold">${data.targetAllocation}</p>
+                <h5 class="font-medium text-white mb-2">売却タイミング</h5>
+                <p class="text-gray-300">${data.sellTiming}</p>
             </div>
             ` : ''}
             
-            ${data.keyCriteria.length > 0 ? `
+            ${data.keyPoints.length > 0 ? `
             <div>
-                <h5 class="font-medium text-white mb-2">選定基準</h5>
+                <h5 class="font-medium text-white mb-2">注目ポイント</h5>
                 <ul class="list-disc list-inside space-y-1 text-gray-300">
-                    ${data.keyCriteria.map(criteria => `<li>${criteria}</li>`).join('')}
+                    ${data.keyPoints.map(point => `<li>${point}</li>`).join('')}
                 </ul>
             </div>
             ` : ''}
@@ -630,8 +638,8 @@ function generatePreviewHtml(data) {
 
 // フォーム送信前の処理
 document.getElementById('notebook-form').addEventListener('submit', function(e) {
-    // 修正：選定基準とリスク要因を隠しフィールドに設定
-    const keyCriteria = Array.from(document.querySelectorAll('input[name^="key_criteria_"]'))
+    // 注目ポイントとリスク要因を隠しフィールドに設定
+    const keyPoints = Array.from(document.querySelectorAll('input[name^="key_point_"]'))
         .map(input => input.value)
         .filter(value => value.trim());
         
@@ -639,12 +647,12 @@ document.getElementById('notebook-form').addEventListener('submit', function(e) 
         .map(input => input.value)
         .filter(value => value.trim());
     
-    document.getElementById('key-criteria-hidden').value = JSON.stringify(keyCriteria);
+    document.getElementById('key-points-hidden').value = JSON.stringify(keyPoints);
     document.getElementById('risk-factors-hidden').value = JSON.stringify(riskFactors);
     
     // バリデーション
     let isValid = true;
-    const requiredFields = ['id_title', 'id_investment_strategy'];
+    const requiredFields = ['id_title', 'id_investment_reason'];
     
     requiredFields.forEach(fieldId => {
         const field = document.getElementById(fieldId);
@@ -663,12 +671,5 @@ document.getElementById('notebook-form').addEventListener('submit', function(e) 
         }
     }
 });
-
-// カスタムタグ追加関数（グローバル）
-function addCustomTag() {
-    if (tagManager) {
-        tagManager.addCustomTag();
-    }
-}
 </script>
 {% endblock %}
