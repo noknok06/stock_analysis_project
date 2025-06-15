@@ -2,6 +2,12 @@
 # apps/accounts/views.py
 # ========================================
 
+from django.http import JsonResponse
+from django.views.decorators.http import require_GET
+from django.views.decorators.csrf import csrf_exempt
+from django.contrib.auth.decorators import login_required
+import json
+import logging
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
@@ -95,29 +101,40 @@ class CustomLogoutView(LogoutView):
 
 
 class SignUpView(CreateView):
-    """ユーザー登録ビュー"""
+    """ユーザー登録ビュー（修正版）"""
     model = User
     form_class = CustomUserCreationForm
     template_name = 'accounts/signup.html'
     success_url = reverse_lazy('dashboard:index')
     
     def form_valid(self, form):
-        """登録成功時の処理"""
-        with transaction.atomic():
-            # ユーザー作成
-            user = form.save()
-            
-            # プロフィールとセッティング作成
-            UserProfile.objects.create(user=user)
-            UserSettings.objects.create(user=user)
-            
-            # 自動ログイン
-            username = form.cleaned_data.get('username')
-            password = form.cleaned_data.get('password1')
-            user = authenticate(username=username, password=password)
-            login(self.request, user)
-            
-            messages.success(self.request, f'アカウント「{username}」を作成しました。')
+        """登録成功時の処理（修正版）"""
+        try:
+            with transaction.atomic():
+                # ユーザー作成（signalsでUserProfileとUserSettingsが自動作成される）
+                user = form.save()
+                
+                # プロフィールとセッティングが作成されるまで少し待つ
+                # signalsで自動作成されるので、ここでは作成しない
+                
+                # 自動ログイン
+                username = form.cleaned_data.get('username')
+                password = form.cleaned_data.get('password1')
+                authenticated_user = authenticate(username=username, password=password)
+                
+                if authenticated_user:
+                    login(self.request, authenticated_user)
+                    messages.success(self.request, f'アカウント「{username}」を作成しました。')
+                else:
+                    messages.warning(self.request, 'アカウントは作成されましたが、自動ログインに失敗しました。手動でログインしてください。')
+                    return redirect('accounts:login')
+        
+        except IntegrityError as e:
+            messages.error(self.request, 'アカウント作成中にエラーが発生しました。既に存在するユーザー名またはメールアドレスの可能性があります。')
+            return self.form_invalid(form)
+        except Exception as e:
+            messages.error(self.request, f'アカウント作成中に予期しないエラーが発生しました: {str(e)}')
+            return self.form_invalid(form)
         
         return super().form_valid(form)
     
@@ -125,6 +142,7 @@ class SignUpView(CreateView):
         """登録失敗時の処理"""
         messages.error(self.request, 'アカウント作成に失敗しました。入力内容を確認してください。')
         return super().form_invalid(form)
+
 
 
 # ========================================
@@ -209,37 +227,84 @@ class CustomPasswordChangeView(LoginRequiredMixin, PasswordChangeView):
 # ========================================
 # Ajax API ビュー
 # ========================================
-
-@login_required
+@require_GET
 def check_username_ajax(request):
-    """ユーザー名重複チェックAPI"""
-    from django.http import JsonResponse
-    
-    username = request.GET.get('username', '').strip()
-    if not username:
-        return JsonResponse({'available': False, 'message': 'ユーザー名を入力してください'})
-    
-    if len(username) < 3:
-        return JsonResponse({'available': False, 'message': 'ユーザー名は3文字以上で入力してください'})
-    
-    exists = User.objects.filter(username=username).exists()
-    if exists:
-        return JsonResponse({'available': False, 'message': 'このユーザー名は既に使用されています'})
-    
-    return JsonResponse({'available': True, 'message': 'このユーザー名は使用できます'})
+    """ユーザー名重複チェックAPI（修正版）"""
+    try:
+        username = request.GET.get('username', '').strip()
+        
+        # バリデーション
+        if not username:
+            return JsonResponse({
+                'available': False, 
+                'message': 'ユーザー名を入力してください'
+            })
+        
+        if len(username) < 3:
+            return JsonResponse({
+                'available': False, 
+                'message': 'ユーザー名は3文字以上で入力してください'
+            })
+        
+        # 不正文字チェック
+        import re
+        if not re.match(r'^[a-zA-Z0-9@.+\-_]+$', username):
+            return JsonResponse({
+                'available': False, 
+                'message': 'ユーザー名に使用できない文字が含まれています'
+            })
+        
+        # 予約語チェック
+        reserved_words = ['admin', 'api', 'www', 'mail', 'ftp', 'root', 'test', 'demo']
+        if username.lower() in reserved_words:
+            return JsonResponse({
+                'available': False, 
+                'message': 'このユーザー名は予約されています'
+            })
+        
+        # 重複チェック
+        from django.contrib.auth.models import User
+        exists = User.objects.filter(username__iexact=username).exists()
+        
+        if exists:
+            return JsonResponse({
+                'available': False, 
+                'message': 'このユーザー名は既に使用されています'
+            })
+        
+        return JsonResponse({
+            'available': True, 
+            'message': 'このユーザー名は使用できます'
+        })
+        
+    except Exception as e:
+        logger.error(f"Username check error: {e}", exc_info=True)
+        return JsonResponse({
+            'available': False, 
+            'message': '確認中にエラーが発生しました。しばらく後でお試しください。'
+        }, status=500)
 
 
 @login_required
 def update_profile_ajax(request):
-    """プロフィール部分更新API"""
-    from django.http import JsonResponse
-    import json
-    
+    """プロフィール部分更新API（修正版）"""
     if request.method != 'POST':
-        return JsonResponse({'success': False, 'error': 'POSTメソッドが必要です'})
+        return JsonResponse({
+            'success': False, 
+            'error': 'POSTメソッドが必要です'
+        }, status=405)
     
     try:
-        data = json.loads(request.body)
+        # Content-Typeの確認
+        content_type = request.content_type
+        
+        if 'application/json' in content_type:
+            data = json.loads(request.body)
+        else:
+            # フォームデータとしても受け付ける
+            data = request.POST.dict()
+        
+        from apps.accounts.models import UserProfile
         profile, created = UserProfile.objects.get_or_create(user=request.user)
         
         # 更新可能なフィールドのみ処理
@@ -248,25 +313,56 @@ def update_profile_ajax(request):
         
         for field in allowed_fields:
             if field in data:
-                setattr(profile, field, data[field])
-                updated_fields.append(field)
+                value = data[field]
+                if hasattr(profile, field):
+                    setattr(profile, field, value)
+                    updated_fields.append(field)
+        
+        # 統計更新のアクション
+        if data.get('action') == 'update_statistics':
+            profile.update_statistics()
+            updated_fields.append('statistics')
         
         if updated_fields:
-            profile.save(update_fields=updated_fields)
+            profile.save(update_fields=updated_fields + ['updated_at'])
             return JsonResponse({
                 'success': True, 
                 'message': 'プロフィールを更新しました',
                 'updated_fields': updated_fields
             })
         else:
-            return JsonResponse({'success': False, 'error': '更新するデータがありません'})
+            return JsonResponse({
+                'success': False, 
+                'error': '更新するデータがありません'
+            })
             
     except json.JSONDecodeError:
-        return JsonResponse({'success': False, 'error': '無効なJSONデータです'})
+        return JsonResponse({
+            'success': False, 
+            'error': '無効なJSONデータです'
+        }, status=400)
     except Exception as e:
-        return JsonResponse({'success': False, 'error': str(e)})
+        logger.error(f"Profile update error: {e}", exc_info=True)
+        return JsonResponse({
+            'success': False, 
+            'error': f'更新中にエラーが発生しました: {str(e)}'
+        }, status=500)
 
 
+# ========================================
+# 開発用のテストAPI（オプション）
+# ========================================
+
+@require_GET
+def test_api(request):
+    """API接続テスト用エンドポイント"""
+    return JsonResponse({
+        'status': 'ok',
+        'message': 'APIは正常に動作しています',
+        'timestamp': timezone.now().isoformat(),
+        'user': request.user.username if request.user.is_authenticated else 'anonymous'
+    })
+    
 # ========================================
 # ユーティリティビュー
 # ========================================

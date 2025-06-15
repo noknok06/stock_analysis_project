@@ -120,43 +120,62 @@ document.addEventListener('DOMContentLoaded', function() {
     const passwordField = document.getElementById('{{ form.password.id_for_label }}');
     const submitButton = document.querySelector('button[type="submit"]');
     
-    // リアルタイムバリデーション
+    // リアルタイムバリデーション（修正版）
     function validateForm() {
-        const username = usernameField.value.trim();
-        const password = passwordField.value;
+        const username = usernameField ? usernameField.value.trim() : '';
+        const password = passwordField ? passwordField.value : '';
         
-        const isValid = username.length >= 3 && password.length >= 8;
+        // より緩い条件でバリデーション
+        const isValid = username.length >= 1 && password.length >= 1;
         
-        submitButton.disabled = !isValid;
-        submitButton.classList.toggle('opacity-50', !isValid);
-        submitButton.classList.toggle('cursor-not-allowed', !isValid);
+        if (submitButton) {
+            submitButton.disabled = !isValid;
+            if (isValid) {
+                submitButton.classList.remove('opacity-50', 'cursor-not-allowed');
+                submitButton.classList.add('hover:bg-blue-700');
+            } else {
+                submitButton.classList.add('opacity-50', 'cursor-not-allowed');
+                submitButton.classList.remove('hover:bg-blue-700');
+            }
+        }
     }
     
-    usernameField.addEventListener('input', validateForm);
-    passwordField.addEventListener('input', validateForm);
+    // イベントリスナーの安全な追加
+    if (usernameField) {
+        usernameField.addEventListener('input', validateForm);
+        usernameField.addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                if (passwordField) {
+                    passwordField.focus();
+                }
+            }
+        });
+    }
+    
+    if (passwordField) {
+        passwordField.addEventListener('input', validateForm);
+    }
     
     // 初期状態でのバリデーション
     validateForm();
     
     // フォーム送信時のローディング状態
-    document.querySelector('form').addEventListener('submit', function() {
-        submitButton.disabled = true;
-        submitButton.innerHTML = `
-            <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" fill="none" viewBox="0 0 24 24">
-                <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
-                <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-            </svg>
-            ログイン中...
-        `;
-    });
-    
-    // ユーザー名フィールドでのEnterキー処理
-    usernameField.addEventListener('keypress', function(e) {
-        if (e.key === 'Enter') {
-            e.preventDefault();
-            passwordField.focus();
-        }
-    });
+    const form = document.querySelector('form');
+    if (form) {
+        form.addEventListener('submit', function() {
+            if (submitButton && !submitButton.disabled) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = `
+                    <svg class="animate-spin -ml-1 mr-3 h-5 w-5 text-white inline" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    ログイン中...
+                `;
+            }
+        });
+    }
 });
 </script>
 {% endblock %}

@@ -1,5 +1,5 @@
 # ========================================
-# apps/accounts/urls.py
+# apps/accounts/urls.py - 完全版
 # ========================================
 
 from django.urls import path
@@ -22,22 +22,35 @@ urlpatterns = [
     
     # パスワード変更
     path('password/change/', views.CustomPasswordChangeView.as_view(), name='password_change'),
+    path('password/change/done/', 
+         auth_views.PasswordChangeDoneView.as_view(
+             template_name='accounts/password_change_done.html'
+         ), 
+         name='password_change_done'),
     
-    # パスワードリセット
+    # ========================================
+    # パスワードリセット関連URL（完全版）
+    # ========================================
+    
+    # パスワードリセット開始
     path('password/reset/', 
          auth_views.PasswordResetView.as_view(
              template_name='accounts/password_reset.html',
              email_template_name='accounts/password_reset_email.html',
-             success_url='/accounts/password/reset/done/'
+             subject_template_name='accounts/password_reset_subject.txt',
+             success_url='/accounts/password/reset/done/',
+             from_email=None,  # settings.DEFAULT_FROM_EMAIL を使用
          ), 
          name='password_reset'),
     
+    # パスワードリセット送信完了
     path('password/reset/done/', 
          auth_views.PasswordResetDoneView.as_view(
              template_name='accounts/password_reset_done.html'
          ), 
          name='password_reset_done'),
     
+    # パスワードリセット確認（メールのリンクから）
     path('password/reset/confirm/<uidb64>/<token>/', 
          auth_views.PasswordResetConfirmView.as_view(
              template_name='accounts/password_reset_confirm.html',
@@ -45,6 +58,7 @@ urlpatterns = [
          ), 
          name='password_reset_confirm'),
     
+    # パスワードリセット完了
     path('password/reset/complete/', 
          auth_views.PasswordResetCompleteView.as_view(
              template_name='accounts/password_reset_complete.html'
@@ -70,9 +84,12 @@ urlpatterns = [
     # Ajax API URL
     # ========================================
     
-    # ユーザー名重複チェック
+    # ユーザー名重複チェック（認証不要）
     path('api/check-username/', views.check_username_ajax, name='check_username_ajax'),
     
-    # プロフィール部分更新
+    # プロフィール部分更新（認証必要）
     path('api/update-profile/', views.update_profile_ajax, name='update_profile_ajax'),
+    
+    # API接続テスト（開発用）
+    path('api/test/', views.test_api, name='test_api'),
 ]
