@@ -1,0 +1,338 @@
+<!-- ========================================
+templates/tags/delete.html - タグ削除確認ページ
+======================================== -->
+
+{% extends 'base.html' %}
+
+{% block title %}タグ削除確認: {{ object.name }} - 株式分析記録アプリ{% endblock %}
+
+{% block extra_css %}
+<style>
+    .danger-zone {
+        background: linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%);
+        border: 2px solid #dc2626;
+    }
+    
+    .impact-item {
+        background: rgba(239, 68, 68, 0.1);
+        border: 1px solid rgba(239, 68, 68, 0.3);
+    }
+    
+    .usage-preview {
+        max-height: 200px;
+        overflow-y: auto;
+    }
+    
+    .countdown {
+        font-variant-numeric: tabular-nums;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-2xl mx-auto">
+    <!-- Header -->
+    <div class="mb-8">
+        <nav class="flex mb-4" aria-label="Breadcrumb">
+            <ol class="flex items-center space-x-2 text-sm">
+                <li><a href="{% url 'tags:list' %}" class="text-blue-400 hover:text-blue-300">タグ管理</a></li>
+                <li class="text-gray-500">/</li>
+                <li><a href="{% url 'tags:edit' object.pk %}" class="text-blue-400 hover:text-blue-300">{{ object.name }}</a></li>
+                <li class="text-gray-500">/</li>
+                <li class="text-gray-300">削除確認</li>
+            </ol>
+        </nav>
+        <h1 class="text-3xl font-bold text-white mb-2">タグ削除確認</h1>
+        <p class="text-gray-400">以下のタグを削除しようとしています</p>
+    </div>
+
+    <!-- Tag Information -->
+    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-8">
+        <div class="flex items-center space-x-4 mb-4">
+            <span class="inline-flex items-center px-4 py-2 rounded-full text-lg font-medium text-white {{ object.get_color_class }}">
+                {{ object.name }}
+            </span>
+            <div>
+                <div class="text-sm text-gray-400">カテゴリ: {{ object.get_category_display }}</div>
+                <div class="text-sm text-gray-400">使用回数: {{ object.usage_count }}回</div>
+            </div>
+        </div>
+        
+        {% if object.description %}
+            <div class="text-gray-300 mb-4">
+                <strong>説明:</strong> {{ object.description }}
+            </div>
+        {% endif %}
+        
+        <div class="grid grid-cols-2 gap-4 text-sm text-gray-400">
+            <div>作成日: {{ object.created_at|date:"Y年m月d日 H:i" }}</div>
+            <div>最終更新: {{ object.updated_at|date:"Y年m月d日 H:i" }}</div>
+        </div>
+    </div>
+
+    <!-- Impact Warning -->
+    {% if usage_stats.total_usage > 0 %}
+        <div class="danger-zone rounded-lg p-6 mb-8">
+            <div class="flex items-start space-x-3 mb-6">
+                <svg class="h-8 w-8 text-red-400 mt-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                </svg>
+                <div>
+                    <h2 class="text-xl font-bold text-red-300 mb-2">削除による影響</h2>
+                    <p class="text-red-200">
+                        このタグは現在使用中です。削除すると以下の影響があります：
+                    </p>
+                </div>
+            </div>
+            
+            <div class="grid gap-4 mb-6">
+                {% if usage_stats.notebooks > 0 %}
+                    <div class="impact-item rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-medium text-red-300">関連ノートブック</span>
+                            <span class="text-2xl font-bold text-red-400">{{ usage_stats.notebooks }}件</span>
+                        </div>
+                        <p class="text-sm text-red-200">
+                            これらのノートブックからタグが削除されます
+                        </p>
+                    </div>
+                {% endif %}
+                
+                {% if usage_stats.entries > 0 %}
+                    <div class="impact-item rounded-lg p-4">
+                        <div class="flex items-center justify-between mb-2">
+                            <span class="font-medium text-red-300">関連エントリー</span>
+                            <span class="text-2xl font-bold text-red-400">{{ usage_stats.entries }}件</span>
+                        </div>
+                        <p class="text-sm text-red-200">
+                            これらのエントリーからタグが削除されます
+                        </p>
+                    </div>
+                {% endif %}
+            </div>
+            
+            <div class="bg-red-900/50 border border-red-700 rounded-lg p-4">
+                <h3 class="font-medium text-red-300 mb-2">⚠️ 重要な注意事項</h3>
+                <ul class="text-sm text-red-200 space-y-1">
+                    <li>• この操作は元に戻すことができません</li>
+                    <li>• 関連するすべてのノートブックとエントリーからタグが削除されます</li>
+                    <li>• 統計情報や履歴も完全に削除されます</li>
+                    <li>• 他のユーザーが使用している場合も削除されます</li>
+                </ul>
+            </div>
+        </div>
+    {% else %}
+        <div class="bg-green-900/30 border border-green-700 rounded-lg p-6 mb-8">
+            <div class="flex items-center space-x-3">
+                <svg class="h-6 w-6 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                <div>
+                    <h3 class="font-medium text-green-300">安全な削除</h3>
+                    <p class="text-sm text-green-200 mt-1">
+                        このタグは現在使用されていないため、安全に削除できます。
+                    </p>
+                </div>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Alternative Actions -->
+    <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-8">
+        <h3 class="text-lg font-medium text-white mb-4">削除の代替案</h3>
+        <div class="space-y-3">
+            <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                <div>
+                    <div class="font-medium text-white">タグを無効化する</div>
+                    <div class="text-sm text-gray-400">データを保持したまま使用を停止します</div>
+                </div>
+                <button onclick="deactivateTag()" 
+                        class="px-4 py-2 bg-yellow-600 hover:bg-yellow-700 text-white rounded-lg transition-colors">
+                    無効化
+                </button>
+            </div>
+            
+            <div class="flex items-center justify-between p-3 bg-gray-700 rounded-lg">
+                <div>
+                    <div class="font-medium text-white">タグ名を変更する</div>
+                    <div class="text-sm text-gray-400">内容を整理して再利用します</div>
+                </div>
+                <a href="{% url 'tags:edit' object.pk %}" 
+                   class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                    編集
+                </a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Confirmation Form -->
+    <div class="danger-zone rounded-lg p-6">
+        <h3 class="text-lg font-bold text-red-300 mb-4">削除の確認</h3>
+        
+        {% if usage_stats.total_usage > 0 %}
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-red-300 mb-2">
+                    削除を確認するため、タグ名「{{ object.name }}」を入力してください
+                </label>
+                <input type="text" 
+                       id="confirmation-input" 
+                       placeholder="{{ object.name }}"
+                       class="w-full bg-red-900/30 border border-red-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-red-500">
+                <p class="mt-1 text-xs text-red-200">
+                    完全に一致する必要があります（大文字・小文字を区別）
+                </p>
+            </div>
+        {% endif %}
+        
+        <form method="post" id="delete-form">
+            {% csrf_token %}
+            <div class="flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="flex items-center space-x-4">
+                    <a href="{% url 'tags:edit' object.pk %}" 
+                       class="px-6 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors">
+                        <svg class="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                        </svg>
+                        キャンセル
+                    </a>
+                    <a href="{% url 'tags:list' %}" 
+                       class="px-6 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors">
+                        一覧に戻る
+                    </a>
+                </div>
+                
+                <button type="submit" 
+                        id="delete-button"
+                        {% if usage_stats.total_usage > 0 %}disabled{% endif %}
+                        class="px-6 py-2 bg-red-600 hover:bg-red-700 disabled:bg-gray-600 disabled:cursor-not-allowed text-white rounded-lg transition-colors">
+                    <svg class="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                    </svg>
+                    <span id="delete-button-text">完全に削除</span>
+                    <span id="countdown" class="countdown hidden"></span>
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Confirmation input validation
+{% if usage_stats.total_usage > 0 %}
+document.getElementById('confirmation-input').addEventListener('input', function() {
+    const input = this.value;
+    const requiredText = '{{ object.name }}';
+    const deleteButton = document.getElementById('delete-button');
+    
+    if (input === requiredText) {
+        deleteButton.disabled = false;
+        deleteButton.classList.remove('disabled:bg-gray-600', 'disabled:cursor-not-allowed');
+        deleteButton.classList.add('bg-red-600', 'hover:bg-red-700');
+    } else {
+        deleteButton.disabled = true;
+        deleteButton.classList.add('disabled:bg-gray-600', 'disabled:cursor-not-allowed');
+        deleteButton.classList.remove('bg-red-600', 'hover:bg-red-700');
+    }
+});
+{% endif %}
+
+// Deactivate instead of delete
+function deactivateTag() {
+    if (confirm('タグを無効化しますか？無効化されたタグは新しい投稿では選択できなくなりますが、既存のデータは保持されます。')) {
+        fetch('{% url "tags:toggle_status_ajax" object.pk %}', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+            }
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('タグを無効化しました。');
+                window.location.href = '{% url "tags:list" %}';
+            } else {
+                alert('無効化に失敗しました: ' + data.error);
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('無効化処理中にエラーが発生しました。');
+        });
+    }
+}
+
+// Enhanced form submission with countdown
+document.getElementById('delete-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    const deleteButton = document.getElementById('delete-button');
+    const buttonText = document.getElementById('delete-button-text');
+    const countdown = document.getElementById('countdown');
+    
+    // Final confirmation
+    const confirmMessage = {% if usage_stats.total_usage > 0 %}
+        `本当に削除しますか？\n\n削除されるもの：\n• ノートブック: {{ usage_stats.notebooks }}件\n• エントリー: {{ usage_stats.entries }}件\n\nこの操作は元に戻せません。`;
+    {% else %}
+        `タグ「{{ object.name }}」を削除しますか？`;
+    {% endif %}
+    
+    if (!confirm(confirmMessage)) {
+        return;
+    }
+    
+    // Disable button and start countdown
+    deleteButton.disabled = true;
+    buttonText.classList.add('hidden');
+    countdown.classList.remove('hidden');
+    
+    let timeLeft = 3;
+    countdown.textContent = `削除中... ${timeLeft}`;
+    
+    const countdownInterval = setInterval(() => {
+        timeLeft--;
+        if (timeLeft > 0) {
+            countdown.textContent = `削除中... ${timeLeft}`;
+        } else {
+            clearInterval(countdownInterval);
+            countdown.textContent = '削除中...';
+            
+            // Submit the form
+            this.submit();
+        }
+    }, 1000);
+});
+
+// Keyboard shortcuts
+document.addEventListener('keydown', function(e) {
+    // Escape to cancel
+    if (e.key === 'Escape') {
+        window.location.href = '{% url "tags:edit" object.pk %}';
+    }
+    
+    // Ctrl+Enter to submit (if confirmed)
+    if (e.ctrlKey && e.key === 'Enter') {
+        const deleteButton = document.getElementById('delete-button');
+        if (!deleteButton.disabled) {
+            deleteButton.click();
+        }
+    }
+});
+
+// Auto-focus confirmation input
+{% if usage_stats.total_usage > 0 %}
+document.addEventListener('DOMContentLoaded', function() {
+    document.getElementById('confirmation-input').focus();
+});
+{% endif %}
+
+// Show loading state on navigation
+document.querySelectorAll('a').forEach(link => {
+    link.addEventListener('click', function() {
+        // Add loading indicator for navigation
+        this.innerHTML = this.innerHTML + ' <span class="inline-block animate-spin">⟳</span>';
+    });
+});
+</script>
+{% endblock %}

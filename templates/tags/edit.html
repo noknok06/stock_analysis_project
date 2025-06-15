@@ -1,0 +1,457 @@
+<!-- ========================================
+templates/tags/edit.html - タグ詳細編集ページ
+======================================== -->
+
+{% extends 'base.html' %}
+
+{% block title %}タグ編集: {{ object.name }} - 株式分析記録アプリ{% endblock %}
+
+{% block extra_css %}
+<style>
+    .form-section {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        border: 1px solid #475569;
+    }
+    
+    .usage-item {
+        transition: all 0.2s ease-in-out;
+    }
+    
+    .usage-item:hover {
+        background-color: #374151;
+        transform: translateX(4px);
+    }
+    
+    .color-option {
+        width: 24px;
+        height: 24px;
+        border-radius: 50%;
+        cursor: pointer;
+        border: 2px solid transparent;
+        transition: all 0.2s ease;
+    }
+    
+    .color-option:hover,
+    .color-option.selected {
+        border-color: #60a5fa;
+        transform: scale(1.1);
+    }
+    
+    .preview-tag {
+        transition: all 0.3s ease;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="max-w-4xl mx-auto">
+    <!-- Header -->
+    <div class="flex items-center justify-between mb-8">
+        <div>
+            <nav class="flex mb-4" aria-label="Breadcrumb">
+                <ol class="flex items-center space-x-2 text-sm">
+                    <li><a href="{% url 'tags:list' %}" class="text-blue-400 hover:text-blue-300">タグ管理</a></li>
+                    <li class="text-gray-500">/</li>
+                    <li class="text-gray-300">{{ object.name }}</li>
+                </ol>
+            </nav>
+            <h1 class="text-3xl font-bold text-white">タグ編集</h1>
+            <p class="text-gray-400 mt-2">タグの詳細情報を編集します</p>
+        </div>
+        
+        <div class="flex space-x-3">
+            <a href="{% url 'tags:list' %}" 
+               class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors">
+                <svg class="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10 19l-7-7m0 0l7-7m-7 7h18"></path>
+                </svg>
+                一覧に戻る
+            </a>
+            <a href="{% url 'tags:delete' object.pk %}" 
+               class="px-4 py-2 bg-red-600 hover:bg-red-700 text-white rounded-lg transition-colors"
+               onclick="return confirm('タグを削除しますか？この操作は元に戻せません。')">
+                <svg class="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                </svg>
+                削除
+            </a>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <!-- Left Column: Edit Form -->
+        <div class="lg:col-span-2">
+            <div class="form-section rounded-lg p-6">
+                <h2 class="text-xl font-semibold text-white mb-6">基本情報</h2>
+                
+                <form method="post" class="space-y-6">
+                    {% csrf_token %}
+                    
+                    <!-- Tag Name -->
+                    <div>
+                        <label for="{{ form.name.id_for_label }}" 
+                               class="block text-sm font-medium text-gray-300 mb-2">
+                            タグ名 <span class="text-red-400">*</span>
+                        </label>
+                        {{ form.name }}
+                        {% if form.name.errors %}
+                            {% for error in form.name.errors %}
+                                <p class="mt-1 text-sm text-red-400">{{ error }}</p>
+                            {% endfor %}
+                        {% endif %}
+                        <p class="mt-1 text-sm text-gray-500">
+                            #で始まるタグ名を入力してください。例: #高配当株
+                        </p>
+                    </div>
+                    
+                    <!-- Category -->
+                    <div>
+                        <label for="{{ form.category.id_for_label }}" 
+                               class="block text-sm font-medium text-gray-300 mb-2">
+                            カテゴリ <span class="text-red-400">*</span>
+                        </label>
+                        {{ form.category }}
+                        {% if form.category.errors %}
+                            {% for error in form.category.errors %}
+                                <p class="mt-1 text-sm text-red-400">{{ error }}</p>
+                            {% endfor %}
+                        {% endif %}
+                        <p class="mt-1 text-sm text-gray-500">
+                            タグの分類を選択してください
+                        </p>
+                    </div>
+                    
+                    <!-- Description -->
+                    <div>
+                        <label for="{{ form.description.id_for_label }}" 
+                               class="block text-sm font-medium text-gray-300 mb-2">
+                            説明
+                        </label>
+                        {{ form.description }}
+                        {% if form.description.errors %}
+                            {% for error in form.description.errors %}
+                                <p class="mt-1 text-sm text-red-400">{{ error }}</p>
+                            {% endfor %}
+                        {% endif %}
+                        <p class="mt-1 text-sm text-gray-500">
+                            タグの用途や内容について説明してください（任意）
+                        </p>
+                    </div>
+                    
+                    <!-- Color -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">
+                            カラー
+                        </label>
+                        <div class="flex flex-wrap items-center gap-3 mb-3">
+                            <div class="color-option bg-red-600" 
+                                 onclick="selectColor('#dc2626')" 
+                                 data-color="#dc2626"></div>
+                            <div class="color-option bg-orange-600" 
+                                 onclick="selectColor('#ea580c')" 
+                                 data-color="#ea580c"></div>
+                            <div class="color-option bg-yellow-600" 
+                                 onclick="selectColor('#ca8a04')" 
+                                 data-color="#ca8a04"></div>
+                            <div class="color-option bg-green-600" 
+                                 onclick="selectColor('#16a34a')" 
+                                 data-color="#16a34a"></div>
+                            <div class="color-option bg-blue-600" 
+                                 onclick="selectColor('#2563eb')" 
+                                 data-color="#2563eb"></div>
+                            <div class="color-option bg-indigo-600" 
+                                 onclick="selectColor('#4f46e5')" 
+                                 data-color="#4f46e5"></div>
+                            <div class="color-option bg-purple-600" 
+                                 onclick="selectColor('#9333ea')" 
+                                 data-color="#9333ea"></div>
+                            <div class="color-option bg-pink-600" 
+                                 onclick="selectColor('#db2777')" 
+                                 data-color="#db2777"></div>
+                            <div class="color-option bg-gray-600" 
+                                 onclick="selectColor('#4b5563')" 
+                                 data-color="#4b5563"></div>
+                        </div>
+                        {{ form.color }}
+                        {% if form.color.errors %}
+                            {% for error in form.color.errors %}
+                                <p class="mt-1 text-sm text-red-400">{{ error }}</p>
+                            {% endfor %}
+                        {% endif %}
+                        <p class="mt-1 text-sm text-gray-500">
+                            タグの表示色を選択してください
+                        </p>
+                    </div>
+                    
+                    <!-- Active Status -->
+                    <div class="flex items-start space-x-3">
+                        {{ form.is_active }}
+                        <div>
+                            <label for="{{ form.is_active.id_for_label }}" 
+                                   class="text-sm font-medium text-gray-300">
+                                アクティブ
+                            </label>
+                            <p class="mt-1 text-sm text-gray-500">
+                                チェックを外すとタグ選択時に表示されなくなります
+                            </p>
+                        </div>
+                    </div>
+                    
+                    <!-- Preview -->
+                    <div>
+                        <label class="block text-sm font-medium text-gray-300 mb-2">プレビュー</label>
+                        <div class="flex items-center space-x-4">
+                            <span id="tag-preview" class="preview-tag inline-flex items-center px-3 py-1 rounded-full text-sm text-white"
+                                  style="background-color: {{ object.color|default:'#6b7280' }}">
+                                {{ object.name }}
+                            </span>
+                            <span class="text-sm text-gray-400">
+                                カテゴリ: <span id="category-preview">{{ object.get_category_display }}</span>
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <!-- Form Actions -->
+                    <div class="flex flex-col sm:flex-row items-center justify-between pt-6 border-t border-gray-700 gap-4">
+                        <div class="text-sm text-gray-500">
+                            作成日: {{ object.created_at|date:"Y年m月d日 H:i" }}<br>
+                            最終更新: {{ object.updated_at|date:"Y年m月d日 H:i" }}
+                        </div>
+                        <div class="flex space-x-3">
+                            <a href="{% url 'tags:list' %}" 
+                               class="px-6 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors">
+                                キャンセル
+                            </a>
+                            <button type="submit" 
+                                    class="px-6 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                                <svg class="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                                </svg>
+                                更新
+                            </button>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+        
+        <!-- Right Column: Usage Statistics -->
+        <div class="space-y-6">
+            <!-- Usage Stats -->
+            <div class="form-section rounded-lg p-6">
+                <h3 class="text-lg font-semibold text-white mb-4">使用統計</h3>
+                <div class="space-y-4">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-300">総使用回数</span>
+                        <span class="text-2xl font-bold text-blue-400">{{ object.usage_count }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-300">関連ノートブック</span>
+                        <span class="text-xl font-semibold text-green-400">{{ usage_stats.notebooks }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-300">関連エントリー</span>
+                        <span class="text-xl font-semibold text-purple-400">{{ usage_stats.entries }}</span>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Related Notebooks -->
+            {% if related_notebooks %}
+                <div class="form-section rounded-lg p-6">
+                    <h3 class="text-lg font-semibold text-white mb-4">関連ノートブック</h3>
+                    <div class="space-y-3 max-h-64 overflow-y-auto">
+                        {% for notebook in related_notebooks %}
+                            <div class="usage-item p-3 rounded border border-gray-600 hover:border-blue-500 transition-colors">
+                                <a href="{% url 'notes:detail' notebook.pk %}" 
+                                   class="block">
+                                    <h4 class="font-medium text-white hover:text-blue-400 transition-colors">
+                                        {{ notebook.title }}
+                                    </h4>
+                                    <p class="text-sm text-gray-400 mt-1">
+                                        更新: {{ notebook.updated_at|date:"m/d H:i" }}
+                                    </p>
+                                    <p class="text-xs text-gray-500">
+                                        作成者: {{ notebook.user.username }}
+                                    </p>
+                                </a>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="mt-4 text-center">
+                        <a href="{% url 'notes:list' %}?q={{ object.name }}" 
+                           class="text-sm text-blue-400 hover:text-blue-300">
+                            すべて表示 →
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <!-- Related Entries -->
+            {% if related_entries %}
+                <div class="form-section rounded-lg p-6">
+                    <h3 class="text-lg font-semibold text-white mb-4">関連エントリー</h3>
+                    <div class="space-y-3 max-h-64 overflow-y-auto">
+                        {% for entry in related_entries %}
+                            <div class="usage-item p-3 rounded border border-gray-600 hover:border-blue-500 transition-colors">
+                                <a href="{% url 'notes:detail' entry.notebook.pk %}#entry-{{ entry.pk }}" 
+                                   class="block">
+                                    <h4 class="font-medium text-white hover:text-blue-400 transition-colors">
+                                        {{ entry.title }}
+                                    </h4>
+                                    <p class="text-sm text-gray-400 mt-1">
+                                        {{ entry.notebook.title }}
+                                    </p>
+                                    <div class="flex items-center justify-between mt-2">
+                                        <span class="text-xs px-2 py-1 rounded-full bg-gray-700 text-gray-300">
+                                            {{ entry.get_entry_type_display }}
+                                        </span>
+                                        <span class="text-xs text-gray-500">
+                                            {{ entry.created_at|date:"m/d H:i" }}
+                                        </span>
+                                    </div>
+                                </a>
+                            </div>
+                        {% endfor %}
+                    </div>
+                    <div class="mt-4 text-center">
+                        <a href="{% url 'notes:list' %}?q={{ object.name }}" 
+                           class="text-sm text-blue-400 hover:text-blue-300">
+                            すべて表示 →
+                        </a>
+                    </div>
+                </div>
+            {% endif %}
+            
+            <!-- Warning about deletion -->
+            {% if object.usage_count > 0 %}
+                <div class="bg-yellow-900/30 border border-yellow-700 rounded-lg p-4">
+                    <div class="flex items-start space-x-3">
+                        <svg class="h-5 w-5 text-yellow-400 mt-0.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-2.5L13.732 4c-.77-.833-1.732-.833-2.5 0L3.732 16.5c-.77.833.192 2.5 1.732 2.5z"></path>
+                        </svg>
+                        <div>
+                            <h4 class="font-medium text-yellow-300">削除時の注意</h4>
+                            <p class="text-sm text-yellow-200 mt-1">
+                                このタグは現在{{ object.usage_count }}回使用されています。
+                                削除すると関連するノートブックやエントリーからタグが削除されます。
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Color selection
+function selectColor(color) {
+    // Update hidden input
+    document.getElementById('{{ form.color.id_for_label }}').value = color;
+    
+    // Update visual selection
+    document.querySelectorAll('.color-option').forEach(option => {
+        option.classList.remove('selected');
+    });
+    document.querySelector(`[data-color="${color}"]`).classList.add('selected');
+    
+    // Update preview
+    updatePreview();
+}
+
+// Real-time preview updates
+function updatePreview() {
+    const nameInput = document.getElementById('{{ form.name.id_for_label }}');
+    const categorySelect = document.getElementById('{{ form.category.id_for_label }}');
+    const colorInput = document.getElementById('{{ form.color.id_for_label }}');
+    
+    const preview = document.getElementById('tag-preview');
+    const categoryPreview = document.getElementById('category-preview');
+    
+    // Update tag name
+    preview.textContent = nameInput.value || '{{ object.name }}';
+    
+    // Update color
+    const color = colorInput.value || '#6b7280';
+    preview.style.backgroundColor = color;
+    
+    // Update category display
+    const selectedOption = categorySelect.options[categorySelect.selectedIndex];
+    categoryPreview.textContent = selectedOption.text;
+}
+
+// Set up real-time preview
+document.addEventListener('DOMContentLoaded', function() {
+    const nameInput = document.getElementById('{{ form.name.id_for_label }}');
+    const categorySelect = document.getElementById('{{ form.category.id_for_label }}');
+    
+    nameInput.addEventListener('input', updatePreview);
+    categorySelect.addEventListener('change', updatePreview);
+    
+    // Set initial color selection
+    const currentColor = '{{ object.color|default:"#6b7280" }}';
+    const colorOption = document.querySelector(`[data-color="${currentColor}"]`);
+    if (colorOption) {
+        colorOption.classList.add('selected');
+    }
+    
+    // Add proper classes to form fields
+    const inputs = document.querySelectorAll('input[type="text"], textarea, select');
+    inputs.forEach(input => {
+        input.classList.add('w-full', 'bg-gray-700', 'border', 'border-gray-600', 'text-white', 'rounded-lg', 'px-3', 'py-2', 'focus:outline-none', 'focus:ring-2', 'focus:ring-blue-500');
+        
+        if (input.type === 'textarea') {
+            input.rows = 3;
+        }
+    });
+    
+    // Style checkbox
+    const checkbox = document.getElementById('{{ form.is_active.id_for_label }}');
+    if (checkbox) {
+        checkbox.classList.add('rounded', 'border-gray-600', 'bg-gray-700', 'text-blue-600', 'focus:ring-blue-500');
+    }
+    
+    // Style color input
+    const colorInput = document.getElementById('{{ form.color.id_for_label }}');
+    if (colorInput) {
+        colorInput.style.display = 'none'; // Hide the actual input
+    }
+});
+
+// Form validation
+document.querySelector('form').addEventListener('submit', function(e) {
+    const nameInput = document.getElementById('{{ form.name.id_for_label }}');
+    
+    if (!nameInput.value.trim()) {
+        e.preventDefault();
+        alert('タグ名は必須です。');
+        nameInput.focus();
+        return;
+    }
+    
+    if (!nameInput.value.startsWith('#')) {
+        if (confirm('タグ名は通常#で始まります。#を追加しますか？')) {
+            nameInput.value = '#' + nameInput.value;
+        }
+    }
+});
+
+// Auto-save functionality (optional)
+let autoSaveTimeout;
+function scheduleAutoSave() {
+    clearTimeout(autoSaveTimeout);
+    autoSaveTimeout = setTimeout(() => {
+        // Could implement auto-save here
+        console.log('Auto-save scheduled');
+    }, 5000);
+}
+
+// Listen for changes to schedule auto-save
+document.querySelectorAll('input, textarea, select').forEach(input => {
+    input.addEventListener('change', scheduleAutoSave);
+});
+</script>
+{% endblock %}

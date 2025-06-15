@@ -1,63 +1,154 @@
 <!-- ========================================
-templates/tags/list.html
+templates/tags/list.html - 改良版タグ管理画面
 ======================================== -->
 
 {% extends 'base.html' %}
 
-{% block title %}タグ一覧 - 株式分析記録アプリ{% endblock %}
+{% block title %}タグ管理 - 株式分析記録アプリ{% endblock %}
 
 {% block extra_css %}
 <style>
-    .tag-card {
+    .tag-item {
         transition: all 0.2s ease-in-out;
+        border-left: 4px solid transparent;
     }
-    .tag-card:hover {
-        transform: translateY(-2px);
-        box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    .tag-item:hover {
+        transform: translateY(-1px);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+        border-left-color: #3b82f6;
     }
-    .tag-category-stock { background: linear-gradient(135deg, #dc2626, #b91c1c); }
-    .tag-category-style { background: linear-gradient(135deg, #7c3aed, #6d28d9); }
-    .tag-category-sector { background: linear-gradient(135deg, #059669, #047857); }
-    .tag-category-analysis { background: linear-gradient(135deg, #ea580c, #dc2626); }
-    .tag-category-strategy { background: linear-gradient(135deg, #0284c7, #0369a1); }
-    .tag-category-market { background: linear-gradient(135deg, #65a30d, #4d7c0f); }
-    .tag-category-risk { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+    .tag-item.selected {
+        background-color: #1e40af;
+        border-left-color: #60a5fa;
+    }
+    .tag-category-stock { border-left-color: #dc2626; }
+    .tag-category-style { border-left-color: #7c3aed; }
+    .tag-category-sector { border-left-color: #059669; }
+    .tag-category-analysis { border-left-color: #ea580c; }
+    .tag-category-strategy { border-left-color: #0284c7; }
+    .tag-category-market { border-left-color: #65a30d; }
+    .tag-category-risk { border-left-color: #dc2626; }
+    
+    .stats-card {
+        background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+        border: 1px solid #475569;
+    }
+    
+    .quick-edit-modal {
+        backdrop-filter: blur(8px);
+    }
+    
+    .bulk-actions {
+        transform: translateY(-100%);
+        opacity: 0;
+        transition: all 0.3s ease;
+    }
+    
+    .bulk-actions.show {
+        transform: translateY(0);
+        opacity: 1;
+    }
+    
+    .loader {
+        border: 2px solid #374151;
+        border-top: 2px solid #3b82f6;
+        border-radius: 50%;
+        width: 20px;
+        height: 20px;
+        animation: spin 1s linear infinite;
+    }
+    
+    @keyframes spin {
+        0% { transform: rotate(0deg); }
+        100% { transform: rotate(360deg); }
+    }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="max-w-6xl mx-auto">
-    <!-- Header -->
-    <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-8 gap-4">
+<div class="max-w-7xl mx-auto">
+    <!-- Header with Actions -->
+    <div class="flex flex-col lg:flex-row items-start lg:items-center justify-between mb-8 gap-4">
         <div>
             <h1 class="text-3xl font-bold text-white mb-2">タグ管理</h1>
-            <p class="text-gray-400">投資分析で使用するタグを管理します</p>
+            <p class="text-gray-400">投資分析で使用するタグを管理・編集します</p>
         </div>
         
-        <!-- Quick Stats -->
-        <div class="flex items-center space-x-4 text-sm">
-            <div class="text-center">
-                <div class="text-2xl font-bold text-blue-400">{{ tags.count }}</div>
-                <div class="text-gray-400">アクティブタグ</div>
-            </div>
-            <div class="text-center">
-                <div class="text-2xl font-bold text-green-400">{{ tags|length }}</div>
-                <div class="text-gray-400">表示中</div>
+        <!-- Quick Actions -->
+        <div class="flex flex-wrap items-center gap-3">
+            <button onclick="selectAllTags()" 
+                    class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">
+                <svg class="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                </svg>
+                全選択
+            </button>
+            <button onclick="clearSelection()" 
+                    class="px-4 py-2 bg-gray-700 hover:bg-gray-600 text-white rounded-lg transition-colors">
+                選択解除
+            </button>
+            <button onclick="exportTags()" 
+                    class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                <svg class="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
+                </svg>
+                エクスポート
+            </button>
+        </div>
+    </div>
+
+    <!-- Bulk Actions Bar (Hidden by default) -->
+    <div id="bulk-actions-bar" class="bulk-actions bg-blue-900/50 border border-blue-700 rounded-lg p-4 mb-6">
+        <div class="flex items-center justify-between">
+            <span id="selected-count" class="text-white">0個のタグを選択中</span>
+            <div class="flex items-center space-x-3">
+                <button onclick="bulkActivate()" 
+                        class="px-3 py-1 bg-green-600 hover:bg-green-700 text-white rounded transition-colors">
+                    アクティブ化
+                </button>
+                <button onclick="bulkDeactivate()" 
+                        class="px-3 py-1 bg-yellow-600 hover:bg-yellow-700 text-white rounded transition-colors">
+                    無効化
+                </button>
+                <button onclick="bulkDelete()" 
+                        class="px-3 py-1 bg-red-600 hover:bg-red-700 text-white rounded transition-colors">
+                    削除
+                </button>
             </div>
         </div>
     </div>
 
-    <!-- Search and Filter -->
+    <!-- Statistics Dashboard -->
+    <div class="grid grid-cols-2 md:grid-cols-4 gap-6 mb-8">
+        <div class="stats-card rounded-lg p-6 text-center">
+            <div class="text-3xl font-bold text-blue-400 mb-2">{{ stats.total_tags }}</div>
+            <div class="text-gray-300 text-sm">総タグ数</div>
+        </div>
+        <div class="stats-card rounded-lg p-6 text-center">
+            <div class="text-3xl font-bold text-green-400 mb-2">{{ stats.active_tags }}</div>
+            <div class="text-gray-300 text-sm">アクティブ</div>
+        </div>
+        <div class="stats-card rounded-lg p-6 text-center">
+            <div class="text-3xl font-bold text-purple-400 mb-2">{{ stats.used_tags }}</div>
+            <div class="text-gray-300 text-sm">使用中</div>
+        </div>
+        <div class="stats-card rounded-lg p-6 text-center">
+            <div class="text-3xl font-bold text-orange-400 mb-2">{{ stats.total_usage }}</div>
+            <div class="text-gray-300 text-sm">総使用回数</div>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-8">
-        <form method="GET" class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <form method="GET" id="filter-form" class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
                 <!-- Search Input -->
-                <div>
+                <div class="lg:col-span-2">
                     <label class="block text-sm font-medium text-gray-300 mb-2">タグ検索</label>
                     <input type="text" 
                            name="q" 
-                           value="{{ request.GET.q }}"
-                           placeholder="タグ名で検索..."
+                           value="{{ current_filters.q }}"
+                           placeholder="タグ名または説明で検索..."
                            class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 
@@ -66,126 +157,225 @@ templates/tags/list.html
                     <label class="block text-sm font-medium text-gray-300 mb-2">カテゴリ</label>
                     <select name="category" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <option value="">すべて</option>
-                        <option value="STOCK" {% if request.GET.category == 'STOCK' %}selected{% endif %}>銘柄</option>
-                        <option value="STYLE" {% if request.GET.category == 'STYLE' %}selected{% endif %}>投資スタイル</option>
-                        <option value="SECTOR" {% if request.GET.category == 'SECTOR' %}selected{% endif %}>業界セクター</option>
-                        <option value="ANALYSIS" {% if request.GET.category == 'ANALYSIS' %}selected{% endif %}>分析手法</option>
-                        <option value="STRATEGY" {% if request.GET.category == 'STRATEGY' %}selected{% endif %}>投資戦略</option>
-                        <option value="MARKET" {% if request.GET.category == 'MARKET' %}selected{% endif %}>市場状況</option>
-                        <option value="RISK" {% if request.GET.category == 'RISK' %}selected{% endif %}>リスク要因</option>
+                        {% for category, display_name in object_list.model.CATEGORY_CHOICES %}
+                            <option value="{{ category }}" {% if current_filters.category == category %}selected{% endif %}>
+                                {{ display_name }}
+                            </option>
+                        {% endfor %}
                     </select>
                 </div>
                 
-                <!-- Search Button -->
-                <div class="flex items-end">
+                <!-- Status Filter -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">ステータス</label>
+                    <select name="is_active" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">すべて</option>
+                        <option value="true" {% if current_filters.is_active == 'true' %}selected{% endif %}>アクティブ</option>
+                        <option value="false" {% if current_filters.is_active == 'false' %}selected{% endif %}>無効</option>
+                    </select>
+                </div>
+                
+                <!-- Usage Filter -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">使用状況</label>
+                    <select name="usage" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="">すべて</option>
+                        <option value="used" {% if current_filters.usage == 'used' %}selected{% endif %}>使用中</option>
+                        <option value="unused" {% if current_filters.usage == 'unused' %}selected{% endif %}>未使用</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Sort and Action Row -->
+            <div class="flex flex-wrap items-center justify-between gap-4">
+                <div class="flex items-center space-x-4">
+                    <label class="text-sm font-medium text-gray-300">ソート順:</label>
+                    <select name="sort" class="bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="-usage_count" {% if current_filters.sort == '-usage_count' %}selected{% endif %}>使用回数（多い順）</option>
+                        <option value="usage_count" {% if current_filters.sort == 'usage_count' %}selected{% endif %}>使用回数（少ない順）</option>
+                        <option value="name" {% if current_filters.sort == 'name' %}selected{% endif %}>名前（昇順）</option>
+                        <option value="-name" {% if current_filters.sort == '-name' %}selected{% endif %}>名前（降順）</option>
+                        <option value="-created_at" {% if current_filters.sort == '-created_at' %}selected{% endif %}>作成日（新しい順）</option>
+                        <option value="created_at" {% if current_filters.sort == 'created_at' %}selected{% endif %}>作成日（古い順）</option>
+                    </select>
+                </div>
+                
+                <div class="flex space-x-2">
                     <button type="submit" 
-                            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg px-4 py-2 transition-colors">
+                            class="bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg px-4 py-2 transition-colors">
                         <svg class="h-4 w-4 inline mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
                         検索
                     </button>
+                    <a href="{% url 'tags:list' %}" 
+                       class="bg-gray-600 hover:bg-gray-500 text-white font-medium rounded-lg px-4 py-2 transition-colors">
+                        クリア
+                    </a>
                 </div>
             </div>
         </form>
     </div>
 
-    <!-- Tags Grid -->
+    <!-- Tags List -->
     {% if tags %}
-        <!-- Category Summary -->
-        <div class="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4 mb-8">
-            {% regroup tags by category as category_list %}
-            {% for category, category_tags in category_list %}
-                <div class="text-center">
-                    <div class="w-16 h-16 mx-auto mb-2 rounded-full tag-category-{{ category.lower }} flex items-center justify-center">
-                        <span class="text-white font-bold text-lg">{{ category_tags|length }}</span>
+        <div class="bg-gray-800 border border-gray-700 rounded-lg overflow-hidden">
+            <!-- Table Header -->
+            <div class="bg-gray-750 px-6 py-4 border-b border-gray-700">
+                <div class="flex items-center justify-between">
+                    <div class="flex items-center space-x-4">
+                        <input type="checkbox" 
+                               id="select-all-checkbox" 
+                               onchange="toggleAllTags(this.checked)"
+                               class="rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500">
+                        <span class="text-sm font-medium text-gray-300">{{ tags|length }}件表示</span>
                     </div>
-                    <div class="text-sm text-gray-300">
-                        {% if category == 'STOCK' %}銘柄
-                        {% elif category == 'STYLE' %}スタイル
-                        {% elif category == 'SECTOR' %}セクター
-                        {% elif category == 'ANALYSIS' %}分析
-                        {% elif category == 'STRATEGY' %}戦略
-                        {% elif category == 'MARKET' %}市場
-                        {% elif category == 'RISK' %}リスク
-                        {% else %}その他{% endif %}
+                    <div class="text-sm text-gray-400">
+                        {% if is_paginated %}
+                            ページ {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
+                            （全{{ page_obj.paginator.count }}件）
+                        {% endif %}
                     </div>
                 </div>
-            {% endfor %}
-        </div>
+            </div>
 
-        <!-- Tags List -->
-        <div class="grid gap-4">
-            {% regroup tags by category as category_list %}
-            {% for category, category_tags in category_list %}
-                <section class="bg-gray-800 border border-gray-700 rounded-lg p-6">
-                    <h2 class="text-lg font-semibold text-white mb-4 flex items-center">
-                        <div class="w-4 h-4 rounded-full tag-category-{{ category.lower }} mr-2"></div>
-                        {% if category == 'STOCK' %}銘柄タグ
-                        {% elif category == 'STYLE' %}投資スタイル
-                        {% elif category == 'SECTOR' %}業界セクター
-                        {% elif category == 'ANALYSIS' %}分析手法
-                        {% elif category == 'STRATEGY' %}投資戦略
-                        {% elif category == 'MARKET' %}市場状況
-                        {% elif category == 'RISK' %}リスク要因
-                        {% else %}その他{% endif %}
-                        <span class="ml-2 px-2 py-1 text-xs bg-gray-700 text-gray-300 rounded-full">{{ category_tags|length }}個</span>
-                    </h2>
-                    
-                    <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
-                        {% for tag in category_tags %}
-                            <div class="tag-card bg-gray-700 border border-gray-600 rounded-lg p-4 hover:bg-gray-650 transition-colors">
-                                <div class="flex items-center justify-between mb-2">
-                                    <h3 class="font-semibold text-white truncate">{{ tag.name }}</h3>
-                                    <span class="px-2 py-1 text-xs rounded-full bg-blue-900 text-blue-300">
-                                        {{ tag.usage_count }}回
-                                    </span>
-                                </div>
+            <!-- Tags Table Body -->
+            <div class="divide-y divide-gray-700">
+                {% for tag in tags %}
+                    <div class="tag-item tag-category-{{ tag.category.lower }} px-6 py-4 hover:bg-gray-750"
+                         data-tag-id="{{ tag.pk }}"
+                         data-tag-name="{{ tag.name }}">
+                        <div class="flex items-center justify-between">
+                            <!-- Left Side: Selection + Tag Info -->
+                            <div class="flex items-center space-x-4 flex-1">
+                                <input type="checkbox" 
+                                       class="tag-checkbox rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500" 
+                                       value="{{ tag.pk }}"
+                                       onchange="updateBulkActionsVisibility()">
                                 
-                                {% if tag.description %}
-                                    <p class="text-sm text-gray-400 mb-3 line-clamp-2">{{ tag.description }}</p>
-                                {% endif %}
-                                
-                                <div class="flex items-center justify-between text-xs text-gray-500">
-                                    <span>作成: {{ tag.created_at|date:"m/d" }}</span>
-                                    <span>更新: {{ tag.updated_at|date:"m/d" }}</span>
-                                </div>
-                                
-                                <!-- Tag Actions -->
-                                <div class="mt-3 flex space-x-2">
-                                    <button onclick="copyTagName('{{ tag.name }}')" 
-                                            class="text-xs px-2 py-1 bg-gray-600 hover:bg-gray-500 text-white rounded transition-colors">
-                                        コピー
-                                    </button>
-                                    <button onclick="searchWithTag('{{ tag.name }}')" 
-                                            class="text-xs px-2 py-1 bg-blue-600 hover:bg-blue-700 text-white rounded transition-colors">
-                                        検索
-                                    </button>
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center space-x-3 mb-1">
+                                        <h3 class="font-semibold text-white truncate">{{ tag.name }}</h3>
+                                        
+                                        <!-- Category Badge -->
+                                        <span class="px-2 py-1 text-xs rounded-full {{ tag.get_color_class }} text-white">
+                                            {{ tag.get_category_display }}
+                                        </span>
+                                        
+                                        <!-- Status Badge -->
+                                        {% if tag.is_active %}
+                                            <span class="px-2 py-1 text-xs rounded-full bg-green-900 text-green-300 border border-green-700">
+                                                アクティブ
+                                            </span>
+                                        {% else %}
+                                            <span class="px-2 py-1 text-xs rounded-full bg-gray-600 text-gray-300 border border-gray-500">
+                                                無効
+                                            </span>
+                                        {% endif %}
+                                        
+                                        <!-- Usage Count -->
+                                        <span class="px-2 py-1 text-xs rounded-full bg-blue-900 text-blue-300 border border-blue-700">
+                                            {{ tag.usage_count }}回使用
+                                        </span>
+                                    </div>
+                                    
+                                    {% if tag.description %}
+                                        <p class="text-sm text-gray-400 truncate">{{ tag.description }}</p>
+                                    {% endif %}
+                                    
+                                    <div class="flex items-center space-x-4 text-xs text-gray-500 mt-1">
+                                        <span>作成: {{ tag.created_at|date:"Y/m/d H:i" }}</span>
+                                        <span>更新: {{ tag.updated_at|date:"Y/m/d H:i" }}</span>
+                                    </div>
                                 </div>
                             </div>
-                        {% endfor %}
+                            
+                            <!-- Right Side: Actions -->
+                            <div class="flex items-center space-x-2">
+                                <!-- Quick Actions -->
+                                <button onclick="toggleTagStatus({{ tag.pk }})" 
+                                        class="p-2 text-gray-400 hover:text-white transition-colors"
+                                        title="ステータス切り替え">
+                                    {% if tag.is_active %}
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
+                                        </svg>
+                                    {% else %}
+                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"></path>
+                                        </svg>
+                                    {% endif %}
+                                </button>
+                                
+                                <button onclick="viewTagUsage({{ tag.pk }})" 
+                                        class="p-2 text-gray-400 hover:text-blue-400 transition-colors"
+                                        title="使用状況を表示">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path>
+                                    </svg>
+                                </button>
+                                
+                                <button onclick="quickEditTag({{ tag.pk }})" 
+                                        class="p-2 text-gray-400 hover:text-green-400 transition-colors"
+                                        title="クイック編集">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                    </svg>
+                                </button>
+                                
+                                <a href="{% url 'tags:edit' tag.pk %}" 
+                                   class="p-2 text-gray-400 hover:text-yellow-400 transition-colors"
+                                   title="詳細編集">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M10.325 4.317c.426-1.756 2.924-1.756 3.35 0a1.724 1.724 0 002.573 1.066c1.543-.94 3.31.826 2.37 2.37a1.724 1.724 0 001.065 2.572c1.756.426 1.756 2.924 0 3.35a1.724 1.724 0 00-1.066 2.573c.94 1.543-.826 3.31-2.37 2.37a1.724 1.724 0 00-2.572 1.065c-.426 1.756-2.924 1.756-3.35 0a1.724 1.724 0 00-2.573-1.066c-1.543.94-3.31-.826-2.37-2.37a1.724 1.724 0 00-1.065-2.572c-1.756-.426-1.756-2.924 0-3.35a1.724 1.724 0 001.066-2.573c-.94-1.543.826-3.31 2.37-2.37.996.608 2.296.07 2.572-1.065z"></path>
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
+                                    </svg>
+                                </a>
+                                
+                                <a href="{% url 'tags:delete' tag.pk %}" 
+                                   class="p-2 text-gray-400 hover:text-red-400 transition-colors"
+                                   title="削除"
+                                   onclick="return confirm('タグ「{{ tag.name }}」を削除しますか？')">
+                                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16"></path>
+                                    </svg>
+                                </a>
+                            </div>
+                        </div>
                     </div>
-                </section>
-            {% endfor %}
+                {% endfor %}
+            </div>
         </div>
 
         <!-- Pagination -->
         {% if is_paginated %}
-            <div class="mt-8 flex justify-center">
+            <div class="mt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+                <div class="text-sm text-gray-400">
+                    {{ page_obj.start_index }}〜{{ page_obj.end_index }}件（全{{ page_obj.paginator.count }}件）
+                </div>
+                
                 <nav class="flex space-x-2">
                     {% if page_obj.has_previous %}
-                        <a href="?page={{ page_obj.previous_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}"
+                        <a href="?page={{ page_obj.previous_page_number }}{{ request.GET.urlencode }}"
                            class="px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded hover:bg-gray-700 transition-colors">
                             前へ
                         </a>
                     {% endif %}
                     
-                    <span class="px-3 py-2 bg-blue-600 text-white rounded">
-                        {{ page_obj.number }} / {{ page_obj.paginator.num_pages }}
-                    </span>
+                    {% for num in page_obj.paginator.page_range %}
+                        {% if page_obj.number == num %}
+                            <span class="px-3 py-2 bg-blue-600 text-white rounded">{{ num }}</span>
+                        {% elif num > page_obj.number|add:'-3' and num < page_obj.number|add:'3' %}
+                            <a href="?page={{ num }}{{ request.GET.urlencode }}"
+                               class="px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded hover:bg-gray-700 transition-colors">
+                                {{ num }}
+                            </a>
+                        {% endif %}
+                    {% endfor %}
                     
                     {% if page_obj.has_next %}
-                        <a href="?page={{ page_obj.next_page_number }}{% if request.GET.q %}&q={{ request.GET.q }}{% endif %}{% if request.GET.category %}&category={{ request.GET.category }}{% endif %}"
+                        <a href="?page={{ page_obj.next_page_number }}{{ request.GET.urlencode }}"
                            class="px-3 py-2 bg-gray-800 border border-gray-700 text-white rounded hover:bg-gray-700 transition-colors">
                             次へ
                         </a>
@@ -195,7 +385,7 @@ templates/tags/list.html
         {% endif %}
     {% else %}
         <!-- Empty State -->
-        <div class="text-center py-16">
+        <div class="text-center py-16 bg-gray-800 border border-gray-700 rounded-lg">
             <div class="mx-auto h-24 w-24 text-gray-600 mb-4">
                 <svg fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="1" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a2 2 0 012-2z"></path>
@@ -203,124 +393,453 @@ templates/tags/list.html
             </div>
             <h3 class="text-lg font-medium text-gray-400 mb-2">タグが見つかりません</h3>
             <p class="text-base text-gray-500 mb-6">
-                {% if request.GET.q or request.GET.category %}
-                    検索条件に一致するタグがありません。
+                {% if current_filters.q or current_filters.category %}
+                    検索条件に一致するタグがありません。検索条件を変更してお試しください。
                 {% else %}
-                    まだタグが作成されていません。
+                    まだタグが作成されていません。ノートやエントリーを作成する際にタグが自動的に作成されます。
                 {% endif %}
             </p>
-            {% if request.GET.q or request.GET.category %}
-                <a href="{% url 'tags:list' %}" 
-                   class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
-                    すべてのタグを表示
-                </a>
-            {% else %}
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
+                {% if current_filters.q or current_filters.category %}
+                    <a href="{% url 'tags:list' %}" 
+                       class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+                        すべてのタグを表示
+                    </a>
+                {% endif %}
                 <a href="{% url 'notes:create' %}" 
-                   class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
+                   class="inline-flex items-center px-4 py-2 bg-green-600 hover:bg-green-700 text-white font-medium rounded-lg transition-colors">
                     <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                     </svg>
-                    ノートを作成してタグを追加
+                    ノートを作成
                 </a>
-            {% endif %}
+            </div>
         </div>
     {% endif %}
 </div>
 
-<!-- Copy Notification -->
-<div id="copy-notification" class="fixed top-4 right-4 z-50 px-4 py-2 bg-green-600 text-white rounded-lg transform translate-x-full opacity-0 transition-all duration-300">
-    タグ名をコピーしました
+<!-- Quick Edit Modal -->
+<div id="quick-edit-modal" class="fixed inset-0 z-50 hidden quick-edit-modal bg-black/50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 w-full max-w-md">
+            <h3 class="text-lg font-medium text-white mb-4">タグ編集</h3>
+            <form id="quick-edit-form" class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">タグ名</label>
+                    <input type="text" 
+                           id="edit-tag-name" 
+                           class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">説明</label>
+                    <textarea id="edit-tag-description" 
+                              rows="3"
+                              class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-1">カテゴリ</label>
+                    <select id="edit-tag-category" 
+                            class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        {% for category, display_name in object_list.model.CATEGORY_CHOICES %}
+                            <option value="{{ category }}">{{ display_name }}</option>
+                        {% endfor %}
+                    </select>
+                </div>
+                <div class="flex items-center">
+                    <input type="checkbox" 
+                           id="edit-tag-active" 
+                           class="rounded border-gray-600 bg-gray-700 text-blue-600 focus:ring-blue-500">
+                    <label for="edit-tag-active" class="ml-2 text-sm text-gray-300">アクティブ</label>
+                </div>
+                <div class="flex justify-end space-x-3 pt-4">
+                    <button type="button" 
+                            onclick="closeQuickEditModal()" 
+                            class="px-4 py-2 bg-gray-600 hover:bg-gray-500 text-white rounded-lg transition-colors">
+                        キャンセル
+                    </button>
+                    <button type="submit" 
+                            class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
+                        <span class="inline" id="save-button-text">保存</span>
+                        <div class="loader hidden" id="save-button-loader"></div>
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<!-- Tag Usage Modal -->
+<div id="usage-modal" class="fixed inset-0 z-50 hidden quick-edit-modal bg-black/50">
+    <div class="flex items-center justify-center min-h-screen p-4">
+        <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 w-full max-w-2xl max-h-96 overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-lg font-medium text-white">タグ使用状況</h3>
+                <button onclick="closeUsageModal()" 
+                        class="text-gray-400 hover:text-white">
+                    <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+            <div id="usage-content">
+                <!-- コンテンツはJavaScriptで動的に生成 -->
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Notification -->
+<div id="notification" class="fixed top-4 right-4 z-50 transform translate-x-full opacity-0 transition-all duration-300">
+    <div class="bg-green-600 text-white px-4 py-2 rounded-lg shadow-lg">
+        <span id="notification-text"></span>
+    </div>
 </div>
 {% endblock %}
 
 {% block extra_js %}
 <script>
-// タグ名をクリップボードにコピー
-function copyTagName(tagName) {
-    if (navigator.clipboard && window.isSecureContext) {
-        navigator.clipboard.writeText(tagName).then(() => {
-            CommonUtils.showNotification('タグ名をコピーしました', 'success');
-        }).catch(err => {
-            CommonUtils.error('コピーに失敗しました:', err);
-            fallbackCopyTextToClipboard(tagName);
-        });
+// Global variables
+let selectedTags = new Set();
+let currentEditingTagId = null;
+
+// Bulk Actions
+function updateBulkActionsVisibility() {
+    const checkboxes = document.querySelectorAll('.tag-checkbox:checked');
+    const bulkActionsBar = document.getElementById('bulk-actions-bar');
+    const selectedCount = document.getElementById('selected-count');
+    
+    if (checkboxes.length > 0) {
+        selectedCount.textContent = `${checkboxes.length}個のタグを選択中`;
+        bulkActionsBar.classList.add('show');
     } else {
-        fallbackCopyTextToClipboard(tagName);
+        bulkActionsBar.classList.remove('show');
     }
+    
+    // Update selectedTags set
+    selectedTags.clear();
+    checkboxes.forEach(cb => selectedTags.add(cb.value));
 }
 
-function searchWithTag(tagName) {
-    TagUtils.performTagSearch(tagName);
-}
-
-// フォールバック用のコピー関数
-function fallbackCopyTextToClipboard(text) {
-    const textArea = document.createElement("textarea");
-    textArea.value = text;
-    textArea.style.top = "0";
-    textArea.style.left = "0";
-    textArea.style.position = "fixed";
-    
-    document.body.appendChild(textArea);
-    textArea.focus();
-    textArea.select();
-    
-    try {
-        const successful = document.execCommand('copy');
-        if (successful) {
-            showCopyNotification();
+function toggleAllTags(checked) {
+    const checkboxes = document.querySelectorAll('.tag-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = checked;
+        if (checked) {
+            cb.closest('.tag-item').classList.add('selected');
+        } else {
+            cb.closest('.tag-item').classList.remove('selected');
         }
-    } catch (err) {
-        console.error('フォールバックコピーに失敗しました:', err);
-    }
+    });
+    updateBulkActionsVisibility();
+}
+
+function selectAllTags() {
+    document.getElementById('select-all-checkbox').checked = true;
+    toggleAllTags(true);
+}
+
+function clearSelection() {
+    document.getElementById('select-all-checkbox').checked = false;
+    toggleAllTags(false);
+}
+
+// Bulk operations
+function bulkActivate() {
+    if (selectedTags.size === 0) return;
     
-    document.body.removeChild(textArea);
+    if (confirm(`選択された${selectedTags.size}個のタグをアクティブにしますか？`)) {
+        performBulkAction('activate');
+    }
 }
 
-// タグで検索
-function searchWithTag(tagName) {
-    // ノート検索ページにリダイレクト
-    window.location.href = `/notes/?q=${encodeURIComponent(tagName)}`;
+function bulkDeactivate() {
+    if (selectedTags.size === 0) return;
+    
+    if (confirm(`選択された${selectedTags.size}個のタグを無効にしますか？`)) {
+        performBulkAction('deactivate');
+    }
 }
 
-// キーボードショートカット
+function bulkDelete() {
+    if (selectedTags.size === 0) return;
+    
+    if (confirm(`選択された${selectedTags.size}個のタグを削除しますか？この操作は元に戻せません。`)) {
+        performBulkAction('delete');
+    }
+}
+
+function performBulkAction(action) {
+    const tagIds = Array.from(selectedTags);
+    
+    fetch('{% url "tags:bulk_action_ajax" %}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify({
+            action: action,
+            tag_ids: tagIds
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showNotification(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('操作に失敗しました', 'error');
+    });
+}
+
+// Tag status toggle
+function toggleTagStatus(tagId) {
+    fetch(`/tags/${tagId}/toggle-status/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showNotification(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('ステータスの切り替えに失敗しました', 'error');
+    });
+}
+
+// Quick Edit
+function quickEditTag(tagId) {
+    currentEditingTagId = tagId;
+    const tagItem = document.querySelector(`[data-tag-id="${tagId}"]`);
+    const tagName = tagItem.dataset.tagName;
+    
+    // Get current tag data (you might want to fetch this via Ajax for more accurate data)
+    document.getElementById('edit-tag-name').value = tagName;
+    document.getElementById('quick-edit-modal').classList.remove('hidden');
+    
+    // Focus on name field
+    setTimeout(() => {
+        document.getElementById('edit-tag-name').focus();
+    }, 100);
+}
+
+function closeQuickEditModal() {
+    document.getElementById('quick-edit-modal').classList.add('hidden');
+    currentEditingTagId = null;
+}
+
+// Quick Edit Form Submit
+document.getElementById('quick-edit-form').addEventListener('submit', function(e) {
+    e.preventDefault();
+    
+    if (!currentEditingTagId) return;
+    
+    const formData = {
+        name: document.getElementById('edit-tag-name').value,
+        description: document.getElementById('edit-tag-description').value,
+        category: document.getElementById('edit-tag-category').value,
+        is_active: document.getElementById('edit-tag-active').checked
+    };
+    
+    // Show loading
+    document.getElementById('save-button-text').classList.add('hidden');
+    document.getElementById('save-button-loader').classList.remove('hidden');
+    
+    fetch(`/tags/${currentEditingTagId}/quick-edit/`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        },
+        body: JSON.stringify(formData)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+            closeQuickEditModal();
+            setTimeout(() => location.reload(), 1000);
+        } else {
+            showNotification(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('更新に失敗しました', 'error');
+    })
+    .finally(() => {
+        // Hide loading
+        document.getElementById('save-button-text').classList.remove('hidden');
+        document.getElementById('save-button-loader').classList.add('hidden');
+    });
+});
+
+// View tag usage
+function viewTagUsage(tagId) {
+    fetch(`/tags/${tagId}/usage-stats/`)
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayUsageStats(data);
+            document.getElementById('usage-modal').classList.remove('hidden');
+        } else {
+            showNotification(data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('使用状況の取得に失敗しました', 'error');
+    });
+}
+
+function displayUsageStats(data) {
+    const content = document.getElementById('usage-content');
+    content.innerHTML = `
+        <div class="space-y-6">
+            <div class="text-center">
+                <h4 class="text-xl font-bold text-white">${data.tag.name}</h4>
+                <p class="text-gray-400">総使用回数: ${data.tag.usage_count}回</p>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-6">
+                <div>
+                    <h5 class="font-semibold text-white mb-3">関連ノートブック (${data.notebooks.count}件)</h5>
+                    <div class="space-y-2 max-h-32 overflow-y-auto">
+                        ${data.notebooks.data.map(nb => `
+                            <div class="text-sm">
+                                <a href="${nb.url}" class="text-blue-400 hover:text-blue-300">${nb.title}</a>
+                                <div class="text-gray-500">${new Date(nb.updated_at).toLocaleDateString()}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+                
+                <div>
+                    <h5 class="font-semibold text-white mb-3">関連エントリー (${data.entries.count}件)</h5>
+                    <div class="space-y-2 max-h-32 overflow-y-auto">
+                        ${data.entries.data.map(entry => `
+                            <div class="text-sm">
+                                <a href="${entry.url}" class="text-blue-400 hover:text-blue-300">${entry.title}</a>
+                                <div class="text-gray-500">${entry.notebook_title}</div>
+                            </div>
+                        `).join('')}
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function closeUsageModal() {
+    document.getElementById('usage-modal').classList.add('hidden');
+}
+
+// Export functionality
+function exportTags() {
+    // Create CSV content
+    const tags = Array.from(document.querySelectorAll('.tag-item'));
+    const csvContent = [
+        ['タグ名', 'カテゴリ', '説明', '使用回数', 'ステータス', '作成日'].join(','),
+        ...tags.map(tag => {
+            const name = tag.dataset.tagName;
+            const category = tag.querySelector('.rounded-full').textContent.trim();
+            // Add more data extraction as needed
+            return [name, category, '', '', '', ''].join(',');
+        })
+    ].join('\n');
+    
+    // Download CSV
+    const blob = new Blob([csvContent], { type: 'text/csv' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'tags_export.csv';
+    a.click();
+    window.URL.revokeObjectURL(url);
+    
+    showNotification('タグリストをエクスポートしました', 'success');
+}
+
+// Notification system
+function showNotification(message, type = 'info') {
+    const notification = document.getElementById('notification');
+    const notificationText = document.getElementById('notification-text');
+    
+    // Set message
+    notificationText.textContent = message;
+    
+    // Set color based on type
+    const parent = notification.querySelector('div');
+    parent.className = `px-4 py-2 rounded-lg shadow-lg text-white ${
+        type === 'success' ? 'bg-green-600' :
+        type === 'error' ? 'bg-red-600' :
+        type === 'warning' ? 'bg-yellow-600' : 'bg-blue-600'
+    }`;
+    
+    // Show notification
+    notification.classList.remove('translate-x-full', 'opacity-0');
+    
+    // Auto hide after 4 seconds
+    setTimeout(() => {
+        notification.classList.add('translate-x-full', 'opacity-0');
+    }, 4000);
+}
+
+// Auto-submit on filter change
+document.addEventListener('DOMContentLoaded', function() {
+    const filterForm = document.getElementById('filter-form');
+    const selects = filterForm.querySelectorAll('select');
+    
+    selects.forEach(select => {
+        select.addEventListener('change', function() {
+            filterForm.submit();
+        });
+    });
+    
+    // Real-time search with debounce
+    const searchInput = filterForm.querySelector('input[name="q"]');
+    let searchTimeout;
+    
+    searchInput.addEventListener('input', function() {
+        clearTimeout(searchTimeout);
+        searchTimeout = setTimeout(() => {
+            if (this.value.length >= 2 || this.value.length === 0) {
+                filterForm.submit();
+            }
+        }, 500);
+    });
+});
+
+// Add CSRF token to all requests
+function getCsrfToken() {
+    return document.querySelector('[name=csrfmiddlewaretoken]').value;
+}
+
+// Escape modal on ESC key
 document.addEventListener('keydown', function(e) {
-    // Ctrl+F でタグ検索にフォーカス
-    if (e.ctrlKey && e.key === 'f') {
-        e.preventDefault();
-        const searchInput = document.querySelector('input[name="q"]');
-        if (searchInput) {
-            searchInput.focus();
-            searchInput.select();
-        }
+    if (e.key === 'Escape') {
+        closeQuickEditModal();
+        closeUsageModal();
     }
 });
 
-// 検索フォームの改善
+// Initialize tooltips or other components if needed
 document.addEventListener('DOMContentLoaded', function() {
-    const searchInput = document.querySelector('input[name="q"]');
-    const categorySelect = document.querySelector('select[name="category"]');
-    
-    // リアルタイム検索（デバウンス付き）
-    let searchTimeout;
-    if (searchInput) {
-        searchInput.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            searchTimeout = setTimeout(() => {
-                if (this.value.length >= 2 || this.value.length === 0) {
-                    // 自動検索実行
-                    this.form.submit();
-                }
-            }, 500);
-        });
-    }
-    
-    // カテゴリ変更時の自動検索
-    if (categorySelect) {
-        categorySelect.addEventListener('change', function() {
-            this.form.submit();
-        });
-    }
+    // Add any initialization code here
+    console.log('Tag management page loaded');
 });
 </script>
 {% endblock %}

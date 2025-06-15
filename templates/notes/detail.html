@@ -1698,6 +1698,41 @@ function generateEntryTypeForm(type) {
     console.log('フォーム生成完了');
 }
 
+
+// ブックマークボタンの見た目を更新
+function updateBookmarkButton(entryId, isBookmarked) {
+    const button = document.querySelector(`[onclick="toggleEntryBookmark('${entryId}')"]`);
+    if (!button) return;
+    
+    const svg = button.querySelector('svg');
+    if (!svg) return;
+    
+    if (isBookmarked) {
+        button.classList.add('active');
+        svg.setAttribute('fill', 'currentColor');
+    } else {
+        button.classList.remove('active');
+        svg.setAttribute('fill', 'none');
+    }
+}
+
+// お気に入りボタンの見た目を更新
+function updateFavoriteButton(isFavorite) {
+    const button = document.querySelector('.favorite-star');
+    if (!button) return;
+    
+    const svg = button.querySelector('svg');
+    if (!svg) return;
+    
+    if (isFavorite) {
+        button.classList.add('active');
+        svg.setAttribute('fill', 'currentColor');
+    } else {
+        button.classList.remove('active');
+        svg.setAttribute('fill', 'none');
+    }
+}
+
 // ========================================
 // エントリー詳細モーダル機能
 // ========================================
@@ -1756,7 +1791,7 @@ function updateEntryDetailModal(title, content) {
     if (titleElement) titleElement.textContent = title;
     if (contentElement) contentElement.innerHTML = content;
 }
-
+Z
 // ========================================
 // エントリータイプ別フォームテンプレート（DRY原則適用）
 // ========================================

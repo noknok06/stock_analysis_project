@@ -1,202 +1,623 @@
 /* ========================================
-   static/css/tag-manager.css - 統一タグ管理CSS
+   static/css/tag-management.css - タグ管理専用スタイル
    ======================================== */
 
-/* タグ推奨ボタンのアニメーション */
-.tag-suggestion {
+/* ベースカラー定義 */
+:root {
+    --tag-stock: #dc2626;
+    --tag-style: #7c3aed;
+    --tag-sector: #059669;
+    --tag-analysis: #ea580c;
+    --tag-strategy: #0284c7;
+    --tag-market: #65a30d;
+    --tag-risk: #dc2626;
+    --tag-event: #6366f1;
+    --tag-other: #6b7280;
+    
+    --success: #10b981;
+    --warning: #f59e0b;
+    --error: #ef4444;
+    --info: #3b82f6;
+}
+
+/* =================================
+   タグ一覧画面
+   ================================= */
+
+/* タグアイテムの基本スタイル */
+.tag-item {
     transition: all 0.2s ease-in-out;
-    cursor: pointer;
-}
-
-.tag-suggestion:hover {
-    transform: translateY(-1px) scale(1.02);
-    box-shadow: 0 4px 12px rgba(59, 130, 246, 0.3);
-}
-
-.tag-suggestion:active {
-    transform: translateY(0) scale(0.98);
-    transition-duration: 0.1s;
-}
-
-/* 選択済みタグのアニメーション */
-.tag-element {
-    animation: slideInFromLeft 0.3s ease-out;
-}
-
-.tag-element.removing {
-    animation: slideOutToRight 0.2s ease-in forwards;
-}
-
-@keyframes slideInFromLeft {
-    from {
-        transform: translateX(-20px);
-        opacity: 0;
-    }
-    to {
-        transform: translateX(0);
-        opacity: 1;
-    }
-}
-
-@keyframes slideOutToRight {
-    to {
-        transform: translateX(20px);
-        opacity: 0;
-        max-width: 0;
-        padding: 0;
-        margin: 0;
-    }
-}
-
-/* タグ通知のスタイル */
-.tag-notification {
-    backdrop-filter: blur(8px);
-    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
-}
-
-/* タグ入力フィールドのフォーカス状態 */
-.tag-input:focus {
-    outline: none;
-    ring: 2px;
-    ring-color: rgba(59, 130, 246, 0.5);
-    border-color: #3b82f6;
-}
-
-/* タグコンテナのスタイル */
-.tags-container {
-    min-height: 2.5rem;
-    transition: all 0.2s ease;
-}
-
-.tags-container:empty::before {
-    content: "タグが選択されていません";
-    color: #9ca3af;
-    font-size: 0.875rem;
-}
-
-.tags-container.has-tags::before {
-    display: none;
-}
-
-/* レスポンシブ対応 */
-@media (max-width: 768px) {
-    .tag-suggestion,
-    .tag-element {
-        font-size: 0.75rem;
-        padding: 0.25rem 0.5rem;
-    }
-    
-    .tag-notification {
-        max-width: calc(100vw - 2rem);
-        right: 1rem;
-    }
-}
-
-/* ダークモード対応 */
-@media (prefers-color-scheme: dark) {
-    .tag-suggestion {
-        background-color: #374151;
-        border-color: #4b5563;
-        color: #d1d5db;
-    }
-    
-    .tag-suggestion:hover {
-        background-color: #4b5563;
-        border-color: #3b82f6;
-    }
-    
-    .tag-element {
-        background-color: #3b82f6;
-        color: white;
-    }
-}
-
-/* アクセシビリティ */
-.tag-suggestion:focus,
-.tag-element button:focus {
-    outline: 2px solid #3b82f6;
-    outline-offset: 2px;
-}
-
-/* ロード状態のスタイル */
-.tag-loading {
-    opacity: 0.6;
-    pointer-events: none;
+    border-left: 4px solid transparent;
     position: relative;
+    overflow: hidden;
 }
 
-.tag-loading::after {
-    content: "";
+.tag-item::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(59, 130, 246, 0.1),
+        transparent
+    );
+    transition: left 0.5s ease;
+}
+
+.tag-item:hover::before {
+    left: 100%;
+}
+
+.tag-item:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+    border-left-color: #3b82f6;
+    background-color: #374151;
+}
+
+.tag-item.selected {
+    background-color: #1e40af !important;
+    border-left-color: #60a5fa;
+    box-shadow: 0 0 0 2px rgba(96, 165, 250, 0.3);
+}
+
+/* カテゴリ別のボーダーカラー */
+.tag-category-stock { border-left-color: var(--tag-stock); }
+.tag-category-style { border-left-color: var(--tag-style); }
+.tag-category-sector { border-left-color: var(--tag-sector); }
+.tag-category-analysis { border-left-color: var(--tag-analysis); }
+.tag-category-strategy { border-left-color: var(--tag-strategy); }
+.tag-category-market { border-left-color: var(--tag-market); }
+.tag-category-risk { border-left-color: var(--tag-risk); }
+.tag-category-event { border-left-color: var(--tag-event); }
+.tag-category-other { border-left-color: var(--tag-other); }
+
+/* 統計カード */
+.stats-card {
+    background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
+    border: 1px solid #475569;
+    position: relative;
+    overflow: hidden;
+}
+
+.stats-card::before {
+    content: '';
+    position: absolute;
+    top: -50%;
+    left: -50%;
+    width: 200%;
+    height: 200%;
+    background: radial-gradient(
+        circle,
+        rgba(59, 130, 246, 0.05) 0%,
+        transparent 70%
+    );
+    animation: pulse-slow 4s ease-in-out infinite;
+}
+
+@keyframes pulse-slow {
+    0%, 100% { transform: scale(1); opacity: 0.5; }
+    50% { transform: scale(1.1); opacity: 0.8; }
+}
+
+/* バルクアクションバー */
+.bulk-actions {
+    transform: translateY(-100%);
+    opacity: 0;
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+    backdrop-filter: blur(8px);
+}
+
+.bulk-actions.show {
+    transform: translateY(0);
+    opacity: 1;
+}
+
+.bulk-actions .action-button {
+    transition: all 0.2s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.bulk-actions .action-button::before {
+    content: '';
     position: absolute;
     top: 50%;
     left: 50%;
-    transform: translate(-50%, -50%);
-    width: 16px;
-    height: 16px;
-    border: 2px solid #3b82f6;
-    border-top: 2px solid transparent;
+    width: 0;
+    height: 0;
+    background: rgba(255, 255, 255, 0.2);
     border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: width 0.3s ease, height 0.3s ease;
+}
+
+.bulk-actions .action-button:hover::before {
+    width: 100%;
+    height: 100%;
+}
+
+/* =================================
+   モーダル関連
+   ================================= */
+
+.quick-edit-modal {
+    backdrop-filter: blur(8px);
+    animation: modalFadeIn 0.3s ease-out;
+}
+
+.quick-edit-modal .modal-content {
+    animation: modalSlideIn 0.3s ease-out;
+}
+
+@keyframes modalFadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes modalSlideIn {
+    from {
+        opacity: 0;
+        transform: translateY(-20px) scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+/* カラーピッカー */
+.color-option {
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    cursor: pointer;
+    border: 3px solid transparent;
+    transition: all 0.2s ease;
+    position: relative;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.color-option::before {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 0;
+    height: 0;
+    background: white;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    transition: all 0.2s ease;
+}
+
+.color-option:hover,
+.color-option.selected {
+    border-color: #60a5fa;
+    transform: scale(1.1);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.color-option.selected::before {
+    width: 8px;
+    height: 8px;
+}
+
+/* =================================
+   タグプレビュー
+   ================================= */
+
+.preview-tag {
+    transition: all 0.3s ease;
+    position: relative;
+    overflow: hidden;
+}
+
+.preview-tag::after {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(255, 255, 255, 0.2),
+        transparent
+    );
+    transition: left 0.5s ease;
+}
+
+.preview-tag:hover::after {
+    left: 100%;
+}
+
+/* =================================
+   使用状況表示
+   ================================= */
+
+.usage-item {
+    transition: all 0.2s ease-in-out;
+    position: relative;
+}
+
+.usage-item::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 3px;
+    background: #3b82f6;
+    transform: scaleY(0);
+    transition: transform 0.2s ease;
+}
+
+.usage-item:hover {
+    background-color: #374151;
+    transform: translateX(4px);
+}
+
+.usage-item:hover::before {
+    transform: scaleY(1);
+}
+
+.usage-preview {
+    max-height: 200px;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: #4b5563 #1f2937;
+}
+
+.usage-preview::-webkit-scrollbar {
+    width: 6px;
+}
+
+.usage-preview::-webkit-scrollbar-track {
+    background: #1f2937;
+    border-radius: 3px;
+}
+
+.usage-preview::-webkit-scrollbar-thumb {
+    background: #4b5563;
+    border-radius: 3px;
+}
+
+.usage-preview::-webkit-scrollbar-thumb:hover {
+    background: #6b7280;
+}
+
+/* =================================
+   削除ページ
+   ================================= */
+
+.danger-zone {
+    background: linear-gradient(135deg, #450a0a 0%, #7f1d1d 100%);
+    border: 2px solid #dc2626;
+    position: relative;
+    overflow: hidden;
+}
+
+.danger-zone::before {
+    content: '';
+    position: absolute;
+    top: 0;
+    left: -100%;
+    width: 100%;
+    height: 100%;
+    background: linear-gradient(
+        90deg,
+        transparent,
+        rgba(239, 68, 68, 0.1),
+        transparent
+    );
+    animation: dangerSweep 3s ease-in-out infinite;
+}
+
+@keyframes dangerSweep {
+    0%, 100% { left: -100%; }
+    50% { left: 100%; }
+}
+
+.impact-item {
+    background: rgba(239, 68, 68, 0.1);
+    border: 1px solid rgba(239, 68, 68, 0.3);
+    transition: all 0.2s ease;
+}
+
+.impact-item:hover {
+    background: rgba(239, 68, 68, 0.15);
+    border-color: rgba(239, 68, 68, 0.5);
+}
+
+/* カウントダウン */
+.countdown {
+    font-variant-numeric: tabular-nums;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+}
+
+/* =================================
+   ローダーとアニメーション
+   ================================= */
+
+.loader {
+    border: 2px solid #374151;
+    border-top: 2px solid #3b82f6;
+    border-radius: 50%;
+    width: 20px;
+    height: 20px;
     animation: spin 1s linear infinite;
 }
 
 @keyframes spin {
-    to {
-        transform: translate(-50%, -50%) rotate(360deg);
-    }
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
 }
 
-/* タグカテゴリーのカラーコーディング */
-.tag-category-stock {
-    background-color: #dc2626 !important;
+/* パルスアニメーション */
+.pulse-once {
+    animation: pulseOnce 0.6s ease-out;
 }
 
-.tag-category-style {
-    background-color: #7c3aed !important;
+@keyframes pulseOnce {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
 }
 
-.tag-category-sector {
-    background-color: #059669 !important;
+/* =================================
+   通知システム
+   ================================= */
+
+.notification {
+    backdrop-filter: blur(8px);
+    box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+    border: 1px solid rgba(255, 255, 255, 0.1);
 }
 
-.tag-category-analysis {
-    background-color: #ea580c !important;
+.notification.success {
+    background: linear-gradient(135deg, var(--success), #059669);
 }
 
-.tag-category-strategy {
-    background-color: #0284c7 !important;
+.notification.error {
+    background: linear-gradient(135deg, var(--error), #dc2626);
 }
 
-.tag-category-market {
-    background-color: #65a30d !important;
+.notification.warning {
+    background: linear-gradient(135deg, var(--warning), #d97706);
 }
 
-.tag-category-risk {
-    background-color: #dc2626 !important;
+.notification.info {
+    background: linear-gradient(135deg, var(--info), #2563eb);
 }
 
-/* ツールチップ */
-.tag-tooltip {
+/* =================================
+   フォーム拡張
+   ================================= */
+
+/* インプットフィールドの拡張 */
+.input-enhanced {
+    transition: all 0.2s ease;
     position: relative;
 }
 
-.tag-tooltip::before {
-    content: attr(data-tooltip);
-    position: absolute;
-    bottom: 100%;
-    left: 50%;
-    transform: translateX(-50%);
-    background-color: #1f2937;
-    color: white;
-    padding: 0.5rem;
-    border-radius: 0.375rem;
-    font-size: 0.75rem;
-    white-space: nowrap;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.2s;
-    z-index: 50;
+.input-enhanced:focus {
+    box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    border-color: #3b82f6;
 }
 
-.tag-tooltip:hover::before {
-    opacity: 1;
+.input-enhanced.error {
+    border-color: #ef4444;
+    box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.input-enhanced.success {
+    border-color: #10b981;
+    box-shadow: 0 0 0 3px rgba(16, 185, 129, 0.1);
+}
+
+/* セレクトボックスの拡張 */
+.select-enhanced {
+    background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='m6 8 4 4 4-4'/%3e%3c/svg%3e");
+    background-position: right 8px center;
+    background-repeat: no-repeat;
+    background-size: 16px;
+    padding-right: 40px;
+}
+
+/* =================================
+   検索・フィルター
+   ================================= */
+
+.search-highlight {
+    background: linear-gradient(120deg, #fbbf24, #f59e0b);
+    color: #000;
+    padding: 1px 3px;
+    border-radius: 2px;
+    font-weight: 500;
+}
+
+.filter-active {
+    position: relative;
+}
+
+.filter-active::after {
+    content: '';
+    position: absolute;
+    top: -2px;
+    right: -2px;
+    width: 8px;
+    height: 8px;
+    background: #3b82f6;
+    border-radius: 50%;
+    border: 2px solid #1f2937;
+}
+
+/* =================================
+   レスポンシブ対応
+   ================================= */
+
+@media (max-width: 768px) {
+    .tag-item {
+        padding: 1rem 0.75rem;
+    }
+    
+    .stats-card {
+        text-align: center;
+    }
+    
+    .color-option {
+        width: 28px;
+        height: 28px;
+    }
+    
+    .bulk-actions {
+        position: sticky;
+        top: 0;
+        z-index: 40;
+    }
+    
+    .quick-edit-modal .modal-content {
+        margin: 1rem;
+        max-height: calc(100vh - 2rem);
+        overflow-y: auto;
+    }
+}
+
+@media (max-width: 640px) {
+    .tag-item .action-buttons {
+        flex-direction: column;
+        gap: 0.25rem;
+    }
+    
+    .tag-item .action-buttons button,
+    .tag-item .action-buttons a {
+        width: 100%;
+        justify-content: center;
+    }
+}
+
+/* =================================
+   アクセシビリティ
+   ================================= */
+
+/* フォーカス表示の改善 */
+.tag-item:focus-within,
+button:focus,
+input:focus,
+select:focus,
+textarea:focus {
+    outline: 2px solid #3b82f6;
+    outline-offset: 2px;
+}
+
+/* ハイコントラストモード対応 */
+@media (prefers-contrast: high) {
+    .tag-item {
+        border-width: 2px;
+    }
+    
+    .stats-card {
+        border-width: 2px;
+    }
+    
+    .color-option {
+        border-width: 2px;
+    }
+}
+
+/* モーション設定を無効にしたユーザー向け */
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}
+
+/* =================================
+   プリント用スタイル
+   ================================= */
+
+@media print {
+    .bulk-actions,
+    .quick-edit-modal,
+    .notification {
+        display: none !important;
+    }
+    
+    .tag-item {
+        break-inside: avoid;
+        margin-bottom: 0.5rem;
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 0.5rem;
+    }
+    
+    .stats-card {
+        break-inside: avoid;
+        border: 1px solid #ccc;
+    }
+}
+
+/* =================================
+   ダークモード調整
+   ================================= */
+
+@media (prefers-color-scheme: light) {
+    :root {
+        --bg-primary: #ffffff;
+        --bg-secondary: #f8fafc;
+        --text-primary: #1f2937;
+        --text-secondary: #6b7280;
+        --border-color: #e5e7eb;
+    }
+    
+    .tag-item {
+        background-color: var(--bg-primary);
+        color: var(--text-primary);
+        border-color: var(--border-color);
+    }
+    
+    .stats-card {
+        background: linear-gradient(135deg, #f8fafc 0%, #e2e8f0 100%);
+        border-color: var(--border-color);
+        color: var(--text-primary);
+    }
+}
+
+/* =================================
+   カスタムユーティリティ
+   ================================= */
+
+.tag-management-container {
+    min-height: 100vh;
+    background: linear-gradient(135deg, #0f172a 0%, #1e293b 100%);
+}
+
+.tag-glow {
+    box-shadow: 0 0 20px rgba(59, 130, 246, 0.3);
+}
+
+.tag-shimmer {
+    background: linear-gradient(
+        90deg,
+        transparent 0%,
+        rgba(255, 255, 255, 0.1) 50%,
+        transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: shimmer 2s infinite;
+}
+
+@keyframes shimmer {
+    0% { background-position: -200% 0; }
+    100% { background-position: 200% 0; }
 }
