@@ -136,6 +136,7 @@
             </div>
         </div>
     </header>
+    
     <!-- Messages -->
     {% if messages %}
         <div class="container mx-auto px-4 py-2">
@@ -153,6 +154,8 @@
     </main>
 
     <!-- Scripts -->
+    <!-- 共通ライブラリを最初に読み込み -->
+    <script src="{% load static %}{% static 'js/common.js' %}"></script>
     <script src="{% load static %}{% static 'js/main.js' %}"></script>
     {% block extra_js %}{% endblock %}
 </body>

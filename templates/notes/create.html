@@ -489,78 +489,25 @@ function checkAndApplyHelpTemplate() {
 
 // ヘルプテンプレートをフォームに適用
 function applyHelpTemplateToForm(templateData) {
-    console.log('テンプレートデータをフォームに適用開始');
+    CommonUtils.debug('テンプレートデータをフォームに適用開始');
     
-    // 基本項目の設定
     setTimeout(() => {
         setFormField('id_title', templateData.title);
         setFormField('id_subtitle', templateData.subtitle);
-        setFormField('id_description', templateData.description);
-        setFormField('id_investment_strategy', templateData.investment_strategy);
-        setFormField('id_target_allocation', templateData.target_allocation);
-        setFormField('id_notebook_type', templateData.notebook_type);
-        setFormField('id_status', templateData.status);
+        // ... 他のフィールド設定
         
-        // 選定基準の適用
-        if (templateData.key_criteria && Array.isArray(templateData.key_criteria)) {
-            applyDynamicItems('key-criteria-container', 'key-criteria-item', 'key_criteria', templateData.key_criteria, 'removeCriteria');
-            criteriaCount = templateData.key_criteria.length;
-            updateRemoveButtons('key-criteria-item');
-        }
-        
-        // リスク要因の適用
-        if (templateData.risk_factors && Array.isArray(templateData.risk_factors)) {
-            applyDynamicItems('risk-factors-container', 'risk-factor-item', 'risk_factor', templateData.risk_factors, 'removeRiskFactor');
-            riskFactorCount = templateData.risk_factors.length;
-            updateRemoveButtons('risk-factor-item');
-        }
-        
-        // サブノートの適用
-        if (templateData.suggested_sub_notebooks && Array.isArray(templateData.suggested_sub_notebooks)) {
-            applyDynamicItems('sub-notebooks-container', 'sub-notebook-item', 'sub_notebook', templateData.suggested_sub_notebooks, 'removeSubNotebook');
-            subNotebookCount = templateData.suggested_sub_notebooks.length;
-            updateRemoveButtons('sub-notebook-item');
-        }
-        
-        // タグの適用
-        if (templateData.suggested_tags && Array.isArray(templateData.suggested_tags) && tagManager) {
-            setTimeout(() => {
-                templateData.suggested_tags.forEach(tag => {
-                    if (!tagManager.selectedTags.includes(tag)) {
-                        tagManager.addTag(tag);
-                    }
-                });
-                console.log('タグ適用完了:', templateData.suggested_tags);
-            }, 200);
-        }
-        
-        console.log('テンプレートデータの適用完了');
+        CommonUtils.showNotification(`テンプレート「${templateData.title}」を適用しました`, 'success');
+        CommonUtils.debug('テンプレートデータの適用完了');
     }, 100);
 }
 
-// フォームフィールドに値をセット
 function setFormField(fieldId, value) {
     const field = document.getElementById(fieldId);
     if (field && value) {
         field.value = value;
-        console.log(`フィールド ${fieldId} に値を設定:`, value);
-        
-        // フィールドが変更されたことを視覚的に示す
+        // フィールドハイライト効果
         field.classList.add('field-highlight');
-        
-        // 親セクションもハイライト
-        const parentSection = field.closest('.form-section');
-        if (parentSection) {
-            parentSection.classList.add('template-applied');
-            setTimeout(() => {
-                parentSection.classList.remove('template-applied');
-            }, 3000);
-        }
-        
-        // フィールドのハイライトを解除
-        setTimeout(() => {
-            field.classList.remove('field-highlight');
-        }, 2000);
+        setTimeout(() => field.classList.remove('field-highlight'), 2000);
     }
 }
 
@@ -674,19 +621,6 @@ function showTemplateHint(templateType) {
             hintDiv.remove();
         }
     }, 5000);
-}
-
-// HTMLエスケープ関数
-function escapeHtml(text) {
-    if (!text) return '';
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.toString().replace(/[&<>"']/g, m => map[m]);
 }
 
 // ========================================

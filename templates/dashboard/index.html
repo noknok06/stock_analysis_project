@@ -300,26 +300,6 @@ function setupDashboardTrendingTags() {
     });
 }
 
-function searchTagFromDashboard(tagName, tagElement) {
-    isSearching = true;
-    
-    // クリック効果の表示
-    tagElement.classList.add('clicked');
-    
-    // 検索インジケーター表示
-    showDashboardSearchIndicator();
-    
-    // 短時間後にノート一覧ページの検索に遷移
-    setTimeout(() => {
-        const encodedTag = encodeURIComponent(tagName);
-        const notesUrl = new URL('/notes/', window.location.origin);
-        notesUrl.searchParams.set('q', tagName);
-        
-        console.log('ノート一覧ページに遷移:', notesUrl.toString());
-        window.location.href = notesUrl.toString();
-    }, 300);
-}
-
 // ========================================
 // グローバル検索機能
 // ========================================
@@ -350,25 +330,15 @@ function setupGlobalSearch() {
     }
 }
 
-function executeGlobalSearch(query) {
-    console.log('グローバル検索実行:', query);
-    
-    // ローディング状態を表示
-    const globalSearchInput = document.getElementById('global-search');
-    if (globalSearchInput) {
-        globalSearchInput.style.pointerEvents = 'none';
-        globalSearchInput.style.opacity = '0.7';
-    }
-    
-    // ノート一覧ページに遷移
-    const notesUrl = new URL('/notes/', window.location.origin);
-    notesUrl.searchParams.set('q', query);
-    
-    setTimeout(() => {
-        window.location.href = notesUrl.toString();
-    }, 200);
+// ✅ 共通ライブラリを使用
+function searchTagFromDashboard(tagName, tagElement) {
+    TagUtils.applyTagClickAnimation(tagElement);
+    TagUtils.performTagSearch(tagName);
 }
 
+function executeGlobalSearch(query) {
+    CommonUtils.performSearch(query, '/notes/');
+}
 // ========================================
 // UI状態管理
 // ========================================
@@ -388,72 +358,9 @@ function hideDashboardSearchIndicator() {
     isSearching = false;
 }
 
-function showNotification(message, type = 'info') {
-    // 既存の通知を削除
-    const existingNotifications = document.querySelectorAll('.notification');
-    existingNotifications.forEach(notification => notification.remove());
-    
-    const notification = document.createElement('div');
-    notification.className = `notification fixed top-4 right-4 z-50 p-4 rounded-lg text-white max-w-sm transform transition-all duration-300 translate-x-full opacity-0`;
-    
-    const typeClasses = {
-        'error': 'bg-red-600',
-        'warning': 'bg-yellow-600',
-        'success': 'bg-green-600',
-        'info': 'bg-blue-600'
-    };
-    
-    notification.classList.add(typeClasses[type] || typeClasses.info);
-    notification.innerHTML = `
-        <div class="flex items-start justify-between">
-            <p class="text-sm font-medium">${escapeHtml(message)}</p>
-            <button onclick="this.parentElement.parentElement.remove()" 
-                    class="ml-3 text-white/80 hover:text-white">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
-        </div>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    // アニメーション
-    setTimeout(() => {
-        notification.classList.remove('translate-x-full', 'opacity-0');
-    }, 100);
-    
-    // 自動削除
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.classList.add('translate-x-full', 'opacity-0');
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
-            }, 300);
-        }
-    }, 4000);
-}
-
 // ========================================
 // ユーティリティ関数
 // ========================================
-
-function isTouchDevice() {
-    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-}
-
-function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, m => map[m]);
-}
 
 // ページロード完了時の処理
 window.addEventListener('load', function() {

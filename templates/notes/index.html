@@ -696,17 +696,26 @@ function highlightSearchResults() {
         }
     });
 }
+function setupTrendingTags() {
+    // TagUtils.setupTagClickHandlers()で自動設定されるため、
+    // カスタム処理のみを記述
+    const clickableTags = document.querySelectorAll('.tag-clickable');
+    
+    clickableTags.forEach(tag => {
+        // ページ固有の処理のみ
+        tag.addEventListener('click', function() {
+            const tagName = this.getAttribute('data-tag');
+            const category = this.getAttribute('data-category');
+            
+            // 統計情報の更新など、ページ固有の処理
+            updateTagUsageStats(tagName, category);
+        });
+    });
+}
 
-function highlightTextInElement(element, searchTerm) {
-    if (!element || !searchTerm) return;
-    
-    const text = element.textContent;
-    const regex = new RegExp(`(${escapeRegex(searchTerm)})`, 'gi');
-    
-    if (regex.test(text)) {
-        const highlightedHTML = text.replace(regex, '<span class="search-highlight">$1</span>');
-        element.innerHTML = highlightedHTML;
-    }
+function updateTagUsageStats(tagName, category) {
+    // ページ固有の統計更新処理
+    CommonUtils.debug('タグ使用統計更新:', { tagName, category });
 }
 
 function escapeRegex(string) {
@@ -716,35 +725,6 @@ function escapeRegex(string) {
 // ========================================
 // トレンドタグ機能
 // ========================================
-
-function setupTrendingTags() {
-    const clickableTags = document.querySelectorAll('.tag-clickable');
-    
-    clickableTags.forEach(tag => {
-        tag.addEventListener('click', function() {
-            const tagName = this.getAttribute('data-tag');
-            console.log('タグクリック:', tagName);
-            
-            // 既に検索中の場合は無視
-            if (isSearching) return;
-            
-            searchTagAndNavigate(tagName, this);
-        });
-        
-        // タッチデバイス用のフィードバック
-        if (isTouchDevice()) {
-            tag.addEventListener('touchstart', function() {
-                this.style.transform = 'scale(0.95)';
-            });
-            
-            tag.addEventListener('touchend', function() {
-                setTimeout(() => {
-                    this.style.transform = 'scale(1)';
-                }, 100);
-            });
-        }
-    });
-}
 
 function searchTagAndNavigate(tagName, tagElement) {
     isSearching = true;
@@ -983,72 +963,9 @@ function hideTagsLoading() {
     }
 }
 
-function showNotification(message, type = 'info') {
-    // 既存の通知を削除
-    const existingNotifications = document.querySelectorAll('.notification');
-    existingNotifications.forEach(notification => notification.remove());
-    
-    const notification = document.createElement('div');
-    notification.className = `notification fixed top-4 right-4 z-50 p-4 rounded-lg text-white max-w-sm transform transition-all duration-300 translate-x-full opacity-0`;
-    
-    const typeClasses = {
-        'error': 'bg-red-600',
-        'warning': 'bg-yellow-600',
-        'success': 'bg-green-600',
-        'info': 'bg-blue-600'
-    };
-    
-    notification.classList.add(typeClasses[type] || typeClasses.info);
-    notification.innerHTML = `
-        <div class="flex items-start justify-between">
-            <p class="text-sm font-medium">${escapeHtml(message)}</p>
-            <button onclick="this.parentElement.parentElement.remove()" 
-                    class="ml-3 text-white/80 hover:text-white">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
-        </div>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    // アニメーション
-    setTimeout(() => {
-        notification.classList.remove('translate-x-full', 'opacity-0');
-    }, 100);
-    
-    // 自動削除
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.classList.add('translate-x-full', 'opacity-0');
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
-            }, 300);
-        }
-    }, 4000);
-}
-
 // ========================================
 // ユーティリティ関数
 // ========================================
-
-function isTouchDevice() {
-    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
-}
-
-function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, m => map[m]);
-}
 
 function restoreStateFromUrl() {
     const urlParams = new URLSearchParams(window.location.search);

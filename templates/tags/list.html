@@ -239,14 +239,18 @@ templates/tags/list.html
 function copyTagName(tagName) {
     if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(tagName).then(() => {
-            showCopyNotification();
+            CommonUtils.showNotification('タグ名をコピーしました', 'success');
         }).catch(err => {
-            console.error('コピーに失敗しました:', err);
+            CommonUtils.error('コピーに失敗しました:', err);
             fallbackCopyTextToClipboard(tagName);
         });
     } else {
         fallbackCopyTextToClipboard(tagName);
     }
+}
+
+function searchWithTag(tagName) {
+    TagUtils.performTagSearch(tagName);
 }
 
 // フォールバック用のコピー関数
@@ -271,16 +275,6 @@ function fallbackCopyTextToClipboard(text) {
     }
     
     document.body.removeChild(textArea);
-}
-
-// コピー通知を表示
-function showCopyNotification() {
-    const notification = document.getElementById('copy-notification');
-    notification.classList.remove('translate-x-full', 'opacity-0');
-    
-    setTimeout(() => {
-        notification.classList.add('translate-x-full', 'opacity-0');
-    }, 2000);
 }
 
 // タグで検索

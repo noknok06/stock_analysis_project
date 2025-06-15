@@ -1363,24 +1363,6 @@ function updateFavoriteButton(isFavorite) {
 // ユーティリティ関数
 // ========================================
 
-// CSRFトークンを取得
-function getCsrfToken() {
-    const cookies = document.cookie.split(';');
-    for (let cookie of cookies) {
-        const [name, value] = cookie.trim().split('=');
-        if (name === 'csrftoken') {
-            return value;
-        }
-    }
-    
-    // フォームからも取得を試行
-    const csrfInput = document.querySelector('[name=csrfmiddlewaretoken]');
-    if (csrfInput) {
-        return csrfInput.value;
-    }
-    
-    return '';
-}
 
 // ノートブックIDを取得（URLまたはページ要素から）
 function getNotebookId() {
@@ -1401,63 +1383,6 @@ function getNotebookId() {
     return null;
 }
 
-// 通知表示
-function showNotification(message, type = 'info') {
-    // 既存の通知を削除
-    const existingNotifications = document.querySelectorAll('.notification');
-    existingNotifications.forEach(notification => notification.remove());
-    
-    const notification = document.createElement('div');
-    notification.className = `notification fixed top-4 right-4 z-50 p-4 rounded-lg text-white max-w-sm transform transition-all duration-300 translate-x-full opacity-0`;
-    
-    const typeClasses = {
-        'error': 'bg-red-600',
-        'warning': 'bg-yellow-600',
-        'success': 'bg-green-600',
-        'info': 'bg-blue-600'
-    };
-    
-    notification.classList.add(typeClasses[type] || typeClasses.info);
-    
-    notification.innerHTML = `
-        <div class="flex items-start justify-between">
-            <div class="flex">
-                <div class="mr-3 mt-0.5">
-                    ${getNotificationIcon(type)}
-                </div>
-                <div>
-                    <p class="text-sm font-medium">${escapeHtml(message)}</p>
-                </div>
-            </div>
-            <button onclick="this.parentElement.parentElement.remove()" 
-                    class="ml-3 text-white/80 hover:text-white">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
-        </div>
-    `;
-    
-    document.body.appendChild(notification);
-    
-    // アニメーション
-    setTimeout(() => {
-        notification.classList.remove('translate-x-full', 'opacity-0');
-    }, 100);
-    
-    // 自動削除
-    setTimeout(() => {
-        if (notification.parentNode) {
-            notification.classList.add('translate-x-full', 'opacity-0');
-            setTimeout(() => {
-                if (notification.parentNode) {
-                    notification.remove();
-                }
-            }, 300);
-        }
-    }, 4000);
-}
-
 // 通知アイコンを取得
 function getNotificationIcon(type) {
     const icons = {
@@ -1469,36 +1394,15 @@ function getNotificationIcon(type) {
     return icons[type] || icons.info;
 }
 
-// HTMLエスケープ
-function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, m => map[m]);
-}
-
 // エントリーカードクリック処理
 function handleEntryCardClick(entryId) {
     console.log('エントリーカードクリック:', entryId);
     openEntryDetail(entryId);
 }
 
-// エントリー詳細表示
-function openEntryDetail(entryId) {
-    console.log('エントリー詳細表示:', entryId);
-    
-    // 詳細表示の実装（既存のコードを使用）
-    // ここでは簡単な実装のみ
-    showNotification(`エントリー詳細: ${entryId}`, 'info');
-}
-
 // モーダル関連の関数（簡略版）
 function openNewEntryModal() {
-    showNotification('新規エントリーモーダルを開きます', 'info');
+    NotificationManager.show('新規エントリーモーダルを開きます', 'info');
 }
 
 // ページネーション関数
@@ -1525,111 +1429,7 @@ document.addEventListener('keydown', function(e) {
         console.log('ESCキーが押されました');
     }
 });
-// ========================================
-// モーダル管理クラス（共通化）
-// ========================================
-class ModalManager {
-    constructor() {
-        this.openModals = new Set();
-        this.setupGlobalListeners();
-    }
-    
-    setupGlobalListeners() {
-        // ESCキーでモーダルを閉じる
-        document.addEventListener('keydown', (e) => {
-            if (e.key === 'Escape' && this.openModals.size > 0) {
-                this.closeLastModal();
-            }
-        });
-        
-        // モーダル外クリックで閉じる
-        document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('modal-backdrop')) {
-                this.closeModal(e.target.querySelector('.modal-content')?.id || 'unknown');
-            }
-        });
-    }
-    
-    openModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (!modal) {
-            console.error(`モーダル ${modalId} が見つかりません`);
-            return false;
-        }
-        
-        modal.classList.remove('hidden');
-        this.openModals.add(modalId);
-        
-        // ページのスクロールを無効化
-        document.body.style.overflow = 'hidden';
-        
-        // フォーカス管理
-        this.setModalFocus(modal);
-        
-        console.log(`モーダル ${modalId} を開きました`);
-        return true;
-    }
-    
-    closeModal(modalId) {
-        const modal = document.getElementById(modalId);
-        if (!modal) {
-            console.error(`モーダル ${modalId} が見つかりません`);
-            return false;
-        }
-        
-        modal.classList.add('hidden');
-        this.openModals.delete(modalId);
-        
-        // 他にモーダルが開いていない場合のみスクロールを有効化
-        if (this.openModals.size === 0) {
-            document.body.style.overflow = '';
-        }
-        
-        console.log(`モーダル ${modalId} を閉じました`);
-        return true;
-    }
-    
-    closeLastModal() {
-        if (this.openModals.size > 0) {
-            const lastModal = Array.from(this.openModals).pop();
-            this.closeModal(lastModal);
-        }
-    }
-    
-    setModalFocus(modal) {
-        setTimeout(() => {
-            const firstInput = modal.querySelector('input, textarea, select, button');
-            if (firstInput) {
-                firstInput.focus();
-            }
-        }, 100);
-    }
-    
-    resetForm(modalId) {
-        const modal = document.getElementById(modalId);
-        if (!modal) return;
-        
-        const forms = modal.querySelectorAll('form');
-        forms.forEach(form => form.reset());
-        
-        // カスタムリセット処理
-        const customResetElements = modal.querySelectorAll('[data-reset]');
-        customResetElements.forEach(element => {
-            const resetType = element.dataset.reset;
-            switch (resetType) {
-                case 'innerHTML':
-                    element.innerHTML = '';
-                    break;
-                case 'value':
-                    element.value = '';
-                    break;
-                case 'selected':
-                    element.classList.remove('selected', 'active');
-                    break;
-            }
-        });
-    }
-}
+
 
 // グローバルモーダルマネージャーのインスタンス
 const modalManager = new ModalManager();
@@ -1684,48 +1484,6 @@ function resetEntryForm() {
 // エントリー詳細モーダル機能
 // ========================================
 
-function openEntryDetail(entryId) {
-    console.log('エントリー詳細表示:', entryId);
-    
-    if (!modalManager.openModal('entry-detail-modal')) {
-        return;
-    }
-    
-    // ローディング表示
-    updateEntryDetailModal('読み込み中...', '<div class="flex items-center justify-center py-8"><div class="text-gray-400">読み込み中...</div></div>');
-    
-    // エントリー詳細をAjaxで取得して表示
-    fetch(`/notes/entry/${entryId}/`)
-        .then(response => {
-            console.log('Response status:', response.status);
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            return response.json();
-        })
-        .then(data => {
-            console.log('エントリー詳細取得成功:', data);
-            if (data.success) {
-                updateEntryDetailModal(data.title, data.html);
-            } else {
-                throw new Error(data.error || 'データの取得に失敗しました');
-            }
-        })
-        .catch(error => {
-            console.error('エントリー詳細取得エラー:', error);
-            const errorHtml = `
-                <div class="text-center py-8">
-                    <div class="text-red-400 mb-2">エントリーの詳細を取得できませんでした</div>
-                    <div class="text-gray-400 text-sm">${escapeHtml(error.message)}</div>
-                    <button onclick="closeEntryDetail()" class="mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded">
-                        閉じる
-                    </button>
-                </div>
-            `;
-            updateEntryDetailModal('エラー', errorHtml);
-        });
-}
-
 function closeEntryDetail() {
     console.log('エントリー詳細モーダルを閉じます');
     modalManager.closeModal('entry-detail-modal');
@@ -1774,7 +1532,7 @@ function createSubNotebook() {
     const description = descriptionInput?.value?.trim() || '';
     
     if (!title) {
-        showNotification('サブノート名を入力してください', 'warning');
+        NotificationManager.show('サブノート名を入力してください', 'warning');
         titleInput?.focus();
         return;
     }
@@ -1788,7 +1546,7 @@ function createSubNotebook() {
     
     const notebookId = getNotebookId();
     if (!notebookId) {
-        showNotification('ノートブックIDが取得できませんでした', 'error');
+        NotificationManager.show('ノートブックIDが取得できませんでした', 'error');
         enableCreateButton(createButton);
         return;
     }
@@ -1809,7 +1567,7 @@ function createSubNotebook() {
     .then(data => {
         if (data.success) {
             // 成功メッセージを表示
-            showNotification(data.message, 'success');
+            NotificationManager.show(data.message, 'success');
             
             // サブノートタブを動的に追加
             addSubNotebookTab(data.sub_notebook);
@@ -1941,8 +1699,73 @@ function generateEntryTypeForm(type) {
 }
 
 // ========================================
+// エントリー詳細モーダル機能
+// ========================================
+
+function openEntryDetail(entryId) {
+    console.log('エントリー詳細表示:', entryId);
+    
+    if (!modalManager.openModal('entry-detail-modal')) {
+        return;
+    }
+    
+    // ローディング表示
+    updateEntryDetailModal('読み込み中...', '<div class="flex items-center justify-center py-8"><div class="text-gray-400">読み込み中...</div></div>');
+    
+    // エントリー詳細をAjaxで取得して表示
+    fetch(`/notes/entry/${entryId}/`)
+        .then(response => {
+            console.log('Response status:', response.status);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            console.log('エントリー詳細取得成功:', data);
+            if (data.success) {
+                updateEntryDetailModal(data.title, data.html);
+            } else {
+                throw new Error(data.error || 'データの取得に失敗しました');
+            }
+        })
+        .catch(error => {
+            console.error('エントリー詳細取得エラー:', error);
+            const errorHtml = `
+                <div class="text-center py-8">
+                    <div class="text-red-400 mb-2">エントリーの詳細を取得できませんでした</div>
+                    <div class="text-gray-400 text-sm">${escapeHtml(error.message)}</div>
+                    <button onclick="closeEntryDetail()" class="mt-4 px-4 py-2 bg-gray-600 hover:bg-gray-700 text-white rounded">
+                        閉じる
+                    </button>
+                </div>
+            `;
+            updateEntryDetailModal('エラー', errorHtml);
+        });
+}
+
+function closeEntryDetail() {
+    console.log('エントリー詳細モーダルを閉じます');
+    modalManager.closeModal('entry-detail-modal');
+}
+
+function updateEntryDetailModal(title, content) {
+    const titleElement = document.getElementById('entry-detail-title');
+    const contentElement = document.getElementById('entry-detail-content');
+    
+    if (titleElement) titleElement.textContent = title;
+    if (contentElement) contentElement.innerHTML = content;
+}
+
+// ========================================
 // エントリータイプ別フォームテンプレート（DRY原則適用）
 // ========================================
+
+// エントリーカードクリック処理
+function handleEntryCardClick(entryId) {
+    console.log('エントリーカードクリック:', entryId);
+    openEntryDetail(entryId);
+}
 
 function createFormField(type, name, label, placeholder = '', required = false, rows = null) {
     const requiredAttr = required ? 'required' : '';
@@ -2080,7 +1903,7 @@ function setupFormSubmission() {
             
             if (!selectedEntryType) {
                 e.preventDefault();
-                showNotification('エントリータイプを選択してください', 'warning');
+                NotificationManager.show('エントリータイプを選択してください', 'warning');
                 return;
             }
             

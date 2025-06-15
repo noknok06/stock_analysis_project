@@ -1,4 +1,8 @@
-// グローバル検索機能
+// ========================================
+// static/js/main.js - 簡素化版（common.js使用）
+// ========================================
+
+// グローバル検索機能（ページ固有の機能のみ）
 document.addEventListener('DOMContentLoaded', function() {
     const globalSearch = document.getElementById('global-search');
     
@@ -12,7 +16,7 @@ document.addEventListener('DOMContentLoaded', function() {
             
             if (query.length >= 2) {
                 searchTimeout = setTimeout(() => {
-                    performSearch(query);
+                    performGlobalSearch(query);
                 }, 300);
             }
         });
@@ -23,49 +27,21 @@ document.addEventListener('DOMContentLoaded', function() {
                 e.preventDefault();
                 const query = this.value.trim();
                 if (query) {
-                    window.location.href = `/notes/?q=${encodeURIComponent(query)}`;
+                    CommonUtils.performSearch(query, '/notes/');
                 }
             }
         });
     }
 });
 
-// 検索実行関数
-function performSearch(query) {
-    // ここでAjax検索を実装（将来の拡張用）
-    console.log('Searching for:', query);
+// グローバル検索実行（Ajax検索用）
+function performGlobalSearch(query) {
+    CommonUtils.debug('グローバル検索実行:', query);
+    // 将来的にAjax検索を実装する場合はここに追加
 }
 
-// タグ選択機能
+// タグ選択機能（ページ固有）
 function toggleTag(tagElement) {
     tagElement.classList.toggle('selected');
     tagElement.classList.toggle('bg-blue-600');
 }
-
-// フォームバリデーション
-function validateForm(formElement) {
-    const requiredFields = formElement.querySelectorAll('[required]');
-    let isValid = true;
-    
-    requiredFields.forEach(field => {
-        if (!field.value.trim()) {
-            field.classList.add('border-red-500');
-            isValid = false;
-        } else {
-            field.classList.remove('border-red-500');
-        }
-    });
-    
-    return isValid;
-}
-
-// 成功メッセージの自動非表示
-setTimeout(() => {
-    const alerts = document.querySelectorAll('.alert');
-    alerts.forEach(alert => {
-        alert.style.opacity = '0';
-        setTimeout(() => {
-            alert.remove();
-        }, 300);
-    });
-}, 5000);
