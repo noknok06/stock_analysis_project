@@ -6,7 +6,7 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.contrib.auth.models import User
 from apps.accounts.models import UserProfile, UserSettings
-
+from apps.notes.models import Notebook, Entry
 
 @receiver(post_save, sender=User)
 def create_user_profile(sender, instance, created, **kwargs):
@@ -82,7 +82,6 @@ def cleanup_user_data(sender, instance, **kwargs):
 # ノートブック・エントリー作成時の統計更新
 # ========================================
 
-from apps.notes.models import Notebook, Entry
 
 @receiver(post_save, sender=Notebook)
 def update_notebook_statistics(sender, instance, created, **kwargs):

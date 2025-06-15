@@ -1,0 +1,41 @@
+<!-- ========================================
+templates/common/search_breadcrumb.html - 検索パンくずリスト
+======================================== -->
+
+{% if has_search %}
+<nav class="flex items-center space-x-2 text-sm text-gray-400 mb-4" aria-label="検索パンくずリスト">
+    <!-- ホーム -->
+    <a href="{% url 'dashboard:index' %}" class="hover:text-white transition-colors">
+        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 7v10a2 2 0 002 2h14a2 2 0 002-2V9a2 2 0 00-2-2H5a2 2 0 00-2 2z"></path>
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 22V12h6v10"></path>
+        </svg>
+    </a>
+    
+    <!-- 区切り -->
+    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+    </svg>
+    
+    <!-- ノート一覧 -->
+    <a href="{% url 'notes:list' %}" class="hover:text-white transition-colors">
+        ノート一覧
+    </a>
+    
+    <!-- 区切り -->
+    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+    </svg>
+    
+    <!-- 検索結果 -->
+    <span class="text-white font-medium flex items-center">
+        <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
+        </svg>
+        「{{ search_query }}」の検索結果
+        <span class="ml-2 px-2 py-1 bg-blue-900/30 text-blue-300 rounded-full text-xs">
+            {{ result_count }}件
+        </span>
+    </span>
+</nav>
+{% endif %}

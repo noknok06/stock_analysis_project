@@ -3,6 +3,7 @@
 # ========================================
 
 import json
+from django.urls import reverse
 from django.shortcuts import render, get_object_or_404, redirect
 from django.contrib.auth.mixins import LoginRequiredMixin
 from django.contrib.auth.decorators import login_required
@@ -13,29 +14,33 @@ from django.http import JsonResponse
 from django.db.models import Q, Count, Prefetch
 from django.core.paginator import Paginator
 from django.template.loader import render_to_string
-from apps.notes.models import Notebook, Entry, SubNotebook, Tag
+from apps.notes.models import Notebook, Entry, SubNotebook
+from apps.tags.models import Tag
 from apps.notes.forms import NotebookForm, EntryForm, SubNotebookForm, NotebookSearchForm
 from apps.common.mixins import UserOwnerMixin, SearchMixin
 from apps.notes.services import NotebookService
-from apps.common.utils import ContentHelper, TagHelper
+from apps.common.utils import ContentHelper, TagHelper, SearchHelper
 from django.utils import timezone
 from datetime import datetime, timedelta
 from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 
 
-class NotebookListView(UserOwnerMixin, SearchMixin, ListView):
-    """ノート一覧ビュー（トレンドタグ機能追加）"""
+class NotebookListView(UserOwnerMixin, ListView):
+    """ノート一覧ビュー（拡張検索機能付き）"""
     model = Notebook
     template_name = 'notes/index.html'
     context_object_name = 'notebooks'
     paginate_by = 12
-    search_fields = ['title', 'subtitle', 'description', 'investment_strategy']
     
     def get_queryset(self):
-        """検索とフィルタリングを適用したクエリセット"""
+        """拡張検索とフィルタリングを適用したクエリセット"""
         queryset = super().get_queryset()
-        queryset = self.apply_search(queryset)
+        
+        # 検索クエリの取得と適用
+        search_query = self.get_search_query()
+        if search_query:
+            queryset = self.apply_enhanced_search(queryset, search_query)
         
         # ノートタイプフィルター
         notebook_type = self.request.GET.get('notebook_type')
@@ -52,7 +57,7 @@ class NotebookListView(UserOwnerMixin, SearchMixin, ListView):
         if is_favorite:
             queryset = queryset.filter(is_favorite=True)
         
-        # タグフィルター
+        # タグフィルター（複数選択対応）
         tag_ids = self.request.GET.getlist('tags')
         if tag_ids:
             queryset = queryset.filter(tags__in=tag_ids).distinct()
@@ -69,16 +74,78 @@ class NotebookListView(UserOwnerMixin, SearchMixin, ListView):
         return queryset.select_related().prefetch_related(
             'tags',
             Prefetch('sub_notebooks', queryset=SubNotebook.objects.order_by('order'))
-        )
+        ).distinct()
+    
+    def get_search_query(self):
+        """検索クエリを取得"""
+        return self.request.GET.get('q', '').strip()
+    
+    def apply_enhanced_search(self, queryset, search_query):
+        """拡張検索を適用（タグ、エントリー内容も含む）"""
+        try:
+            # 検索フィールドを定義
+            search_fields = [
+                'title',
+                'subtitle', 
+                'description',
+                'investment_strategy',
+                'tags__name',  # タグ名も検索対象に追加
+                'tags__description',  # タグ説明も検索対象に追加
+                'entries__title',  # エントリータイトルも検索対象に追加
+                'entries__company_name',  # 企業名も検索対象に追加
+                'entries__stock_code',  # 銘柄コードも検索対象に追加
+            ]
+            
+            # 検索クエリを単語に分割して AND 検索
+            search_terms = [term.strip() for term in search_query.split() if term.strip()]
+            q_objects = Q()
+            
+            for term in search_terms:
+                term_query = Q()
+                for field in search_fields:
+                    term_query |= Q(**{f"{field}__icontains": term})
+                q_objects &= term_query
+            
+            # 完全一致ボーナス（より関連性の高い結果を上位に）
+            exact_match_fields = ['title', 'tags__name', 'entries__stock_code']
+            exact_match_query = Q()
+            for field in exact_match_fields:
+                exact_match_query |= Q(**{f"{field}__iexact": search_query})
+            
+            # 完全一致がある場合はそれを優先、そうでなければ部分一致
+            if queryset.filter(exact_match_query).exists():
+                queryset = queryset.filter(q_objects | exact_match_query)
+            else:
+                queryset = queryset.filter(q_objects)
+            
+            return queryset.distinct()
+            
+        except Exception as e:
+            # 検索エラー時はログに記録して元のクエリセットを返す
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"検索エラー: {e}", exc_info=True)
+            return queryset
     
     def get_context_data(self, **kwargs):
-        """コンテキストデータを追加（トレンドタグ追加）"""
+        """コンテキストデータを追加（検索情報含む）"""
         context = super().get_context_data(**kwargs)
-        context['search_form'] = NotebookSearchForm(self.request.GET)
-        context['search_query'] = self.get_search_query()
         
-        # ★ トレンドタグを追加
-        context['trending_tags'] = Tag.objects.get_trending_tags(limit=15)
+        search_query = self.get_search_query()
+        context['search_form'] = NotebookSearchForm(self.request.GET)
+        context['search_query'] = search_query
+        
+        # 検索統計情報
+        if search_query:
+            context['search_stats'] = self.get_search_statistics(search_query)
+        
+        # ★ トレンドタグを追加（検索結果に基づいて動的に更新）
+        if search_query:
+            # 検索結果に関連するタグを優先表示
+            context['trending_tags'] = self.get_related_tags_for_search(search_query)
+        else:
+            # 通常のトレンドタグ
+            context['trending_tags'] = Tag.objects.get_trending_tags(limit=15)
         
         # カテゴリ別タグ
         context['popular_strategy_tags'] = Tag.objects.get_tags_by_category('STRATEGY', limit=8)
@@ -97,11 +164,65 @@ class NotebookListView(UserOwnerMixin, SearchMixin, ListView):
         ).order_by('-updated_at')[:5]
         
         return context
+    
+    def get_search_statistics(self, search_query):
+        """検索統計情報を取得"""
+        try:
+            # 基本統計
+            total_matches = self.get_queryset().count()
+            
+            # タグマッチ数
+            tag_matches = Tag.objects.filter(
+                Q(name__icontains=search_query) | Q(description__icontains=search_query),
+                notebook__user=self.request.user
+            ).distinct().count()
+            
+            # エントリーマッチ数  
+            entry_matches = Entry.objects.filter(
+                Q(title__icontains=search_query) | 
+                Q(company_name__icontains=search_query) |
+                Q(stock_code__icontains=search_query),
+                notebook__user=self.request.user
+            ).distinct().count()
+            
+            return {
+                'total_matches': total_matches,
+                'tag_matches': tag_matches,
+                'entry_matches': entry_matches,
+                'query': search_query
+            }
+        except Exception as e:
+            return {'total_matches': 0, 'query': search_query}
+    
+    def get_related_tags_for_search(self, search_query):
+        """検索結果に関連するタグを取得"""
+        try:
+            # 検索クエリに一致するタグを優先
+            related_tags = Tag.objects.filter(
+                Q(name__icontains=search_query) | Q(description__icontains=search_query),
+                is_active=True
+            )
+            
+            # 検索結果のノートブックに関連するタグも含める
+            notebook_ids = self.get_queryset().values_list('id', flat=True)
+            notebook_tags = Tag.objects.filter(
+                notebook__in=notebook_ids,
+                is_active=True
+            )
+            
+            # 統合してユニークにして使用頻度順で返す
+            all_tags = (related_tags | notebook_tags).distinct().order_by('-usage_count')[:15]
+            
+            return all_tags
+        except Exception as e:
+            # エラー時は通常のトレンドタグを返す
+            return Tag.objects.get_trending_tags(limit=15)
 
 
 # ========================================
 # トレンドタグ専用Ajax View
 # ========================================
+
 
 @login_required
 def trending_tags_ajax(request):
@@ -211,6 +332,243 @@ def tag_search_ajax(request):
         }, status=500)
 
 
+class NotebookSearchResultsView(UserOwnerMixin, ListView):
+    """詳細検索結果ページ（高度な検索機能用）"""
+    model = Notebook
+    template_name = 'notes/search_results.html'
+    context_object_name = 'notebooks'
+    paginate_by = 20
+    
+    def get_queryset(self):
+        """高度な検索クエリを構築"""
+        queryset = super().get_queryset()
+        
+        # 基本検索
+        search_query = self.request.GET.get('q', '').strip()
+        if search_query:
+            queryset = self.apply_comprehensive_search(queryset, search_query)
+        
+        # 詳細フィルター
+        date_from = self.request.GET.get('date_from')
+        date_to = self.request.GET.get('date_to')
+        min_entries = self.request.GET.get('min_entries')
+        max_entries = self.request.GET.get('max_entries')
+        has_tags = self.request.GET.get('has_tags')
+        
+        # 日付範囲フィルター
+        if date_from:
+            try:
+                from datetime import datetime
+                date_from_parsed = datetime.strptime(date_from, '%Y-%m-%d').date()
+                queryset = queryset.filter(created_at__gte=date_from_parsed)
+            except ValueError:
+                pass
+        
+        if date_to:
+            try:
+                from datetime import datetime
+                date_to_parsed = datetime.strptime(date_to, '%Y-%m-%d').date()
+                queryset = queryset.filter(created_at__lte=date_to_parsed)
+            except ValueError:
+                pass
+        
+        # エントリー数フィルター
+        if min_entries:
+            try:
+                min_entries_int = int(min_entries)
+                queryset = queryset.filter(entry_count__gte=min_entries_int)
+            except ValueError:
+                pass
+        
+        if max_entries:
+            try:
+                max_entries_int = int(max_entries)
+                queryset = queryset.filter(entry_count__lte=max_entries_int)
+            except ValueError:
+                pass
+        
+        # タグ有無フィルター
+        if has_tags == 'true':
+            queryset = queryset.filter(tags__isnull=False).distinct()
+        elif has_tags == 'false':
+            queryset = queryset.filter(tags__isnull=True)
+        
+        return queryset.select_related().prefetch_related('tags').distinct()
+    
+    def apply_comprehensive_search(self, queryset, search_query):
+        """包括的な検索を適用"""
+        # 複数の検索語をサポート
+        search_terms = [term.strip() for term in search_query.split() if term.strip()]
+        
+        if not search_terms:
+            return queryset
+        
+        # 検索フィールドの定義
+        search_fields = [
+            'title',
+            'subtitle',
+            'description', 
+            'investment_strategy',
+            'tags__name',
+            'tags__description',
+            'entries__title',
+            'entries__company_name',
+            'entries__stock_code',
+        ]
+        
+        # AND検索の実装
+        for term in search_terms:
+            term_query = Q()
+            for field in search_fields:
+                term_query |= Q(**{f"{field}__icontains": term})
+            queryset = queryset.filter(term_query)
+        
+        return queryset.distinct()
+    
+    def get_context_data(self, **kwargs):
+        """検索結果の詳細コンテキスト"""
+        context = super().get_context_data(**kwargs)
+        
+        search_query = self.request.GET.get('q', '')
+        context['search_query'] = search_query
+        
+        # 検索統計
+        if search_query:
+            context['search_stats'] = self.get_detailed_search_stats(search_query)
+        
+        # フィルター情報
+        context['filters'] = {
+            'date_from': self.request.GET.get('date_from', ''),
+            'date_to': self.request.GET.get('date_to', ''),
+            'min_entries': self.request.GET.get('min_entries', ''),
+            'max_entries': self.request.GET.get('max_entries', ''),
+            'has_tags': self.request.GET.get('has_tags', ''),
+        }
+        
+        # 関連タグ
+        context['related_tags'] = self.get_search_related_tags(search_query)
+        
+        return context
+    
+    def get_detailed_search_stats(self, search_query):
+        """詳細な検索統計を取得"""
+        try:
+            # ノートブック内での一致分析
+            notebooks = self.get_queryset()
+            
+            title_matches = notebooks.filter(title__icontains=search_query).count()
+            content_matches = notebooks.filter(
+                Q(description__icontains=search_query) |
+                Q(investment_strategy__icontains=search_query)
+            ).count()
+            tag_matches = notebooks.filter(tags__name__icontains=search_query).distinct().count()
+            entry_matches = notebooks.filter(
+                Q(entries__title__icontains=search_query) |
+                Q(entries__company_name__icontains=search_query) |
+                Q(entries__stock_code__icontains=search_query)
+            ).distinct().count()
+            
+            return {
+                'total_notebooks': notebooks.count(),
+                'title_matches': title_matches,
+                'content_matches': content_matches,
+                'tag_matches': tag_matches,
+                'entry_matches': entry_matches,
+                'search_query': search_query
+            }
+        except Exception as e:
+            return {'total_notebooks': 0, 'search_query': search_query}
+    
+    def get_search_related_tags(self, search_query):
+        """検索に関連するタグを取得"""
+        try:
+            if not search_query:
+                return Tag.objects.none()
+            
+            # 検索結果のノートブックに関連するタグ
+            notebook_ids = self.get_queryset().values_list('id', flat=True)
+            related_tags = Tag.objects.filter(
+                notebook__in=notebook_ids,
+                is_active=True
+            ).annotate(
+                notebook_count=Count('notebook', distinct=True)
+            ).order_by('-notebook_count', '-usage_count')[:10]
+            
+            return related_tags
+        except Exception:
+            return Tag.objects.none()
+
+
+@login_required
+def search_suggestions_ajax(request):
+    """検索サジェストをAjaxで取得"""
+    query = request.GET.get('q', '').strip()
+    limit = int(request.GET.get('limit', 5))
+    
+    try:
+        suggestions = []
+        
+        if len(query) >= 2:  # 2文字以上で検索
+            # ノートタイトルからサジェスト
+            notebook_titles = Notebook.objects.filter(
+                user=request.user,
+                title__icontains=query
+            ).values_list('title', flat=True)[:limit]
+            
+            for title in notebook_titles:
+                suggestions.append({
+                    'type': 'notebook',
+                    'text': title,
+                    'icon': '📓',
+                    'url': f"{reverse('notes:list')}?q={title}"
+                })
+            
+            # タグからサジェスト
+            if len(suggestions) < limit:
+                remaining = limit - len(suggestions)
+                tag_names = Tag.objects.filter(
+                    name__icontains=query,
+                    notebook__user=request.user
+                ).distinct().values_list('name', flat=True)[:remaining]
+                
+                for tag_name in tag_names:
+                    suggestions.append({
+                        'type': 'tag',
+                        'text': tag_name,
+                        'icon': '🏷️',
+                        'url': f"{reverse('notes:list')}?q={tag_name}"
+                    })
+            
+            # 銘柄からサジェスト
+            if len(suggestions) < limit:
+                remaining = limit - len(suggestions)
+                companies = Entry.objects.filter(
+                    notebook__user=request.user,
+                    company_name__icontains=query
+                ).values_list('company_name', flat=True).distinct()[:remaining]
+                
+                for company in companies:
+                    suggestions.append({
+                        'type': 'company',
+                        'text': company,
+                        'icon': '🏢',
+                        'url': f"{reverse('notes:list')}?q={company}"
+                    })
+        
+        return JsonResponse({
+            'success': True,
+            'suggestions': suggestions,
+            'query': query
+        })
+        
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"検索サジェストエラー: {e}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': '検索サジェストの取得に失敗しました'
+        }, status=500)
 
 class NotebookDetailView(UserOwnerMixin, DetailView):
     """ノート詳細ビュー（テーマ単位）"""
@@ -266,7 +624,7 @@ class NotebookDetailView(UserOwnerMixin, DetailView):
         }
         
         return context
-
+    
 
 class NotebookCreateView(LoginRequiredMixin, CreateView):
     """ノート作成ビュー（シンプル版）"""
@@ -942,15 +1300,9 @@ def notebook_search_ajax(request):
         # 基本クエリセット
         queryset = Notebook.objects.filter(user=request.user)
         
-        # 検索クエリの適用
+        # 拡張検索の適用
         if query:
-            queryset = queryset.filter(
-                Q(title__icontains=query) |
-                Q(subtitle__icontains=query) |
-                Q(description__icontains=query) |
-                Q(investment_strategy__icontains=query) |
-                Q(tags__name__icontains=query)
-            ).distinct()
+            queryset = apply_enhanced_search_ajax(queryset, query)
         
         # フィルターの適用
         if filters['notebook_type']:
@@ -974,6 +1326,9 @@ def notebook_search_ajax(request):
         # 結果をシリアライズ
         results = []
         for notebook in queryset:
+            # 検索語のハイライト情報も含める
+            highlight_info = get_highlight_info(notebook, query) if query else {}
+            
             results.append({
                 'id': str(notebook.pk),
                 'title': notebook.title,
@@ -987,14 +1342,16 @@ def notebook_search_ajax(request):
                 'is_favorite': notebook.is_favorite,
                 'updated_at': notebook.updated_at.isoformat(),
                 'tags': [{'id': tag.pk, 'name': tag.name} for tag in notebook.tags.all()],
-                'url': reverse('notes:detail', kwargs={'pk': notebook.pk})
+                'url': reverse('notes:detail', kwargs={'pk': notebook.pk}),
+                'highlight': highlight_info
             })
         
         return JsonResponse({
             'success': True,
             'results': results,
             'count': len(results),
-            'query': query
+            'query': query,
+            'stats': get_search_stats_ajax(request.user, query) if query else {}
         })
         
     except Exception as e:
@@ -1005,6 +1362,91 @@ def notebook_search_ajax(request):
             'success': False,
             'error': '検索処理中にエラーが発生しました'
         }, status=500)
+
+
+def apply_enhanced_search_ajax(queryset, search_query):
+    """Ajax検索用の拡張検索適用"""
+    search_fields = [
+        'title',
+        'subtitle',
+        'description', 
+        'investment_strategy',
+        'tags__name',
+        'tags__description',
+        'entries__title',
+        'entries__company_name',
+        'entries__stock_code',
+    ]
+    
+    # 検索語を分割して AND 検索
+    search_terms = [term.strip() for term in search_query.split() if term.strip()]
+    q_objects = Q()
+    
+    for term in search_terms:
+        term_query = Q()
+        for field in search_fields:
+            term_query |= Q(**{f"{field}__icontains": term})
+        q_objects &= term_query
+    
+    return queryset.filter(q_objects).distinct()
+
+
+def get_highlight_info(notebook, search_query):
+    """検索語のハイライト情報を取得"""
+    highlight_info = {}
+    
+    try:
+        search_terms = [term.strip().lower() for term in search_query.split() if term.strip()]
+        
+        # タイトルのハイライト
+        title_lower = notebook.title.lower()
+        if any(term in title_lower for term in search_terms):
+            highlight_info['title'] = True
+        
+        # タグのハイライト
+        tag_names = [tag.name.lower() for tag in notebook.tags.all()]
+        for tag_name in tag_names:
+            if any(term in tag_name for term in search_terms):
+                highlight_info['tags'] = True
+                break
+        
+        # 投資戦略のハイライト
+        if notebook.investment_strategy:
+            strategy_lower = notebook.investment_strategy.lower()
+            if any(term in strategy_lower for term in search_terms):
+                highlight_info['strategy'] = True
+        
+        return highlight_info
+    except Exception:
+        return {}
+
+
+def get_search_stats_ajax(user, search_query):
+    """Ajax検索用の統計情報取得"""
+    try:
+        # ノートマッチ数
+        notebook_matches = Notebook.objects.filter(
+            user=user
+        ).filter(
+            Q(title__icontains=search_query) |
+            Q(description__icontains=search_query) |
+            Q(investment_strategy__icontains=search_query)
+        ).count()
+        
+        # タグマッチ数
+        tag_matches = Tag.objects.filter(
+            Q(name__icontains=search_query),
+            notebook__user=user
+        ).distinct().count()
+        
+        return {
+            'notebook_matches': notebook_matches,
+            'tag_matches': tag_matches,
+            'total_matches': notebook_matches + tag_matches
+        }
+    except Exception:
+        return {'notebook_matches': 0, 'tag_matches': 0, 'total_matches': 0}
+
 
 
 @login_required

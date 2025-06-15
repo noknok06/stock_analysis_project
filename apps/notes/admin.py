@@ -38,7 +38,7 @@ class NotebookAdmin(admin.ModelAdmin):
             'fields': ('target_price', 'sell_timing', 'investment_reason')
         }),
         ('詳細', {
-            'fields': ('key_points', 'risk_factors', 'tags'),
+            'fields': ('key_criteria', 'risk_factors', 'tags'),
             'classes': ('collapse',)
         }),
         ('メタデータ', {

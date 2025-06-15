@@ -2,6 +2,100 @@
 
 {% block title %}ダッシュボード - 株式分析記録アプリ{% endblock %}
 
+{% block extra_css %}
+<style>
+    /* トレンドタグのクリック可能スタイル */
+    .dashboard-tag-clickable {
+        transition: all 0.2s ease-in-out;
+        cursor: pointer;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .dashboard-tag-clickable::before {
+        content: '';
+        position: absolute;
+        top: 0;
+        left: -100%;
+        width: 100%;
+        height: 100%;
+        background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+        transition: left 0.3s;
+    }
+
+    .dashboard-tag-clickable:hover::before {
+        left: 100%;
+    }
+
+    .dashboard-tag-clickable:hover {
+        background-color: rgba(75, 85, 99, 0.7);
+        border-color: #3b82f6;
+        box-shadow: 0 2px 4px rgba(59, 130, 246, 0.2);
+        transform: translateY(-1px) scale(1.02);
+    }
+
+    .dashboard-tag-clickable:active {
+        transform: scale(0.95);
+    }
+
+    .dashboard-tag-clickable.clicked {
+        background-color: #3b82f6;
+        border-color: #1d4ed8;
+        color: white;
+        transform: scale(0.95);
+    }
+
+    /* 検索インジケーター */
+    .search-indicator {
+        backdrop-filter: blur(8px);
+        animation: slideIn 0.3s ease-out;
+    }
+
+    @keyframes slideIn {
+        from {
+            opacity: 0;
+            transform: translateY(10px);
+        }
+        to {
+            opacity: 1;
+            transform: translateY(0);
+        }
+    }
+
+    @keyframes pulse {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0.8; }
+    }
+
+    /* ローディングアニメーション */
+    .loading::after {
+        content: "";
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+        width: 16px;
+        height: 16px;
+        border: 2px solid #3b82f6;
+        border-top: 2px solid transparent;
+        border-radius: 50%;
+        animation: spin 1s linear infinite;
+    }
+
+    @keyframes spin {
+        to { transform: translate(-50%, -50%) rotate(360deg); }
+    }
+
+    /* レスポンシブ対応 */
+    @media (max-width: 768px) {
+        .dashboard-tag-clickable {
+            min-height: 32px;
+            padding: 0.25rem 0.5rem;
+        }
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <!-- Inline Search Bar -->
 <div class="mb-8">
@@ -75,26 +169,59 @@
         </div>
     </section>
 
-    <!-- Trending Tags -->
+    <!-- Trending Tags with Click Functionality -->
     <section class="bg-gray-800 border border-gray-700 rounded-lg">
         <header class="p-6 border-b border-gray-700">
-            <h2 class="text-white font-semibold flex items-center gap-2">
-                <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a2 2 0 012-2z"></path>
-                </svg>
-                トレンドタグ
-            </h2>
+            <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0">
+                <h2 class="text-white font-semibold flex items-center gap-2">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 7h.01M7 3h5c.512 0 1.024.195 1.414.586l7 7a2 2 0 010 2.828l-7 7a2 2 0 01-2.828 0l-7-7A1.99 1.99 0 013 12V7a2 2 0 012-2z"></path>
+                    </svg>
+                    <span class="hidden sm:inline">トレンドタグ</span>
+                    <span class="sm:hidden">トレンド</span>
+                </h2>
+                
+                <!-- ノート一覧へのリンク -->
+                <a href="{% url 'notes:list' %}" 
+                   class="text-blue-400 hover:text-blue-300 text-sm flex items-center">
+                    <span class="hidden sm:inline">すべて見る</span>
+                    <span class="sm:hidden">一覧</span>
+                    <svg class="h-4 w-4 ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
+                    </svg>
+                </a>
+            </div>
         </header>
         
         <div class="p-6">
-            <div class="flex flex-wrap gap-2">
+            <div class="flex flex-wrap gap-2" id="dashboard-trending-tags">
                 {% for tag in trending_tags %}
-                    <span class="px-3 py-1 text-sm rounded-full border border-gray-600 text-gray-300 hover:bg-gray-700 cursor-pointer transition-colors">
-                        {{ tag.name }} ({{ tag.usage_count }})
+                    <span class="dashboard-tag-clickable px-3 py-1 text-sm rounded-full border border-gray-600 text-gray-300 hover:bg-gray-700 cursor-pointer transition-colors {{ tag.get_color_class }}"
+                          data-tag="{{ tag.name }}"
+                          data-category="{{ tag.category }}"
+                          data-usage="{{ tag.usage_count }}"
+                          title="クリックして「{{ tag.name }}」を検索 ({{ tag.usage_count }}回使用)">
+                        <span class="hidden sm:inline">{{ tag.name }} ({{ tag.usage_count }})</span>
+                        <span class="sm:hidden">
+                            {% if tag.name|length > 8 %}
+                                {{ tag.name|truncatechars:6 }} ({{ tag.usage_count }})
+                            {% else %}
+                                {{ tag.name }} ({{ tag.usage_count }})
+                            {% endif %}
+                        </span>
                     </span>
                 {% empty %}
-                    <p class="text-gray-400 text-center py-4">タグがありません</p>
+                    <span class="text-gray-400 text-center py-4">タグがありません</span>
                 {% endfor %}
+            </div>
+            
+            <!-- 検索実行中インジケーター -->
+            <div id="dashboard-search-indicator" class="hidden mt-3 flex items-center text-blue-400 text-sm search-indicator">
+                <svg class="animate-spin -ml-1 mr-2 h-4 w-4" fill="none" viewBox="0 0 24 24">
+                    <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                    <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                </svg>
+                検索中...
             </div>
         </div>
     </section>
@@ -110,4 +237,232 @@
         新規ノート作成
     </a>
 </div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// ========================================
+// グローバル変数
+// ========================================
+let isSearching = false;
+
+// ========================================
+// 初期化
+// ========================================
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('ダッシュボードが初期化されました');
+    
+    // トレンドタグのクリック機能を設定
+    setupDashboardTrendingTags();
+    
+    // グローバル検索の設定
+    setupGlobalSearch();
+    
+    // タッチデバイス対応
+    if (isTouchDevice()) {
+        document.body.classList.add('touch-device');
+    }
+    
+    console.log('ダッシュボード初期化完了');
+});
+
+// ========================================
+// トレンドタグクリック機能
+// ========================================
+
+function setupDashboardTrendingTags() {
+    const trendingTags = document.querySelectorAll('.dashboard-tag-clickable');
+    console.log(`${trendingTags.length}個のトレンドタグを設定中`);
+    
+    trendingTags.forEach(tag => {
+        tag.addEventListener('click', function() {
+            const tagName = this.getAttribute('data-tag');
+            console.log('ダッシュボードタグクリック:', tagName);
+            
+            // 既に検索中の場合は無視
+            if (isSearching) return;
+            
+            searchTagFromDashboard(tagName, this);
+        });
+        
+        // タッチデバイス用のフィードバック
+        if (isTouchDevice()) {
+            tag.addEventListener('touchstart', function() {
+                this.style.transform = 'scale(0.95)';
+            });
+            
+            tag.addEventListener('touchend', function() {
+                setTimeout(() => {
+                    this.style.transform = 'scale(1)';
+                }, 100);
+            });
+        }
+    });
+}
+
+function searchTagFromDashboard(tagName, tagElement) {
+    isSearching = true;
+    
+    // クリック効果の表示
+    tagElement.classList.add('clicked');
+    
+    // 検索インジケーター表示
+    showDashboardSearchIndicator();
+    
+    // 短時間後にノート一覧ページの検索に遷移
+    setTimeout(() => {
+        const encodedTag = encodeURIComponent(tagName);
+        const notesUrl = new URL('/notes/', window.location.origin);
+        notesUrl.searchParams.set('q', tagName);
+        
+        console.log('ノート一覧ページに遷移:', notesUrl.toString());
+        window.location.href = notesUrl.toString();
+    }, 300);
+}
+
+// ========================================
+// グローバル検索機能
+// ========================================
+
+function setupGlobalSearch() {
+    const globalSearchInput = document.getElementById('global-search');
+    
+    if (globalSearchInput) {
+        globalSearchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                
+                const query = this.value.trim();
+                if (query) {
+                    executeGlobalSearch(query);
+                }
+            }
+        });
+        
+        // 検索フォーカス時のアニメーション
+        globalSearchInput.addEventListener('focus', function() {
+            this.parentElement.classList.add('ring-2', 'ring-blue-500/20');
+        });
+        
+        globalSearchInput.addEventListener('blur', function() {
+            this.parentElement.classList.remove('ring-2', 'ring-blue-500/20');
+        });
+    }
+}
+
+function executeGlobalSearch(query) {
+    console.log('グローバル検索実行:', query);
+    
+    // ローディング状態を表示
+    const globalSearchInput = document.getElementById('global-search');
+    if (globalSearchInput) {
+        globalSearchInput.style.pointerEvents = 'none';
+        globalSearchInput.style.opacity = '0.7';
+    }
+    
+    // ノート一覧ページに遷移
+    const notesUrl = new URL('/notes/', window.location.origin);
+    notesUrl.searchParams.set('q', query);
+    
+    setTimeout(() => {
+        window.location.href = notesUrl.toString();
+    }, 200);
+}
+
+// ========================================
+// UI状態管理
+// ========================================
+
+function showDashboardSearchIndicator() {
+    const indicator = document.getElementById('dashboard-search-indicator');
+    if (indicator) {
+        indicator.classList.remove('hidden');
+    }
+}
+
+function hideDashboardSearchIndicator() {
+    const indicator = document.getElementById('dashboard-search-indicator');
+    if (indicator) {
+        indicator.classList.add('hidden');
+    }
+    isSearching = false;
+}
+
+function showNotification(message, type = 'info') {
+    // 既存の通知を削除
+    const existingNotifications = document.querySelectorAll('.notification');
+    existingNotifications.forEach(notification => notification.remove());
+    
+    const notification = document.createElement('div');
+    notification.className = `notification fixed top-4 right-4 z-50 p-4 rounded-lg text-white max-w-sm transform transition-all duration-300 translate-x-full opacity-0`;
+    
+    const typeClasses = {
+        'error': 'bg-red-600',
+        'warning': 'bg-yellow-600',
+        'success': 'bg-green-600',
+        'info': 'bg-blue-600'
+    };
+    
+    notification.classList.add(typeClasses[type] || typeClasses.info);
+    notification.innerHTML = `
+        <div class="flex items-start justify-between">
+            <p class="text-sm font-medium">${escapeHtml(message)}</p>
+            <button onclick="this.parentElement.parentElement.remove()" 
+                    class="ml-3 text-white/80 hover:text-white">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    // アニメーション
+    setTimeout(() => {
+        notification.classList.remove('translate-x-full', 'opacity-0');
+    }, 100);
+    
+    // 自動削除
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.remove();
+                }
+            }, 300);
+        }
+    }, 4000);
+}
+
+// ========================================
+// ユーティリティ関数
+// ========================================
+
+function isTouchDevice() {
+    return 'ontouchstart' in window || navigator.maxTouchPoints > 0;
+}
+
+function escapeHtml(text) {
+    const map = {
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#039;'
+    };
+    return text.replace(/[&<>"']/g, m => map[m]);
+}
+
+// ページロード完了時の処理
+window.addEventListener('load', function() {
+    hideDashboardSearchIndicator();
+});
+
+// ページから離れる時の処理
+window.addEventListener('beforeunload', function() {
+    isSearching = false;
+});
+</script>
 {% endblock %}

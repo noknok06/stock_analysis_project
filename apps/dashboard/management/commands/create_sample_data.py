@@ -57,7 +57,7 @@ class Command(BaseCommand):
                 'investment_reason': '安定した配当政策と自動車業界でのリーダーシップ。電動化への取り組みも評価。',
                 'target_price': '3,200円',
                 'sell_timing': '配当利回り3%を下回った時点',
-                'key_points': ['継続的な配当増配', '電動化技術への投資', 'グローバル市場での競争力'],
+                'key_criteria': ['継続的な配当増配', '電動化技術への投資', 'グローバル市場での競争力'],
                 'risk_factors': ['為替変動リスク', '電動化競争の激化', '半導体不足の影響'],
                 'status': 'ACTIVE'
             },
@@ -69,7 +69,7 @@ class Command(BaseCommand):
                 'investment_reason': 'エンターテインメント事業の安定性と半導体事業の成長性を評価。',
                 'target_price': '15,000円',
                 'sell_timing': 'PER 20倍を超えた時点',
-                'key_points': ['PlayStation事業の安定性', '半導体事業の成長', '音楽・映画事業の収益性'],
+                'key_criteria': ['PlayStation事業の安定性', '半導体事業の成長', '音楽・映画事業の収益性'],
                 'risk_factors': ['ゲーム市場の競争激化', '半導体市場の変動', '為替リスク'],
                 'status': 'MONITORING'
             }

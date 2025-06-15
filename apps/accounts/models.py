@@ -6,6 +6,7 @@ from django.db import models
 from django.contrib.auth.models import User
 from django.core.validators import MinLengthValidator
 from apps.common.models import BaseModel
+from apps.notes.models import Notebook, Entry
 
 class UserProfile(BaseModel):
     """ユーザープロフィール拡張"""
@@ -95,9 +96,7 @@ class UserProfile(BaseModel):
         return self.display_name or self.user.username
     
     def update_statistics(self):
-        """統計情報を更新"""
-        from apps.notes.models import Notebook, Entry
-        
+        """統計情報を更新"""        
         self.total_notebooks = Notebook.objects.filter(user=self.user).count()
         self.total_entries = Entry.objects.filter(notebook__user=self.user).count()
         self.save(update_fields=['total_notebooks', 'total_entries'])

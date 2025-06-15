@@ -6,7 +6,8 @@ from django.core.management.base import BaseCommand
 from django.contrib.auth.models import User
 from django.db import transaction
 from apps.accounts.models import UserProfile, UserSettings
-
+from apps.notes.models import Notebook, Entry
+from apps.tags.models import Tag
 
 class Command(BaseCommand):
     help = 'デモユーザーとテストアカウントを作成'
@@ -207,9 +208,6 @@ class Command(BaseCommand):
     def create_sample_data(self, user):
         """サンプルデータの作成（オプション）"""
         try:
-            from apps.notes.models import Notebook, Entry
-            from apps.tags.models import Tag
-            
             # サンプルノートブック作成
             notebook = Notebook.objects.create(
                 user=user,
@@ -220,7 +218,7 @@ class Command(BaseCommand):
                 investment_reason='安定した配当政策と自動車業界でのリーダーシップを評価',
                 target_price='3,200円',
                 sell_timing='配当利回り3%を下回った時点',
-                key_points=['継続的な配当増配', '電動化技術への投資', 'グローバル市場での競争力'],
+                key_criteria=['継続的な配当増配', '電動化技術への投資', 'グローバル市場での競争力'],
                 risk_factors=['為替変動リスク', '電動化競争の激化', '半導体不足の影響'],
                 status='ACTIVE'
             )

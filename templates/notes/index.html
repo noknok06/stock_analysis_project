@@ -1,13 +1,43 @@
 <!-- ========================================
-templates/notes/index.html - 完全版（トレンドタグ機能実装）
+templates/notes/index.html - 検索ハイライト対応版
 ======================================== -->
 
 {% extends 'base.html' %}
+{% load search_filters %}
 
 {% block title %}ノート一覧 - 株式分析記録アプリ{% endblock %}
 
 {% block extra_css %}
 <style>
+    /* 検索ハイライト機能 */
+    .search-highlight {
+        background: linear-gradient(135deg, #fef08a, #facc15);
+        color: #1f2937;
+        padding: 0.125rem 0.25rem;
+        border-radius: 0.25rem;
+        font-weight: 600;
+        box-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+    }
+
+    .search-match-indicator {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.25rem;
+        padding: 0.125rem 0.375rem;
+        background: rgba(59, 130, 246, 0.1);
+        border: 1px solid rgba(59, 130, 246, 0.3);
+        border-radius: 0.75rem;
+        font-size: 0.75rem;
+        color: #3b82f6;
+        margin-left: 0.5rem;
+    }
+
+    .search-stats {
+        background: linear-gradient(135deg, #1e40af, #1d4ed8);
+        border: 1px solid #3b82f6;
+        animation: slideIn 0.3s ease-out;
+    }
+
     /* アニメーション定義 */
     @keyframes slideIn {
         from {
@@ -40,6 +70,11 @@ templates/notes/index.html - 完全版（トレンドタグ機能実装）
     .notebook-card:hover {
         transform: translateY(-2px);
         box-shadow: 0 8px 25px rgba(0, 0, 0, 0.15);
+    }
+
+    .notebook-card.search-result {
+        border-color: #3b82f6;
+        box-shadow: 0 0 0 1px rgba(59, 130, 246, 0.2);
     }
 
     /* タグ関連のスタイル */
@@ -89,6 +124,13 @@ templates/notes/index.html - 完全版（トレンドタグ機能実装）
         animation: pulse 0.5s ease-in-out;
     }
 
+    .tag-highlighted {
+        background-color: #fbbf24 !important;
+        color: #1f2937 !important;
+        border-color: #f59e0b !important;
+        font-weight: 600;
+    }
+
     /* カテゴリー別タグの色分け */
     .tag-stock { background: linear-gradient(135deg, #dc2626, #b91c1c); }
     .tag-sector { background: linear-gradient(135deg, #059669, #047857); }
@@ -113,6 +155,15 @@ templates/notes/index.html - 完全版（トレンドタグ機能実装）
 
         .notebook-card {
             margin-bottom: 0.75rem;
+        }
+
+        .search-match-indicator {
+            display: none; /* モバイルでは非表示 */
+        }
+
+        .search-highlight {
+            padding: 0.1rem 0.2rem;
+            font-size: 0.875rem;
         }
 
         /* タップ領域の確保 */
@@ -166,11 +217,34 @@ templates/notes/index.html - 完全版（トレンドタグ機能実装）
 
 {% block content %}
 <div class="max-w-7xl mx-auto px-2 sm:px-4">
-    <!-- Header -->
+    <!-- Header with Search Stats -->
     <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 sm:gap-0 mb-4 md:mb-6">
         <div>
-            <h1 class="text-xl md:text-2xl font-semibold text-white">ノート一覧</h1>
-            <p class="text-sm text-gray-400 mt-1">{{ notebooks.count }}件のノートが見つかりました</p>
+            <h1 class="text-xl md:text-2xl font-semibold text-white">
+                ノート一覧
+                {% if search_query %}
+                    <span class="text-base md:text-lg text-blue-400 font-normal">「{{ search_query }}」の検索結果</span>
+                {% endif %}
+            </h1>
+            <div class="flex items-center gap-4 mt-1">
+                <p class="text-sm text-gray-400">{{ notebooks.count }}件のノートが見つかりました</p>
+                
+                <!-- 検索統計情報 -->
+                {% if search_stats %}
+                    <div class="flex items-center gap-2 text-xs">
+                        {% if search_stats.tag_matches > 0 %}
+                            <span class="px-2 py-1 bg-yellow-900/30 text-yellow-300 rounded-full">
+                                タグ: {{ search_stats.tag_matches }}件
+                            </span>
+                        {% endif %}
+                        {% if search_stats.entry_matches > 0 %}
+                            <span class="px-2 py-1 bg-green-900/30 text-green-300 rounded-full">
+                                エントリー: {{ search_stats.entry_matches }}件
+                            </span>
+                        {% endif %}
+                    </div>
+                {% endif %}
+            </div>
         </div>
         <a href="{% url 'notes:create' %}" 
            title="新規ノート作成"
@@ -193,13 +267,13 @@ templates/notes/index.html - 完全版（トレンドタグ機能実装）
                         <svg class="h-4 w-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path>
                         </svg>
-                        検索
+                        検索（ノート名、タグ、銘柄、内容）
                     </label>
                     <input type="text" 
                            name="q" 
                            id="search-input"
                            value="{{ search_query }}"
-                           placeholder="ノート名、戦略、内容で検索..."
+                           placeholder="例: #高配当、7203、トヨタ、決算分析..."
                            class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 text-sm md:text-base focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
                 
@@ -276,6 +350,29 @@ templates/notes/index.html - 完全版（トレンドタグ機能実装）
         </form>
     </div>
 
+    <!-- Search Results Info -->
+    {% if search_query %}
+        <div class="search-stats rounded-lg p-4 mb-4 md:mb-6">
+            <div class="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 sm:gap-0">
+                <div class="flex items-center gap-2">
+                    <svg class="h-5 w-5 text-blue-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                    <span class="text-white font-medium">
+                        「<span class="search-highlight">{{ search_query }}</span>」の検索が完了しました
+                    </span>
+                </div>
+                <button onclick="clearSearch()" 
+                        class="text-blue-300 hover:text-white text-sm flex items-center">
+                    <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                    検索をクリア
+                </button>
+            </div>
+        </div>
+    {% endif %}
+
     <!-- Trending Tags Section -->
     <section class="bg-gray-800 border border-gray-700 rounded-lg mb-4 md:mb-6">
         <header class="p-4 md:p-6 border-b border-gray-700">
@@ -284,9 +381,15 @@ templates/notes/index.html - 完全版（トレンドタグ機能実装）
                     <svg class="h-4 w-4 md:h-5 md:w-5 text-yellow-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path>
                     </svg>
-                    <span class="hidden sm:inline">トレンドタグ</span>
-                    <span class="sm:hidden">トレンド</span>
-                    <span class="text-xs text-gray-400 font-normal ml-2">(最近よく使われているタグ)</span>
+                    <span class="hidden sm:inline">
+                        {% if search_query %}関連タグ{% else %}トレンドタグ{% endif %}
+                    </span>
+                    <span class="sm:hidden">
+                        {% if search_query %}関連{% else %}トレンド{% endif %}
+                    </span>
+                    <span class="text-xs text-gray-400 font-normal ml-2">
+                        {% if search_query %}(検索結果に関連){% else %}(最近よく使われているタグ){% endif %}
+                    </span>
                 </h2>
                 
                 <!-- タグカテゴリフィルター -->
@@ -319,7 +422,7 @@ templates/notes/index.html - 完全版（トレンドタグ機能実装）
             <!-- トレンドタグ表示エリア -->
             <div class="flex flex-wrap gap-1.5 md:gap-2" id="trending-tags-container">
                 {% for tag in trending_tags %}
-                    <span class="tag-clickable px-2 md:px-3 py-1 text-xs md:text-sm rounded-full border border-gray-600 text-gray-300 hover:bg-gray-700 hover:border-blue-500 cursor-pointer transition-all duration-200 transform hover:scale-105 {{ tag.get_color_class }}"
+                    <span class="tag-clickable px-2 md:px-3 py-1 text-xs md:text-sm rounded-full border border-gray-600 text-gray-300 hover:bg-gray-700 hover:border-blue-500 cursor-pointer transition-all duration-200 transform hover:scale-105 {{ tag.get_color_class }} {% if search_query and search_query in tag.name %}tag-highlighted{% endif %}"
                           data-tag="{{ tag.name }}"
                           data-category="{{ tag.category }}"
                           data-usage="{{ tag.usage_count }}"
@@ -334,7 +437,9 @@ templates/notes/index.html - 完全版（トレンドタグ機能実装）
                         </span>
                     </span>
                 {% empty %}
-                    <span class="text-gray-400 text-sm">まだタグがありません</span>
+                    <span class="text-gray-400 text-sm">
+                        {% if search_query %}関連するタグがありません{% else %}まだタグがありません{% endif %}
+                    </span>
                 {% endfor %}
             </div>
             
@@ -358,75 +463,50 @@ templates/notes/index.html - 完全版（トレンドタグ機能実装）
         </div>
     </section>
 
-    <!-- Quick Stats -->
-    {% if favorite_notebooks or recent_notebooks %}
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 md:gap-6 mb-4 md:mb-6">
-            <!-- お気に入りノート -->
-            {% if favorite_notebooks %}
-                <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 md:p-6">
-                    <h3 class="text-white font-semibold mb-4 flex items-center">
-                        <svg class="h-4 w-4 md:h-5 md:w-5 mr-2 text-yellow-400" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
-                        </svg>
-                        お気に入りノート
-                    </h3>
-                    <div class="space-y-2">
-                        {% for notebook in favorite_notebooks %}
-                            <a href="{% url 'notes:detail' notebook.pk %}" 
-                               class="block p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
-                                <div class="flex justify-between items-center">
-                                    <h4 class="text-white text-sm font-medium truncate">{{ notebook.title }}</h4>
-                                    <span class="text-xs text-gray-400">{{ notebook.entry_count }}件</span>
-                                </div>
-                            </a>
-                        {% endfor %}
-                    </div>
-                </div>
-            {% endif %}
-            
-            <!-- 最近更新されたノート -->
-            <!-- {% if recent_notebooks %}
-                <div class="bg-gray-800 border border-gray-700 rounded-lg p-4 md:p-6">
-                    <h3 class="text-white font-semibold mb-4 flex items-center">
-                        <svg class="h-4 w-4 md:h-5 md:w-5 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                        </svg>
-                        最近の更新
-                    </h3>
-                    <div class="space-y-2">
-                        {% for notebook in recent_notebooks %}
-                            <a href="{% url 'notes:detail' notebook.pk %}" 
-                               class="block p-3 bg-gray-700 hover:bg-gray-600 rounded-lg transition-colors">
-                                <div class="flex justify-between items-center">
-                                    <h4 class="text-white text-sm font-medium truncate">{{ notebook.title }}</h4>
-                                    <span class="text-xs text-gray-400">{{ notebook.updated_at|date:"m/d" }}</span>
-                                </div>
-                            </a>
-                        {% endfor %}
-                    </div>
-                </div>
-            {% endif %} -->
-        </div>
-    {% endif %}
-
     <!-- Notebooks Grid -->
     <div class="grid gap-3 md:gap-4" id="notebooks-container">
         {% for notebook in notebooks %}
-            <div class="notebook-card bg-gray-800 border border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer rounded-lg"
+            <div class="notebook-card bg-gray-800 border border-gray-700 hover:bg-gray-750 transition-colors cursor-pointer rounded-lg {% if search_query %}search-result{% endif %}"
                  onclick="location.href='{% url 'notes:detail' notebook.pk %}'">
                 <div class="p-4 md:p-6">
                     <div class="flex flex-col sm:flex-row justify-between items-start gap-3 sm:gap-0 mb-3 md:mb-4">
                         <div class="flex-1 min-w-0">
                             <div class="flex items-center gap-2 mb-1">
-                                <h3 class="text-white font-semibold text-base md:text-lg truncate">{{ notebook.title }}</h3>
+                                <h3 class="text-white font-semibold text-base md:text-lg truncate">
+                                    {% if search_query %}
+                                        {{ notebook.title|highlight_search:search_query }}
+                                    {% else %}
+                                        {{ notebook.title }}
+                                    {% endif %}
+                                </h3>
                                 {% if notebook.is_favorite %}
                                     <svg class="h-4 w-4 text-yellow-400 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
                                         <path d="M11.049 2.927c.3-.921 1.603-.921 1.902 0l1.519 4.674a1 1 0 00.95.69h4.915c.969 0 1.371 1.24.588 1.81l-3.976 2.888a1 1 0 00-.363 1.118l1.518 4.674c.3.922-.755 1.688-1.538 1.118l-3.976-2.888a1 1 0 00-1.176 0l-3.976 2.888c-.783.57-1.838-.197-1.538-1.118l1.518-4.674a1 1 0 00-.363-1.118l-3.976-2.888c-.784-.57-.38-1.81.588-1.81h4.914a1 1 0 00.951-.69l1.519-4.674z"></path>
                                     </svg>
                                 {% endif %}
+                                
+                                <!-- 検索マッチインジケーター -->
+                                {% if search_query %}
+                                    <div class="hidden sm:flex items-center">
+                                        {% if search_query in notebook.title %}
+                                            <span class="search-match-indicator">
+                                                <svg class="h-3 w-3" fill="currentColor" viewBox="0 0 24 24">
+                                                    <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                                </svg>
+                                                タイトル
+                                            </span>
+                                        {% endif %}
+                                    </div>
+                                {% endif %}
                             </div>
                             {% if notebook.subtitle %}
-                                <p class="text-gray-400 text-sm md:text-base truncate">{{ notebook.subtitle }}</p>
+                                <p class="text-gray-400 text-sm md:text-base truncate">
+                                    {% if search_query %}
+                                        {{ notebook.subtitle|highlight_search:search_query }}
+                                    {% else %}
+                                        {{ notebook.subtitle }}
+                                    {% endif %}
+                                </p>
                             {% endif %}
                             <div class="flex flex-wrap gap-1 mt-2">
                                 <span class="px-2 py-1 text-xs bg-gray-600 text-gray-300 rounded">{{ notebook.get_notebook_type_display }}</span>
@@ -454,8 +534,12 @@ templates/notes/index.html - 完全版（トレンドタグ機能実装）
                     {% if notebook.tags.all %}
                         <div class="flex flex-wrap gap-1 mb-3">
                             {% for tag in notebook.tags.all %}
-                                <span class="px-1.5 md:px-2 py-1 text-xs border border-gray-600 text-gray-300 rounded truncate max-w-20 sm:max-w-none">
-                                    {{ tag.name }}
+                                <span class="px-1.5 md:px-2 py-1 text-xs border border-gray-600 text-gray-300 rounded truncate max-w-20 sm:max-w-none {% if search_query and search_query in tag.name %}tag-highlighted{% endif %}">
+                                    {% if search_query %}
+                                        {{ tag.name|highlight_search:search_query }}
+                                    {% else %}
+                                        {{ tag.name }}
+                                    {% endif %}
                                 </span>
                             {% endfor %}
                         </div>
@@ -464,7 +548,13 @@ templates/notes/index.html - 完全版（トレンドタグ機能実装）
                     <!-- Investment Strategy Preview -->
                     {% if notebook.investment_strategy %}
                         <div class="mb-3">
-                            <p class="text-sm text-gray-300 line-clamp-2">{{ notebook.investment_strategy|truncatewords:20 }}</p>
+                            <p class="text-sm text-gray-300 line-clamp-2">
+                                {% if search_query %}
+                                    {{ notebook.investment_strategy|highlight_search:search_query|truncatewords:20 }}
+                                {% else %}
+                                    {{ notebook.investment_strategy|truncatewords:20 }}
+                                {% endif %}
+                            </p>
                         </div>
                     {% endif %}
                     
@@ -547,6 +637,7 @@ templates/notes/index.html - 完全版（トレンドタグ機能実装）
 // ========================================
 let isSearching = false;
 let currentTagCategory = '';
+let searchQuery = '{{ search_query|escapejs }}';
 
 // ========================================
 // 初期化
@@ -563,6 +654,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // URL状態の復元
     restoreStateFromUrl();
     
+    // 検索結果のハイライト処理
+    if (searchQuery) {
+        highlightSearchResults();
+    }
+    
     // タッチデバイス対応
     if (isTouchDevice()) {
         document.body.classList.add('touch-device');
@@ -572,12 +668,57 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // ========================================
+// 検索ハイライト機能
+// ========================================
+
+function highlightSearchResults() {
+    console.log('検索結果をハイライト中:', searchQuery);
+    
+    if (!searchQuery) return;
+    
+    // ノートカードのタイトルと説明をハイライト
+    const notebookCards = document.querySelectorAll('.notebook-card');
+    notebookCards.forEach(card => {
+        const title = card.querySelector('h3');
+        const subtitle = card.querySelector('p');
+        const strategy = card.querySelector('.line-clamp-2');
+        
+        if (title) highlightTextInElement(title, searchQuery);
+        if (subtitle) highlightTextInElement(subtitle, searchQuery);
+        if (strategy) highlightTextInElement(strategy, searchQuery);
+    });
+    
+    // タグのハイライト
+    const tags = document.querySelectorAll('.notebook-card span[class*="border-gray-600"]');
+    tags.forEach(tag => {
+        if (tag.textContent.toLowerCase().includes(searchQuery.toLowerCase())) {
+            tag.classList.add('tag-highlighted');
+        }
+    });
+}
+
+function highlightTextInElement(element, searchTerm) {
+    if (!element || !searchTerm) return;
+    
+    const text = element.textContent;
+    const regex = new RegExp(`(${escapeRegex(searchTerm)})`, 'gi');
+    
+    if (regex.test(text)) {
+        const highlightedHTML = text.replace(regex, '<span class="search-highlight">$1</span>');
+        element.innerHTML = highlightedHTML;
+    }
+}
+
+function escapeRegex(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+// ========================================
 // トレンドタグ機能
 // ========================================
 
 function setupTrendingTags() {
     const clickableTags = document.querySelectorAll('.tag-clickable');
-    const searchIndicator = document.getElementById('search-indicator');
     
     clickableTags.forEach(tag => {
         tag.addEventListener('click', function() {
@@ -688,11 +829,21 @@ function updateTrendingTagsDisplay(tags) {
     
     // 新しいタグにイベントリスナーを再設定
     setupTrendingTags();
+    
+    // 検索語がある場合はハイライト
+    if (searchQuery) {
+        highlightMatchingTags();
+    }
 }
 
 function createTagElement(tag) {
     const span = document.createElement('span');
-    span.className = `tag-clickable px-2 md:px-3 py-1 text-xs md:text-sm rounded-full border border-gray-600 text-gray-300 hover:bg-gray-700 hover:border-blue-500 cursor-pointer transition-all duration-200 transform hover:scale-105 ${tag.color_class}`;
+    
+    // 検索語に一致するかチェック
+    const isHighlighted = searchQuery && tag.name.toLowerCase().includes(searchQuery.toLowerCase());
+    const highlightClass = isHighlighted ? 'tag-highlighted' : '';
+    
+    span.className = `tag-clickable px-2 md:px-3 py-1 text-xs md:text-sm rounded-full border border-gray-600 text-gray-300 hover:bg-gray-700 hover:border-blue-500 cursor-pointer transition-all duration-200 transform hover:scale-105 ${tag.color_class} ${highlightClass}`;
     span.setAttribute('data-tag', tag.name);
     span.setAttribute('data-category', tag.category);
     span.setAttribute('data-usage', tag.usage_count);
@@ -710,6 +861,18 @@ function createTagElement(tag) {
     return span;
 }
 
+function highlightMatchingTags() {
+    if (!searchQuery) return;
+    
+    const tags = document.querySelectorAll('.tag-clickable');
+    tags.forEach(tag => {
+        const tagName = tag.getAttribute('data-tag');
+        if (tagName && tagName.toLowerCase().includes(searchQuery.toLowerCase())) {
+            tag.classList.add('tag-highlighted');
+        }
+    });
+}
+
 // ========================================
 // 検索機能
 // ========================================
@@ -719,39 +882,24 @@ function setupSearchForm() {
     const searchInput = document.getElementById('search-input');
     
     if (searchForm) {
-        // リアルタイム検索の実装
-        let searchTimeout;
-        
-        searchInput?.addEventListener('input', function() {
-            clearTimeout(searchTimeout);
-            const query = this.value.trim();
-            
-            // 2文字以上で予測検索を実行
-            if (query.length >= 2) {
-                searchTimeout = setTimeout(() => {
-                    showSearchSuggestions(query);
-                }, 300);
-            } else {
-                hideSearchSuggestions();
+        // フォーム送信時の処理
+        searchForm.addEventListener('submit', function(e) {
+            const query = searchInput.value.trim();
+            if (query) {
+                showSearchIndicator();
             }
         });
         
-        // フォーム送信時の処理
-        searchForm.addEventListener('submit', function(e) {
-            hideSearchSuggestions();
-            showSearchIndicator();
+        // Enterキーでの送信
+        searchInput?.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const query = this.value.trim();
+                if (query) {
+                    showSearchIndicator();
+                }
+            }
         });
     }
-}
-
-function showSearchSuggestions(query) {
-    // 簡単な実装例（実際のプロジェクトではより詳細な実装を）
-    console.log('検索候補を表示:', query);
-}
-
-function hideSearchSuggestions() {
-    // 検索候補を非表示
-    console.log('検索候補を非表示');
 }
 
 function addQuickFilter(key, value) {
@@ -772,6 +920,7 @@ function addQuickFilter(key, value) {
     form.appendChild(hiddenInput);
     
     // フォームを送信
+    showSearchIndicator();
     form.submit();
 }
 
@@ -788,6 +937,10 @@ function clearFilters() {
         // ページをリロード（フィルターなし）
         window.location.href = window.location.pathname;
     }
+}
+
+function clearSearch() {
+    window.location.href = window.location.pathname;
 }
 
 function toggleAdvancedFilters() {
@@ -903,12 +1056,7 @@ function restoreStateFromUrl() {
     
     if (searchQuery) {
         // 検索語がある場合、該当するタグをハイライト
-        const clickableTags = document.querySelectorAll('.tag-clickable');
-        clickableTags.forEach(tag => {
-            if (tag.getAttribute('data-tag') === searchQuery) {
-                tag.classList.add('bg-blue-600', 'border-blue-500', 'text-white');
-            }
-        });
+        highlightMatchingTags();
         
         // 検索インジケーターを一時的に表示
         setTimeout(() => {
