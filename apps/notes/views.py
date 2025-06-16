@@ -37,6 +37,7 @@ class NotebookListView(UserOwnerMixin, ListView):
         """拡張検索とフィルタリングを適用したクエリセット"""
         queryset = super().get_queryset()
         
+        queryset = queryset.order_by('-updated_at')
         # 検索クエリの取得と適用
         search_query = self.get_search_query()
         if search_query:
@@ -74,7 +75,7 @@ class NotebookListView(UserOwnerMixin, ListView):
         return queryset.select_related().prefetch_related(
             'tags',
             Prefetch('sub_notebooks', queryset=SubNotebook.objects.order_by('order'))
-        ).distinct()
+        ).distinct().order_by('-updated_at') 
     
     def get_search_query(self):
         """検索クエリを取得"""
