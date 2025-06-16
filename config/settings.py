@@ -39,6 +39,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',
 ]
 
 THIRD_PARTY_APPS = [
@@ -48,6 +49,14 @@ THIRD_PARTY_APPS = [
 ]
 
 LOCAL_APPS = [
+    # Allauth apps
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    
+    # Third party apps
+    'axes',
+    
     'apps.common',
     'apps.accounts',
     'apps.dashboard',
@@ -63,10 +72,11 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
+    'allauth.account.middleware.AccountMiddleware',  # Allauth middleware
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'axes.middleware.AxesMiddleware',  # Axes middleware
 ]
-
 ROOT_URLCONF = 'config.urls'
 
 TEMPLATES = [
@@ -164,35 +174,81 @@ CORS_ALLOWED_ORIGINS = [
 ]
 
 
-# 認証関連設定（ファイルの最後に追加）
+# Allauth configuration
+SITE_ID = 1
+
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+    'axes.backends.AxesBackend',  # Axes backend
+]
+
+# Allauth settings
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
+
+# Axes settings
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = 1  # Hours
+
+LANGUAGE_CODE = 'ja'
+TIME_ZONE = 'Asia/Tokyo'
+USE_I18N = True
+USE_TZ = True
+
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Authentication settings
 LOGIN_URL = '/accounts/login/'
 LOGIN_REDIRECT_URL = '/'
 LOGOUT_REDIRECT_URL = '/accounts/login/'
+# Allauth configuration
+SITE_ID = 1
 
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+    'axes.backends.AxesBackend',  # Axes backend
+]
 
-# Messages framework settings
-from django.contrib.messages import constants as messages
-MESSAGE_TAGS = {
-    messages.DEBUG: 'debug',
-    messages.INFO: 'info',
-    messages.SUCCESS: 'success',
-    messages.WARNING: 'warning',
-    messages.ERROR: 'error',
-}
+# Allauth settings
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 
-# Custom settings for stock analysis app
-STOCK_ANALYSIS_SETTINGS = {
-    'DEFAULT_ITEMS_PER_PAGE': 12,
-    'MAX_NOTEBOOKS_PER_USER': 100,
-    'MAX_ENTRIES_PER_NOTEBOOK': 1000,
-    'ALLOWED_UPLOAD_EXTENSIONS': ['.json', '.csv', '.txt'],
-    'MAX_UPLOAD_SIZE': 5 * 1024 * 1024,  # 5MB
-}
+# Axes settings
+AXES_FAILURE_LIMIT = 5
+AXES_COOLOFF_TIME = 1  # Hours
 
-# セッション設定
-SESSION_COOKIE_AGE = 1209600  # 2週間
-SESSION_SAVE_EVERY_REQUEST = True
-SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+LANGUAGE_CODE = 'ja'
+TIME_ZONE = 'Asia/Tokyo'
+USE_I18N = True
+USE_TZ = True
 
-# メール設定（開発環境用）
-EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
+STATIC_URL = '/static/'
+STATIC_ROOT = BASE_DIR / 'staticfiles'
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = BASE_DIR / 'media'
+
+DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+# Authentication settings
+LOGIN_URL = '/accounts/login/'
+LOGIN_REDIRECT_URL = '/'
+LOGOUT_REDIRECT_URL = '/accounts/login/'
