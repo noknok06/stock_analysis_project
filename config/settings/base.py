@@ -18,15 +18,11 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     
     # あなたのアプリ
+    'apps.common',
     'apps.accounts',
     'apps.dashboard',
     'apps.notes',
     'apps.tags',
-    # 外部ライブラリ（推測）
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount',
-    'axes',
 ]
 
 MIDDLEWARE = [
@@ -60,18 +56,6 @@ TEMPLATES = [
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
-
-# allauth設定
-SITE_ID = 1
-AUTHENTICATION_BACKENDS = [
-    'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend',
-    'axes.backends.AxesBackend',  # axes用
-]
-
-# axes設定（基本）
-AXES_FAILURE_LIMIT = 5
-
 
 LANGUAGE_CODE = 'ja'
 TIME_ZONE = 'Asia/Tokyo'
