@@ -22,6 +22,11 @@ INSTALLED_APPS = [
     'apps.dashboard',
     'apps.notes',
     'apps.tags',
+    # 外部ライブラリ（推測）
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
+    'axes',
 ]
 
 MIDDLEWARE = [
