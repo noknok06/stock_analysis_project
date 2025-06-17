@@ -7,7 +7,7 @@ from pathlib import Path
 
 BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
-SECRET_KEY = os.environ.get('SECRET_KEY', 'your-default-secret-key')
+SECRET_KEY = 'django-insecure-t-95o(_x*f3rbtks0@p4t6h%^+g4r2jjp!(4*ca7b+x9js&6z3'
 
 INSTALLED_APPS = [
     'django.contrib.admin',
@@ -16,6 +16,12 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'django.contrib.sites',  # allauth用に追加
+    
+    # Allauth
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',  # ソーシャルログインを使う場合
     
     # あなたのアプリ
     'apps.common',
@@ -50,12 +56,27 @@ TEMPLATES = [
                 'django.template.context_processors.request',  # ← Allauth はこれが必要
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'allauth.account.context_processors.allauth',  # 追加！
             ],
         },
     },
 ]
 
 WSGI_APPLICATION = 'config.wsgi.application'
+
+# Allauth設定
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
+]
+
+SITE_ID = 1
+
+# Allauth設定
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 
 LANGUAGE_CODE = 'ja'
 TIME_ZONE = 'Asia/Tokyo'
