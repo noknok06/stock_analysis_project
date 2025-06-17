@@ -16,18 +16,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.sites',  # allauth用
+    'django.contrib.sites',
     
     # サードパーティアプリ
     'rest_framework',
     'corsheaders',
     'django_filters',
-    # 'axes',  # 必要に応じてコメントアウトを外す
     
     # Allauth
     'allauth',
     'allauth.account',
-    'allauth.socialaccount',  # ソーシャルログインを使う場合
+    'allauth.socialaccount',
     
     # ローカルアプリ
     'apps.common',
@@ -39,6 +38,7 @@ INSTALLED_APPS = [
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
@@ -46,7 +46,6 @@ MIDDLEWARE = [
     'allauth.account.middleware.AccountMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
-    # 'axes.middleware.AxesMiddleware',  # axesを使う場合はコメントアウトを外す
 ]
 
 ROOT_URLCONF = 'config.urls'
@@ -59,9 +58,12 @@ TEMPLATES = [
         'OPTIONS': {
             'context_processors': [
                 'django.template.context_processors.debug',
-                'django.template.context_processors.request',  # Allauthに必要
+                'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                # Allauthのコンテキストプロセッサを追加
+                # 'allauth.account.context_processors.account',
+                # 'allauth.socialaccount.context_processors.socialaccount',
             ],
         },
     },
@@ -73,7 +75,6 @@ WSGI_APPLICATION = 'config.wsgi.application'
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
     'allauth.account.auth_backends.AuthenticationBackend',
-    # 'axes.backends.AxesBackend',  # axesを使う場合はコメントアウトを外す
 ]
 
 SITE_ID = 1
@@ -83,10 +84,6 @@ ACCOUNT_EMAIL_REQUIRED = True
 ACCOUNT_USERNAME_REQUIRED = False
 ACCOUNT_AUTHENTICATION_METHOD = 'email'
 ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
-
-# Axes設定（axesを使う場合）
-# AXES_FAILURE_LIMIT = 5
-# AXES_COOLOFF_TIME = 1  # 時間
 
 # 国際化
 LANGUAGE_CODE = 'ja'
@@ -121,7 +118,11 @@ REST_FRAMEWORK = {
 CORS_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "https://note.kabu-log.net",
 ]
+
+CORS_ALLOW_ALL_ORIGINS = False
+CORS_ALLOW_CREDENTIALS = True
 
 # 認証設定
 LOGIN_URL = '/accounts/login/'
