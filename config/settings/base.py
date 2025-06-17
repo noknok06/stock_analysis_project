@@ -1,5 +1,5 @@
 # =================================
-# config/settings/base.py - 共通設定（修正版）
+# config/settings/base.py - Allauth無効版
 # =================================
 
 import os
@@ -16,17 +16,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    'django.contrib.sites',
+    # 'django.contrib.sites',  # Allauthに必要なのでコメントアウト
     
     # サードパーティアプリ
     'rest_framework',
     'corsheaders',
     'django_filters',
     
-    # Allauth
-    'allauth',
-    'allauth.account',
-    'allauth.socialaccount',
+    # Allauth - 一時的にコメントアウト
+    # 'allauth',
+    # 'allauth.account',
+    # 'allauth.socialaccount',
     
     # ローカルアプリ
     'apps.common',
@@ -43,7 +43,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    'allauth.account.middleware.AccountMiddleware',
+    # 'allauth.account.middleware.AccountMiddleware',  # コメントアウト
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -57,10 +57,10 @@ TEMPLATES = [
         'APP_DIRS': True,
         'OPTIONS': {
             'context_processors': [
-            'django.template.context_processors.debug',
-            'django.template.context_processors.request',
-            'django.contrib.auth.context_processors.auth',
-            'django.contrib.messages.context_processors.messages',
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
             ],
         },
     },
@@ -68,19 +68,18 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# 認証バックエンド
+# 認証バックエンド - 標準のみ
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
-    'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
-SITE_ID = 1
+# SITE_ID = 1  # Allauthに必要なのでコメントアウト
 
-# Allauth設定
-ACCOUNT_EMAIL_REQUIRED = True
-ACCOUNT_USERNAME_REQUIRED = False
-ACCOUNT_AUTHENTICATION_METHOD = 'email'
-ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
+# Allauth設定 - コメントアウト
+# ACCOUNT_EMAIL_REQUIRED = True
+# ACCOUNT_USERNAME_REQUIRED = False
+# ACCOUNT_AUTHENTICATION_METHOD = 'email'
+# ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 
 # 国際化
 LANGUAGE_CODE = 'ja'
