@@ -1,5 +1,5 @@
 # =================================
-# config/settings/production.py - デバッグ版
+# config/settings/production.py - allauth完全削除版
 # =================================
 
 from .base import *
@@ -8,6 +8,52 @@ import os
 # 一時的にデバッグを有効化
 DEBUG = True
 ALLOWED_HOSTS = ['*']  # 一時的に全て許可
+
+# base.pyの設定を上書きして、allauthを完全に削除
+INSTALLED_APPS = [
+    'django.contrib.admin',
+    'django.contrib.auth',
+    'django.contrib.contenttypes',
+    'django.contrib.sessions',
+    'django.contrib.messages',
+    'django.contrib.staticfiles',
+    # 'django.contrib.sites',  # allauthが不要なら削除
+    
+    # サードパーティアプリ
+    'rest_framework',
+    'corsheaders',
+    'django_filters',
+    
+    # ローカルアプリ
+    'apps.common',
+    'apps.accounts',
+    'apps.dashboard',
+    'apps.notes',
+    'apps.tags',
+]
+
+# TEMPLATES設定を明示的に上書き
+TEMPLATES = [
+    {
+        'BACKEND': 'django.template.backends.django.DjangoTemplates',
+        'DIRS': [BASE_DIR / 'templates'],
+        'APP_DIRS': True,
+        'OPTIONS': {
+            'context_processors': [
+                'django.template.context_processors.debug',
+                'django.template.context_processors.request',
+                'django.contrib.auth.context_processors.auth',
+                'django.contrib.messages.context_processors.messages',
+                # allauthのcontext_processorsを完全に削除
+            ],
+        },
+    },
+]
+
+# 認証バックエンドも標準のみ
+AUTHENTICATION_BACKENDS = [
+    'django.contrib.auth.backends.ModelBackend',
+]
 
 # 本番環境用データベース
 DATABASES = {
@@ -59,11 +105,6 @@ LOGGING = {
             'propagate': False,
         },
         'django.template': {
-            'handlers': ['file', 'console'],
-            'level': 'DEBUG',
-            'propagate': False,
-        },
-        'allauth': {
             'handlers': ['file', 'console'],
             'level': 'DEBUG',
             'propagate': False,

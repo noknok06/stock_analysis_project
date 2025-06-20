@@ -1,5 +1,5 @@
 # =================================
-# config/settings/base.py - Allauth無効版
+# config/settings/base.py - Allauth有効版
 # =================================
 
 import os
@@ -16,17 +16,17 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
-    # 'django.contrib.sites',  # Allauthに必要なのでコメントアウト
+    'django.contrib.sites',  # Allauthに必要
     
     # サードパーティアプリ
     'rest_framework',
     'corsheaders',
     'django_filters',
     
-    # Allauth - 一時的にコメントアウト
-    # 'allauth',
-    # 'allauth.account',
-    # 'allauth.socialaccount',
+    # Allauth
+    'allauth',
+    'allauth.account',
+    'allauth.socialaccount',
     
     # ローカルアプリ
     'apps.common',
@@ -43,7 +43,7 @@ MIDDLEWARE = [
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
-    # 'allauth.account.middleware.AccountMiddleware',  # コメントアウト
+    'allauth.account.middleware.AccountMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
@@ -61,6 +61,8 @@ TEMPLATES = [
                 'django.template.context_processors.request',
                 'django.contrib.auth.context_processors.auth',
                 'django.contrib.messages.context_processors.messages',
+                'allauth.account.context_processors.account',
+                'allauth.socialaccount.context_processors.socialaccount',
             ],
         },
     },
@@ -68,18 +70,19 @@ TEMPLATES = [
 
 WSGI_APPLICATION = 'config.wsgi.application'
 
-# 認証バックエンド - 標準のみ
+# 認証バックエンド
 AUTHENTICATION_BACKENDS = [
     'django.contrib.auth.backends.ModelBackend',
+    'allauth.account.auth_backends.AuthenticationBackend',
 ]
 
-# SITE_ID = 1  # Allauthに必要なのでコメントアウト
+SITE_ID = 1
 
-# Allauth設定 - コメントアウト
-# ACCOUNT_EMAIL_REQUIRED = True
-# ACCOUNT_USERNAME_REQUIRED = False
-# ACCOUNT_AUTHENTICATION_METHOD = 'email'
-# ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
+# Allauth設定
+ACCOUNT_EMAIL_REQUIRED = True
+ACCOUNT_USERNAME_REQUIRED = False
+ACCOUNT_AUTHENTICATION_METHOD = 'email'
+ACCOUNT_EMAIL_VERIFICATION = 'mandatory'
 
 # 国際化
 LANGUAGE_CODE = 'ja'
