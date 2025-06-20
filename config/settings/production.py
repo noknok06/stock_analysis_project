@@ -32,6 +32,19 @@ INSTALLED_APPS = [
     'apps.tags',
 ]
 
+# MIDDLEWAREも完全に上書き（allauthのミドルウェアを除去）
+MIDDLEWARE = [
+    'django.middleware.security.SecurityMiddleware',
+    'corsheaders.middleware.CorsMiddleware',
+    'django.contrib.sessions.middleware.SessionMiddleware',
+    'django.middleware.common.CommonMiddleware',
+    'django.middleware.csrf.CsrfViewMiddleware',
+    'django.contrib.auth.middleware.AuthenticationMiddleware',
+    # allauth.account.middleware.AccountMiddleware を削除
+    'django.contrib.messages.middleware.MessageMiddleware',
+    'django.middleware.clickjacking.XFrameOptionsMiddleware',
+]
+
 # TEMPLATES設定を明示的に上書き
 TEMPLATES = [
     {
