@@ -1,5 +1,5 @@
 <!-- ========================================
-templates/notes/create.html - 完全版（ヘルプガイド連携対応）
+templates/notes/create.html - エラー修正版
 ======================================== -->
 
 {% extends 'base.html' %}
@@ -101,7 +101,6 @@ templates/notes/create.html - 完全版（ヘルプガイド連携対応）
                 </svg>
             </a>
             <h1 class="text-3xl font-bold text-white">新規ノート作成</h1>
-            <!-- 👇 ヘルプボタンを追加 -->
             <a href="{% url 'notes:help' %}" 
             target="_blank"
             class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-lg flex items-center space-x-2 transition-colors">
@@ -171,9 +170,6 @@ templates/notes/create.html - 完全版（ヘルプガイド連携対応）
                            required
                            placeholder="例: 2025年 高配当株ウォッチ"
                            class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    {% if form.title.errors %}
-                        <p class="text-red-400 text-sm mt-1">{{ form.title.errors.0 }}</p>
-                    {% endif %}
                 </div>
 
                 <!-- サブタイトル -->
@@ -232,9 +228,6 @@ templates/notes/create.html - 完全版（ヘルプガイド連携対応）
                               rows="4"
                               placeholder="このテーマでの投資戦略や方針を記述してください"
                               class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                    {% if form.investment_strategy.errors %}
-                        <p class="text-red-400 text-sm mt-1">{{ form.investment_strategy.errors.0 }}</p>
-                    {% endif %}
                 </div>
 
                 <!-- 目標配分 -->
@@ -257,7 +250,7 @@ templates/notes/create.html - 完全版（ヘルプガイド連携対応）
                                    placeholder="選定基準 1"
                                    class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <button type="button" 
-                                    onclick="removeCriteria(this)"
+                                    onclick="window.NotebookCreator.removeCriteria(this)"
                                     class="px-3 py-2 text-red-400 hover:text-red-300 hidden">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -266,7 +259,7 @@ templates/notes/create.html - 完全版（ヘルプガイド連携対応）
                         </div>
                     </div>
                     <button type="button" 
-                            onclick="addCriteria()"
+                            onclick="window.NotebookCreator.addCriteria()"
                             class="text-blue-400 hover:text-blue-300 text-sm flex items-center">
                         <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -285,7 +278,7 @@ templates/notes/create.html - 完全版（ヘルプガイド連携対応）
                                    placeholder="リスク要因 1"
                                    class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                             <button type="button" 
-                                    onclick="removeRiskFactor(this)"
+                                    onclick="window.NotebookCreator.removeRiskFactor(this)"
                                     class="px-3 py-2 text-red-400 hover:text-red-300 hidden">
                                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -294,7 +287,7 @@ templates/notes/create.html - 完全版（ヘルプガイド連携対応）
                         </div>
                     </div>
                     <button type="button" 
-                            onclick="addRiskFactor()"
+                            onclick="window.NotebookCreator.addRiskFactor()"
                             class="text-yellow-400 hover:text-yellow-300 text-sm flex items-center">
                         <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -324,7 +317,7 @@ templates/notes/create.html - 完全版（ヘルプガイド連携対応）
                                placeholder="例: 日本株"
                                class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <button type="button" 
-                                onclick="removeSubNotebook(this)"
+                                onclick="window.NotebookCreator.removeSubNotebook(this)"
                                 class="px-3 py-2 text-red-400 hover:text-red-300 hidden">
                             <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
@@ -333,7 +326,7 @@ templates/notes/create.html - 完全版（ヘルプガイド連携対応）
                     </div>
                 </div>
                 <button type="button" 
-                        onclick="addSubNotebook()"
+                        onclick="window.NotebookCreator.addSubNotebook()"
                         class="text-green-400 hover:text-green-300 text-sm flex items-center">
                     <svg class="h-4 w-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
@@ -354,7 +347,7 @@ templates/notes/create.html - 完全版（ヘルプガイド連携対応）
                                placeholder="#から始まるタグを入力..."
                                class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         <button type="button" 
-                                onclick="addCustomTag()"
+                                onclick="window.NotebookCreator.addCustomTag()"
                                 class="px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white rounded-lg transition-colors">
                             追加
                         </button>
@@ -399,7 +392,7 @@ templates/notes/create.html - 完全版（ヘルプガイド連携対応）
             
             <div class="flex gap-3">
                 <button type="button" 
-                        onclick="previewNotebook()"
+                        onclick="window.NotebookCreator.previewNotebook()"
                         class="px-6 py-3 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors">
                     プレビュー
                 </button>
@@ -420,7 +413,7 @@ templates/notes/create.html - 完全版（ヘルプガイド連携対応）
     <div class="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-3xl max-h-[80vh] overflow-hidden">
         <div class="flex items-center justify-between p-6 border-b border-gray-700">
             <h3 class="text-xl font-semibold text-white">ノートプレビュー</h3>
-            <button onclick="closePreview()" class="text-gray-400 hover:text-white">
+            <button onclick="window.NotebookCreator.closePreview()" class="text-gray-400 hover:text-white">
                 <svg class="h-6 w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
@@ -435,598 +428,248 @@ templates/notes/create.html - 完全版（ヘルプガイド連携対応）
 
 {% block extra_js %}
 {% load static %}
-<script src="{% static 'js/tag-manager.js' %}"></script>
+<script src="{% static 'js/common.js' %}"></script>
 <script>
-// グローバル変数
-let criteriaCount = 1;
-let riskFactorCount = 1;
-let subNotebookCount = 1;
-let tagManager = null;
-let selectedTemplate = null;
-
 // ========================================
-// ヘルプガイドからのテンプレート適用機能
+// ノート作成専用クラス
 // ========================================
 
-// ヘルプガイドからのテンプレート適用をチェック
-function checkAndApplyHelpTemplate() {
-    console.log('checkAndApplyHelpTemplate 実行開始');
-    
-    // URLパラメータをチェック
-    const urlParams = new URLSearchParams(window.location.search);
-    const templateParam = urlParams.get('template');
-    
-    // localStorageからテンプレートデータを取得
-    const savedTemplate = localStorage.getItem('selectedTemplate');
-    
-    console.log('URL template param:', templateParam);
-    console.log('localStorage template:', savedTemplate);
-    
-    if (savedTemplate) {
-        try {
-            const templateData = JSON.parse(savedTemplate);
-            console.log('ヘルプガイドからのテンプレートを適用:', templateData);
-            
-            // テンプレートデータをフォームに適用
-            applyHelpTemplateToForm(templateData);
-            
-            // 成功メッセージを表示
-            showTemplateAppliedMessage(templateData.title);
-            
-            // localStorageをクリア（一度だけ適用）
-            localStorage.removeItem('selectedTemplate');
-            
-        } catch (error) {
-            console.error('テンプレートデータの解析エラー:', error);
-            localStorage.removeItem('selectedTemplate');
-        }
-    } else if (templateParam) {
-        // URLパラメータからテンプレートタイプを取得（フォールバック）
-        console.log('URLパラメータからテンプレートタイプを検出:', templateParam);
-        showTemplateHint(templateParam);
-    }
-}
-
-// ヘルプテンプレートをフォームに適用
-function applyHelpTemplateToForm(templateData) {
-    CommonUtils.debug('テンプレートデータをフォームに適用開始');
-    
-    setTimeout(() => {
-        setFormField('id_title', templateData.title);
-        setFormField('id_subtitle', templateData.subtitle);
-        // ... 他のフィールド設定
+class NotebookCreator {
+    constructor() {
+        this.criteriaCount = 1;
+        this.riskFactorCount = 1;
+        this.subNotebookCount = 1;
+        this.selectedTags = [];
+        this.selectedTemplate = null;
+        this.tagChanges = { added: [], removed: [] };
         
-        CommonUtils.showNotification(`テンプレート「${templateData.title}」を適用しました`, 'success');
-        CommonUtils.debug('テンプレートデータの適用完了');
-    }, 100);
-}
-
-function setFormField(fieldId, value) {
-    const field = document.getElementById(fieldId);
-    if (field && value) {
-        field.value = value;
-        // フィールドハイライト効果
-        field.classList.add('field-highlight');
-        setTimeout(() => field.classList.remove('field-highlight'), 2000);
+        this.init();
     }
-}
-
-// 動的項目（配列）をフォームに適用
-function applyDynamicItems(containerId, itemClass, namePrefix, items, removeFunction) {
-    const container = document.getElementById(containerId);
-    if (!container || !Array.isArray(items) || items.length === 0) return;
     
-    console.log(`動的項目を適用: ${containerId}`, items);
+    init() {
+        console.log('NotebookCreator初期化開始');
+        this.setupEventListeners();
+        this.checkAndApplyHelpTemplate();
+        this.updateRemoveButtons('key-criteria-item');
+        this.updateRemoveButtons('risk-factor-item');
+        this.updateRemoveButtons('sub-notebook-item');
+        this.setupFormValidation();
+        console.log('NotebookCreator初期化完了');
+    }
     
-    // 既存の項目をクリア
-    container.innerHTML = '';
+    setupEventListeners() {
+        // カスタムタグ入力のEnterキー対応
+        const customTagInput = document.getElementById('custom-tag-input');
+        if (customTagInput) {
+            customTagInput.addEventListener('keypress', (e) => {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    this.addCustomTag();
+                }
+            });
+        }
+    }
     
-    // 各項目を作成
-    items.forEach((item, index) => {
+    // ========================================
+    // 動的項目管理
+    // ========================================
+    
+    addCriteria() {
+        console.log('基準追加');
+        this.addDynamicItem('key-criteria-container', 'key-criteria-item', 'key_criteria', this.criteriaCount, '選定基準', 'removeCriteria');
+        this.criteriaCount++;
+        this.updateRemoveButtons('key-criteria-item');
+    }
+    
+    addRiskFactor() {
+        console.log('リスク要因追加');
+        this.addDynamicItem('risk-factors-container', 'risk-factor-item', 'risk_factor', this.riskFactorCount, 'リスク要因', 'removeRiskFactor');
+        this.riskFactorCount++;
+        this.updateRemoveButtons('risk-factor-item');
+    }
+    
+    addSubNotebook() {
+        console.log('サブノート追加');
+        this.addDynamicItem('sub-notebooks-container', 'sub-notebook-item', 'sub_notebook', this.subNotebookCount, 'サブノート', 'removeSubNotebook');
+        this.subNotebookCount++;
+        this.updateRemoveButtons('sub-notebook-item');
+    }
+    
+    addDynamicItem(containerId, itemClass, namePrefix, count, placeholder, removeFunction, value = '') {
+        const container = document.getElementById(containerId);
+        if (!container) {
+            console.error(`Container ${containerId} not found`);
+            return;
+        }
+        
         const newItem = document.createElement('div');
         newItem.className = `${itemClass} flex gap-2 mb-2 animate-in`;
         newItem.innerHTML = `
             <input type="text" 
-                   name="${namePrefix}_${index}" 
-                   value="${escapeHtml(item)}"
-                   placeholder="${namePrefix} ${index + 1}"
-                   class="flex-1 bg-blue-900/10 border-2 border-blue-500 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                   name="${namePrefix}_${count}" 
+                   value="${this.escapeHtml(value)}"
+                   placeholder="${placeholder} ${count + 1}"
+                   class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
             <button type="button" 
-                    onclick="${removeFunction}(this)"
-                    class="px-3 py-2 text-red-400 hover:text-red-300 ${items.length === 1 ? 'hidden' : ''}">
+                    onclick="window.NotebookCreator.${removeFunction}(this)"
+                    class="px-3 py-2 text-red-400 hover:text-red-300">
                 <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecarp="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
                 </svg>
             </button>
         `;
         container.appendChild(newItem);
         
-        // 一定時間後にハイライトを解除
-        setTimeout(() => {
-            const input = newItem.querySelector('input');
-            if (input) {
-                input.classList.remove('bg-blue-900/10', 'border-2', 'border-blue-500');
-                input.classList.add('bg-gray-700', 'border', 'border-gray-600');
-            }
-        }, 3000);
-    });
-}
-
-// テンプレート適用成功メッセージ
-function showTemplateAppliedMessage(templateTitle) {
-    const messageDiv = document.createElement('div');
-    messageDiv.className = 'template-success-message fixed top-4 right-4 bg-gradient-to-r from-green-600 to-blue-600 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-sm';
-    messageDiv.innerHTML = `
-        <div class="flex items-start space-x-3">
-            <div class="flex-shrink-0">
-                <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-            </div>
-            <div class="flex-1">
-                <h4 class="font-semibold text-sm">テンプレート適用完了!</h4>
-                <p class="text-xs mt-1 opacity-90">「${escapeHtml(templateTitle)}」のテンプレートを適用しました</p>
-                <p class="text-xs mt-1 opacity-75">必要に応じて内容を調整してください</p>
-            </div>
-            <button onclick="this.parentElement.parentElement.remove()" 
-                    class="flex-shrink-0 text-white/80 hover:text-white">
-                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                </svg>
-            </button>
-        </div>
-    `;
+        // フォーカスを新しい入力欄に移動
+        const input = newItem.querySelector('input');
+        if (input) {
+            input.focus();
+        }
+    }
     
-    document.body.appendChild(messageDiv);
+    removeCriteria(button) {
+        button.closest('.key-criteria-item').remove();
+        this.updateRemoveButtons('key-criteria-item');
+    }
     
-    // 10秒後に自動削除
-    setTimeout(() => {
-        if (messageDiv.parentNode) {
-            messageDiv.style.transform = 'translateX(100%)';
-            messageDiv.style.opacity = '0';
-            setTimeout(() => {
-                if (messageDiv.parentNode) {
-                    messageDiv.remove();
+    removeRiskFactor(button) {
+        button.closest('.risk-factor-item').remove();
+        this.updateRemoveButtons('risk-factor-item');
+    }
+    
+    removeSubNotebook(button) {
+        button.closest('.sub-notebook-item').remove();
+        this.updateRemoveButtons('sub-notebook-item');
+    }
+    
+    updateRemoveButtons(className) {
+        const items = document.querySelectorAll(`.${className}`);
+        items.forEach((item, index) => {
+            const removeButton = item.querySelector('button');
+            if (removeButton) {
+                if (items.length > 1) {
+                    removeButton.classList.remove('hidden');
+                } else {
+                    removeButton.classList.add('hidden');
                 }
-            }, 300);
-        }
-    }, 10000);
-}
-
-// テンプレートヒント表示（URLパラメータのみの場合）
-function showTemplateHint(templateType) {
-    const templateNames = {
-        'high_dividend': '高配当株投資',
-        'growth': '成長株投資',
-        'value': 'バリュー投資'
-    };
-    
-    const templateName = templateNames[templateType] || templateType;
-    
-    const hintDiv = document.createElement('div');
-    hintDiv.className = 'fixed top-4 right-4 bg-blue-600 text-white px-4 py-3 rounded-lg shadow-lg z-50 max-w-sm';
-    hintDiv.innerHTML = `
-        <div class="flex items-center space-x-2">
-            <svg class="h-5 w-5 text-blue-200" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-            </svg>
-            <span class="text-sm">「${templateName}」テンプレートの作成を開始します</span>
-        </div>
-    `;
-    
-    document.body.appendChild(hintDiv);
-    
-    setTimeout(() => {
-        if (hintDiv.parentNode) {
-            hintDiv.remove();
-        }
-    }, 5000);
-}
-
-// ========================================
-// 従来の機能（テンプレートカード、動的項目管理等）
-// ========================================
-
-// ページ読み込み時の初期化
-document.addEventListener('DOMContentLoaded', function() {
-    console.log('DOM読み込み完了');
-    
-    // タグマネージャー初期化
-    tagManager = initTagManager({
-        selectedTagsContainer: 'selected-tags-container',
-        suggestedTagsContainer: 'suggested-tags',
-        tagInput: 'custom-tag-input',
-        tagChangesInput: 'selected-tags-json'
-    });
-    
-    // テンプレートカードの設定
-    setupTemplateCards();
-    
-    // ヘルプガイドからのテンプレート適用をチェック
-    checkAndApplyHelpTemplate();
-    
-    // その他の初期化
-    updateRemoveButtons('key-criteria-item');
-    updateRemoveButtons('risk-factor-item');
-    updateRemoveButtons('sub-notebook-item');
-    setupFormValidation();
-    
-    console.log('初期化完了');
-});
-
-// テンプレートカード設定
-function setupTemplateCards() {
-    const templateCards = document.querySelectorAll('.template-card');
-    
-    templateCards.forEach(card => {
-        card.addEventListener('click', function() {
-            // 全てのカードから選択状態を削除
-            templateCards.forEach(c => c.classList.remove('selected'));
-            
-            // 選択されたカードをハイライト
-            this.classList.add('selected');
-            
-            const templateId = this.dataset.template;
-            selectedTemplate = templateId === 'custom' ? null : templateId;
-            
-            // 隠しフィールドに設定
-            document.getElementById('selected-template').value = selectedTemplate || '';
-            
-            // テンプレートデータを適用
-            if (templateId !== 'custom') {
-                applyTemplateData(this.dataset);
-            } else {
-                clearTemplateData();
             }
-            
-            // プレビュー表示
-            showTemplatePreview(this.dataset);
         });
-    });
-}
-
-// テンプレートデータを適用
-function applyTemplateData(templateData) {
-    if (templateData.title) {
-        document.getElementById('id_title').value = templateData.title;
     }
     
-    if (templateData.strategy) {
-        document.getElementById('id_investment_strategy').value = templateData.strategy;
+    // ========================================
+    // タグ管理
+    // ========================================
+    
+    addCustomTag() {
+        const input = document.getElementById('custom-tag-input');
+        if (!input) return;
+        
+        let tagName = input.value.trim();
+        if (!tagName) {
+            CommonUtils.showNotification('タグ名を入力してください', 'warning');
+            return;
+        }
+        
+        // #がない場合は自動で追加
+        if (!tagName.startsWith('#')) {
+            tagName = '#' + tagName;
+        }
+        
+        // 重複チェック
+        if (this.selectedTags.includes(tagName)) {
+            CommonUtils.showNotification('このタグは既に選択されています', 'warning');
+            return;
+        }
+        
+        // タグを追加
+        this.selectedTags.push(tagName);
+        this.tagChanges.added.push(tagName);
+        this.updateSelectedTagsDisplay();
+        
+        // 入力欄をクリア
+        input.value = '';
+        
+        CommonUtils.showNotification(`タグ「${tagName}」を追加しました`, 'success');
     }
     
-    // 選定基準を適用
-    if (templateData.criteria) {
-        try {
-            const criteria = JSON.parse(templateData.criteria);
-            applyCriteriaToForm(criteria);
-        } catch (e) {
-            console.error('基準データのパースエラー:', e);
+    removeTag(tagName) {
+        const index = this.selectedTags.indexOf(tagName);
+        if (index > -1) {
+            this.selectedTags.splice(index, 1);
+            
+            // 追加リストから削除（新規追加タグの場合）
+            const addedIndex = this.tagChanges.added.indexOf(tagName);
+            if (addedIndex > -1) {
+                this.tagChanges.added.splice(addedIndex, 1);
+            } else {
+                // 既存タグの場合は削除リストに追加
+                this.tagChanges.removed.push(tagName);
+            }
+            
+            this.updateSelectedTagsDisplay();
+            CommonUtils.showNotification(`タグ「${tagName}」を削除しました`, 'info');
         }
     }
     
-    // サブノートを適用
-    if (templateData.subNotebooks) {
-        try {
-            const subNotebooks = JSON.parse(templateData.subNotebooks);
-            applySubNotebooksToForm(subNotebooks);
-        } catch (e) {
-            console.error('サブノートデータのパースエラー:', e);
-        }
-    }
-    
-    // タグを適用
-    if (templateData.tags && tagManager) {
-        try {
-            const tags = JSON.parse(templateData.tags);
-            tags.forEach(tag => {
-                if (!tagManager.selectedTags.includes(tag)) {
-                    tagManager.addTag(tag);
-                }
-            });
-        } catch (e) {
-            console.error('タグデータのパースエラー:', e);
-        }
-    }
-}
-
-// テンプレートデータをクリア
-function clearTemplateData() {
-    document.getElementById('id_title').value = '';
-    document.getElementById('id_investment_strategy').value = '';
-    
-    // 基準とリスク要因をクリア
-    clearDynamicItems('key-criteria-container', 'key-criteria-item');
-    clearDynamicItems('risk-factors-container', 'risk-factor-item');
-    clearDynamicItems('sub-notebooks-container', 'sub-notebook-item');
-    
-    // タグをクリア
-    if (tagManager) {
-        tagManager.selectedTags = [];
-        tagManager.updateSelectedTagsDisplay();
-    }
-}
-
-// 動的項目をクリア
-function clearDynamicItems(containerId, itemClass) {
-    const container = document.getElementById(containerId);
-    const items = container.querySelectorAll(`.${itemClass}`);
-    
-    // 最初の項目以外を削除
-    for (let i = 1; i < items.length; i++) {
-        items[i].remove();
-    }
-    
-    // 最初の項目の値をクリア
-    if (items.length > 0) {
-        const input = items[0].querySelector('input');
-        if (input) input.value = '';
-    }
-}
-
-// 基準をフォームに適用
-function applyCriteriaToForm(criteria) {
-    const container = document.getElementById('key-criteria-container');
-    container.innerHTML = '';
-    
-    criteria.forEach((criterion, index) => {
-        addDynamicItem('key-criteria-container', 'key-criteria-item', 'key_criteria', index, '選定基準', 'removeCriteria', criterion);
-    });
-    
-    criteriaCount = criteria.length;
-    updateRemoveButtons('key-criteria-item');
-}
-
-// サブノートをフォームに適用
-function applySubNotebooksToForm(subNotebooks) {
-    const container = document.getElementById('sub-notebooks-container');
-    container.innerHTML = '';
-    
-    subNotebooks.forEach((subNotebook, index) => {
-        addDynamicItem('sub-notebooks-container', 'sub-notebook-item', 'sub_notebook', index, 'サブノート', 'removeSubNotebook', subNotebook);
-    });
-    
-    subNotebookCount = subNotebooks.length;
-    updateRemoveButtons('sub-notebook-item');
-}
-
-// テンプレートプレビュー表示
-function showTemplatePreview(templateData) {
-    const preview = document.getElementById('template-preview');
-    const content = document.getElementById('template-content');
-    
-    if (templateData.template === 'custom') {
-        preview && preview.classList.add('hidden');
-        return;
-    }
-    
-    let previewHtml = '';
-    
-    if (templateData.title) {
-        previewHtml += `<p><strong>デフォルトタイトル:</strong> ${templateData.title}</p>`;
-    }
-    
-    if (templateData.strategy) {
-        previewHtml += `<p><strong>推奨戦略:</strong> ${templateData.strategy}</p>`;
-    }
-    
-    if (templateData.subNotebooks) {
-        try {
-            const subNotebooks = JSON.parse(templateData.subNotebooks);
-            previewHtml += `<p><strong>推奨サブノート:</strong> ${subNotebooks.join(', ')}</p>`;
-        } catch (e) {}
-    }
-    
-    if (templateData.tags) {
-        try {
-            const tags = JSON.parse(templateData.tags);
-            previewHtml += `<p><strong>推奨タグ:</strong> ${tags.join(', ')}</p>`;
-        } catch (e) {}
-    }
-    
-    if (content) {
-        content.innerHTML = previewHtml;
-    }
-    if (preview) {
-        preview.classList.remove('hidden');
-    }
-}
-
-// 動的項目管理（DRY原則適用）
-function addCriteria() {
-    addDynamicItem('key-criteria-container', 'key-criteria-item', 'key_criteria', criteriaCount, '選定基準', 'removeCriteria');
-    criteriaCount++;
-    updateRemoveButtons('key-criteria-item');
-}
-
-function addRiskFactor() {
-    addDynamicItem('risk-factors-container', 'risk-factor-item', 'risk_factor', riskFactorCount, 'リスク要因', 'removeRiskFactor');
-    riskFactorCount++;
-    updateRemoveButtons('risk-factor-item');
-}
-
-function addSubNotebook() {
-    addDynamicItem('sub-notebooks-container', 'sub-notebook-item', 'sub_notebook', subNotebookCount, 'サブノート', 'removeSubNotebook');
-    subNotebookCount++;
-    updateRemoveButtons('sub-notebook-item');
-}
-
-function addDynamicItem(containerId, itemClass, namePrefix, count, placeholder, removeFunction, value = '') {
-    const container = document.getElementById(containerId);
-    const newItem = document.createElement('div');
-    newItem.className = `${itemClass} flex gap-2 mb-2 animate-in`;
-    newItem.innerHTML = `
-        <input type="text" 
-               name="${namePrefix}_${count}" 
-               value="${value}"
-               placeholder="${placeholder} ${count + 1}"
-               class="flex-1 bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-        <button type="button" 
-                onclick="${removeFunction}(this)"
-                class="px-3 py-2 text-red-400 hover:text-red-300">
-            <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-            </svg>
-        </button>
-    `;
-    container.appendChild(newItem);
-}
-
-function removeCriteria(button) {
-    button.closest('.key-criteria-item').remove();
-    updateRemoveButtons('key-criteria-item');
-}
-
-function removeRiskFactor(button) {
-    button.closest('.risk-factor-item').remove();
-    updateRemoveButtons('risk-factor-item');
-}
-
-function removeSubNotebook(button) {
-    button.closest('.sub-notebook-item').remove();
-    updateRemoveButtons('sub-notebook-item');
-}
-
-function updateRemoveButtons(className) {
-    const items = document.querySelectorAll(`.${className}`);
-    items.forEach((item, index) => {
-        const removeButton = item.querySelector('button');
-        if (items.length > 1) {
-            removeButton.classList.remove('hidden');
+    updateSelectedTagsDisplay() {
+        const container = document.getElementById('selected-tags-container');
+        if (!container) return;
+        
+        container.innerHTML = '';
+        
+        if (this.selectedTags.length === 0) {
+            container.innerHTML = '<span class="text-gray-400 text-sm">タグが選択されていません</span>';
         } else {
-            removeButton.classList.add('hidden');
+            this.selectedTags.forEach(tag => {
+                const tagElement = document.createElement('span');
+                tagElement.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm bg-blue-600 text-white';
+                tagElement.innerHTML = `
+                    ${this.escapeHtml(tag)}
+                    <button type="button" 
+                            onclick="window.NotebookCreator.removeTag('${this.escapeHtml(tag)}')"
+                            class="ml-2 text-blue-200 hover:text-white">
+                        <svg class="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                `;
+                container.appendChild(tagElement);
+            });
         }
-    });
-}
-
-// プレビュー機能
-function previewNotebook() {
-    const formData = collectFormData();
-    const previewHtml = generatePreviewHtml(formData);
-    
-    document.getElementById('preview-content').innerHTML = previewHtml;
-    document.getElementById('preview-modal').classList.remove('hidden');
-}
-
-function closePreview() {
-    document.getElementById('preview-modal').classList.add('hidden');
-}
-
-function collectFormData() {
-    const keyCriteria = Array.from(document.querySelectorAll('input[name^="key_criteria_"]'))
-        .map(input => input.value)
-        .filter(value => value.trim());
         
-    const riskFactors = Array.from(document.querySelectorAll('input[name^="risk_factor_"]'))
-        .map(input => input.value)
-        .filter(value => value.trim());
+        // 隠しフィールドを更新
+        this.updateTagsHiddenField();
+    }
+    
+    updateTagsHiddenField() {
+        const hiddenField = document.getElementById('selected-tags-json');
+        if (hiddenField) {
+            const tagData = {
+                selected: this.selectedTags,
+                changes: this.tagChanges
+            };
+            hiddenField.value = JSON.stringify(tagData);
+        }
+    }
+    
+    // ========================================
+    // プレビュー機能
+    // ========================================
+    
+    previewNotebook() {
+        console.log('プレビュー表示');
+        const formData = this.collectFormData();
+        const previewHtml = this.generatePreviewHtml(formData);
         
-    const subNotebooks = Array.from(document.querySelectorAll('input[name^="sub_notebook_"]'))
-        .map(input => input.value)
-        .filter(value => value.trim());
-
-    return {
-        title: document.getElementById('id_title').value,
-        subtitle: document.getElementById('id_subtitle').value,
-        description: document.getElementById('id_description').value,
-        notebookType: document.getElementById('id_notebook_type').value,
-        investmentStrategy: document.getElementById('id_investment_strategy').value,
-        targetAllocation: document.getElementById('id_target_allocation').value,
-        status: document.getElementById('id_status').value,
-        keyCriteria: keyCriteria,
-        riskFactors: riskFactors,
-        subNotebooks: subNotebooks,
-        selectedTags: tagManager ? tagManager.selectedTags : []
-    };
-}
-
-function generatePreviewHtml(data) {
-    const statusLabels = {
-        'ACTIVE': 'アクティブ',
-        'MONITORING': '監視中',
-        'ATTENTION': '要注意',
-        'ARCHIVED': 'アーカイブ'
-    };
+        document.getElementById('preview-content').innerHTML = previewHtml;
+        document.getElementById('preview-modal').classList.remove('hidden');
+    }
     
-    const typeLabels = {
-        'THEME': 'テーマ型（複数銘柄）',
-        'STOCK_FOCUSED': '銘柄特化型（1銘柄集中）',
-        'PORTFOLIO': 'ポートフォリオ管理',
-        'RESEARCH': '調査・研究'
-    };
+    closePreview() {
+        document.getElementById('preview-modal').classList.add('hidden');
+    }
     
-    return `
-        <div class="space-y-6">
-            <div class="flex items-center justify-between">
-                <div>
-                    <h4 class="text-xl font-semibold text-white">${data.title}</h4>
-                    ${data.subtitle ? `<p class="text-gray-400">${data.subtitle}</p>` : ''}
-                    <span class="inline-block px-2 py-1 text-xs rounded bg-gray-600 text-gray-300 mt-1">${typeLabels[data.notebookType]}</span>
-                </div>
-                <span class="px-3 py-1 text-sm rounded bg-blue-600 text-white">${statusLabels[data.status]}</span>
-            </div>
-            
-            ${data.description ? `
-            <div>
-                <h5 class="font-medium text-white mb-2">説明</h5>
-                <p class="text-gray-300">${data.description}</p>
-            </div>
-            ` : ''}
-            
-            <div>
-                <h5 class="font-medium text-white mb-2">投資戦略</h5>
-                <p class="text-gray-300">${data.investmentStrategy}</p>
-            </div>
-            
-            ${data.targetAllocation ? `
-            <div>
-                <h5 class="font-medium text-white mb-2">目標配分</h5>
-                <p class="text-green-400 font-semibold">${data.targetAllocation}</p>
-            </div>
-            ` : ''}
-            
-            ${data.keyCriteria.length > 0 ? `
-            <div>
-                <h5 class="font-medium text-white mb-2">選定基準</h5>
-                <ul class="list-disc list-inside space-y-1 text-gray-300">
-                    ${data.keyCriteria.map(criteria => `<li>${criteria}</li>`).join('')}
-                </ul>
-            </div>
-            ` : ''}
-            
-            ${data.riskFactors.length > 0 ? `
-            <div>
-                <h5 class="font-medium text-white mb-2">リスク要因</h5>
-                <ul class="list-disc list-inside space-y-1 text-gray-300">
-                    ${data.riskFactors.map(risk => `<li>${risk}</li>`).join('')}
-                </ul>
-            </div>
-            ` : ''}
-            
-            ${data.subNotebooks.length > 0 ? `
-            <div>
-                <h5 class="font-medium text-white mb-2">サブノート</h5>
-                <div class="flex flex-wrap gap-2">
-                    ${data.subNotebooks.map(sub => `<span class="px-2 py-1 bg-green-600 text-white text-sm rounded">${sub}</span>`).join('')}
-                </div>
-            </div>
-            ` : ''}
-            
-            <div>
-                <h5 class="font-medium text-white mb-2">タグ</h5>
-                <div class="flex flex-wrap gap-2">
-                    ${data.selectedTags.map(tag => `<span class="px-2 py-1 bg-blue-600 text-white text-sm rounded">${tag}</span>`).join('')}
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-// フォーム送信前の処理
-function setupFormValidation() {
-    const form = document.getElementById('notebook-form');
-    form.addEventListener('submit', function(e) {
-        // 動的項目を隠しフィールドに設定
+    collectFormData() {
         const keyCriteria = Array.from(document.querySelectorAll('input[name^="key_criteria_"]'))
             .map(input => input.value)
             .filter(value => value.trim());
@@ -1038,39 +681,349 @@ function setupFormValidation() {
         const subNotebooks = Array.from(document.querySelectorAll('input[name^="sub_notebook_"]'))
             .map(input => input.value)
             .filter(value => value.trim());
+
+        return {
+            title: document.getElementById('id_title').value,
+            subtitle: document.getElementById('id_subtitle').value,
+            description: document.getElementById('id_description').value,
+            notebookType: document.getElementById('id_notebook_type').value,
+            investmentStrategy: document.getElementById('id_investment_strategy').value,
+            targetAllocation: document.getElementById('id_target_allocation').value,
+            status: document.getElementById('id_status').value,
+            keyCriteria: keyCriteria,
+            riskFactors: riskFactors,
+            subNotebooks: subNotebooks,
+            selectedTags: this.selectedTags
+        };
+    }
+    
+    generatePreviewHtml(data) {
+        const statusLabels = {
+            'ACTIVE': 'アクティブ',
+            'MONITORING': '監視中',
+            'ATTENTION': '要注意',
+            'ARCHIVED': 'アーカイブ'
+        };
         
-        document.getElementById('key-criteria-hidden').value = JSON.stringify(keyCriteria);
-        document.getElementById('risk-factors-hidden').value = JSON.stringify(riskFactors);
-        document.getElementById('sub-notebooks-hidden').value = JSON.stringify(subNotebooks);
+        const typeLabels = {
+            'THEME': 'テーマ型（複数銘柄）',
+            'STOCK_FOCUSED': '銘柄特化型（1銘柄集中）',
+            'PORTFOLIO': 'ポートフォリオ管理',
+            'RESEARCH': '調査・研究'
+        };
         
-        // バリデーション
-        let isValid = true;
-        const requiredFields = ['id_title', 'id_investment_strategy'];
+        return `
+            <div class="space-y-6">
+                <div class="flex items-center justify-between">
+                    <div>
+                        <h4 class="text-xl font-semibold text-white">${this.escapeHtml(data.title)}</h4>
+                        ${data.subtitle ? `<p class="text-gray-400">${this.escapeHtml(data.subtitle)}</p>` : ''}
+                        <span class="inline-block px-2 py-1 text-xs rounded bg-gray-600 text-gray-300 mt-1">${typeLabels[data.notebookType]}</span>
+                    </div>
+                    <span class="px-3 py-1 text-sm rounded bg-blue-600 text-white">${statusLabels[data.status]}</span>
+                </div>
+                
+                ${data.description ? `
+                <div>
+                    <h5 class="font-medium text-white mb-2">説明</h5>
+                    <p class="text-gray-300">${this.escapeHtml(data.description)}</p>
+                </div>
+                ` : ''}
+                
+                <div>
+                    <h5 class="font-medium text-white mb-2">投資戦略</h5>
+                    <p class="text-gray-300">${this.escapeHtml(data.investmentStrategy)}</p>
+                </div>
+                
+                ${data.targetAllocation ? `
+                <div>
+                    <h5 class="font-medium text-white mb-2">目標配分</h5>
+                    <p class="text-green-400 font-semibold">${this.escapeHtml(data.targetAllocation)}</p>
+                </div>
+                ` : ''}
+                
+                ${data.keyCriteria.length > 0 ? `
+                <div>
+                    <h5 class="font-medium text-white mb-2">選定基準</h5>
+                    <ul class="list-disc list-inside space-y-1 text-gray-300">
+                        ${data.keyCriteria.map(criteria => `<li>${this.escapeHtml(criteria)}</li>`).join('')}
+                    </ul>
+                </div>
+                ` : ''}
+                
+                ${data.riskFactors.length > 0 ? `
+                <div>
+                    <h5 class="font-medium text-white mb-2">リスク要因</h5>
+                    <ul class="list-disc list-inside space-y-1 text-gray-300">
+                        ${data.riskFactors.map(risk => `<li>${this.escapeHtml(risk)}</li>`).join('')}
+                    </ul>
+                </div>
+                ` : ''}
+                
+                ${data.subNotebooks.length > 0 ? `
+                <div>
+                    <h5 class="font-medium text-white mb-2">サブノート</h5>
+                    <div class="flex flex-wrap gap-2">
+                        ${data.subNotebooks.map(sub => `<span class="px-2 py-1 bg-green-600 text-white text-sm rounded">${this.escapeHtml(sub)}</span>`).join('')}
+                    </div>
+                </div>
+                ` : ''}
+                
+                <div>
+                    <h5 class="font-medium text-white mb-2">タグ</h5>
+                    <div class="flex flex-wrap gap-2">
+                        ${data.selectedTags.map(tag => `<span class="px-2 py-1 bg-blue-600 text-white text-sm rounded">${this.escapeHtml(tag)}</span>`).join('')}
+                    </div>
+                </div>
+            </div>
+        `;
+    }
+    
+    // ========================================
+    // ヘルプテンプレート適用
+    // ========================================
+    
+    checkAndApplyHelpTemplate() {
+        console.log('checkAndApplyHelpTemplate 実行開始');
         
-        requiredFields.forEach(fieldId => {
-            const field = document.getElementById(fieldId);
-            if (!field.value.trim()) {
-                field.classList.add('border-red-500');
-                isValid = false;
-            } else {
-                field.classList.remove('border-red-500');
-            }
-        });
+        const savedTemplate = localStorage.getItem('selectedTemplate');
         
-        if (!isValid) {
-            e.preventDefault();
-            if (tagManager) {
-                tagManager.showNotification('必須項目を入力してください', 'error');
+        if (savedTemplate) {
+            try {
+                const templateData = JSON.parse(savedTemplate);
+                console.log('ヘルプガイドからのテンプレートを適用:', templateData);
+                
+                this.applyHelpTemplateToForm(templateData);
+                this.showTemplateAppliedMessage(templateData.title);
+                
+                localStorage.removeItem('selectedTemplate');
+                
+            } catch (error) {
+                console.error('テンプレートデータの解析エラー:', error);
+                localStorage.removeItem('selectedTemplate');
             }
         }
-    });
-}
-
-// カスタムタグ追加関数（グローバル）
-function addCustomTag() {
-    if (tagManager) {
-        tagManager.addCustomTag();
+    }
+    
+    applyHelpTemplateToForm(templateData) {
+        CommonUtils.debug('テンプレートデータをフォームに適用開始');
+        
+        setTimeout(() => {
+            this.setFormField('id_title', templateData.title);
+            this.setFormField('id_subtitle', templateData.subtitle);
+            this.setFormField('id_description', templateData.description);
+            this.setFormField('id_investment_strategy', templateData.investment_strategy);
+            this.setFormField('id_target_allocation', templateData.target_allocation);
+            
+            // 動的項目の適用
+            if (templateData.key_criteria) {
+                this.applyDynamicItems('key-criteria-container', 'key-criteria-item', 'key_criteria', templateData.key_criteria, 'removeCriteria');
+                this.criteriaCount = templateData.key_criteria.length;
+            }
+            
+            if (templateData.risk_factors) {
+                this.applyDynamicItems('risk-factors-container', 'risk-factor-item', 'risk_factor', templateData.risk_factors, 'removeRiskFactor');
+                this.riskFactorCount = templateData.risk_factors.length;
+            }
+            
+            if (templateData.suggested_sub_notebooks) {
+                this.applyDynamicItems('sub-notebooks-container', 'sub-notebook-item', 'sub_notebook', templateData.suggested_sub_notebooks, 'removeSubNotebook');
+                this.subNotebookCount = templateData.suggested_sub_notebooks.length;
+            }
+            
+            // タグの適用
+            if (templateData.suggested_tags) {
+                templateData.suggested_tags.forEach(tag => {
+                    if (!this.selectedTags.includes(tag)) {
+                        this.selectedTags.push(tag);
+                        this.tagChanges.added.push(tag);
+                    }
+                });
+                this.updateSelectedTagsDisplay();
+            }
+            
+            CommonUtils.showNotification(`テンプレート「${templateData.title}」を適用しました`, 'success');
+            CommonUtils.debug('テンプレートデータの適用完了');
+        }, 100);
+    }
+    
+    setFormField(fieldId, value) {
+        const field = document.getElementById(fieldId);
+        if (field && value) {
+            field.value = value;
+            field.classList.add('field-highlight');
+            setTimeout(() => field.classList.remove('field-highlight'), 2000);
+        }
+    }
+    
+    applyDynamicItems(containerId, itemClass, namePrefix, items, removeFunction) {
+        const container = document.getElementById(containerId);
+        if (!container || !Array.isArray(items) || items.length === 0) return;
+        
+        console.log(`動的項目を適用: ${containerId}`, items);
+        
+        container.innerHTML = '';
+        
+        items.forEach((item, index) => {
+            const newItem = document.createElement('div');
+            newItem.className = `${itemClass} flex gap-2 mb-2 animate-in`;
+            newItem.innerHTML = `
+                <input type="text" 
+                       name="${namePrefix}_${index}" 
+                       value="${this.escapeHtml(item)}"
+                       placeholder="${namePrefix} ${index + 1}"
+                       class="flex-1 bg-blue-900/10 border-2 border-blue-500 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500 transition-all">
+                <button type="button" 
+                        onclick="window.NotebookCreator.${removeFunction}(this)"
+                        class="px-3 py-2 text-red-400 hover:text-red-300 ${items.length === 1 ? 'hidden' : ''}">
+                    <svg class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            `;
+            container.appendChild(newItem);
+            
+            setTimeout(() => {
+                const input = newItem.querySelector('input');
+                if (input) {
+                    input.classList.remove('bg-blue-900/10', 'border-2', 'border-blue-500');
+                    input.classList.add('bg-gray-700', 'border', 'border-gray-600');
+                }
+            }, 3000);
+        });
+    }
+    
+    showTemplateAppliedMessage(templateTitle) {
+        const messageDiv = document.createElement('div');
+        messageDiv.className = 'template-success-message fixed top-4 right-4 bg-gradient-to-r from-green-600 to-blue-600 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-sm';
+        messageDiv.innerHTML = `
+            <div class="flex items-start space-x-3">
+                <div class="flex-shrink-0">
+                    <svg class="h-6 w-6 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                    </svg>
+                </div>
+                <div class="flex-1">
+                    <h4 class="font-semibold text-sm">テンプレート適用完了!</h4>
+                    <p class="text-xs mt-1 opacity-90">「${this.escapeHtml(templateTitle)}」のテンプレートを適用しました</p>
+                    <p class="text-xs mt-1 opacity-75">必要に応じて内容を調整してください</p>
+                </div>
+                <button onclick="this.parentElement.parentElement.remove()" 
+                        class="flex-shrink-0 text-white/80 hover:text-white">
+                    <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                    </svg>
+                </button>
+            </div>
+        `;
+        
+        document.body.appendChild(messageDiv);
+        
+        setTimeout(() => {
+            if (messageDiv.parentNode) {
+                messageDiv.style.transform = 'translateX(100%)';
+                messageDiv.style.opacity = '0';
+                setTimeout(() => {
+                    if (messageDiv.parentNode) {
+                        messageDiv.remove();
+                    }
+                }, 300);
+            }
+        }, 10000);
+    }
+    
+    // ========================================
+    // フォーム検証
+    // ========================================
+    
+    setupFormValidation() {
+        const form = document.getElementById('notebook-form');
+        if (!form) return;
+        
+        form.addEventListener('submit', (e) => {
+            // 動的項目を隠しフィールドに設定
+            const keyCriteria = Array.from(document.querySelectorAll('input[name^="key_criteria_"]'))
+                .map(input => input.value)
+                .filter(value => value.trim());
+                
+            const riskFactors = Array.from(document.querySelectorAll('input[name^="risk_factor_"]'))
+                .map(input => input.value)
+                .filter(value => value.trim());
+                
+            const subNotebooks = Array.from(document.querySelectorAll('input[name^="sub_notebook_"]'))
+                .map(input => input.value)
+                .filter(value => value.trim());
+            
+            document.getElementById('key-criteria-hidden').value = JSON.stringify(keyCriteria);
+            document.getElementById('risk-factors-hidden').value = JSON.stringify(riskFactors);
+            document.getElementById('sub-notebooks-hidden').value = JSON.stringify(subNotebooks);
+            
+            // タグデータを更新
+            this.updateTagsHiddenField();
+            
+            // バリデーション
+            let isValid = true;
+            const requiredFields = ['id_title', 'id_investment_strategy'];
+            
+            requiredFields.forEach(fieldId => {
+                const field = document.getElementById(fieldId);
+                if (!field.value.trim()) {
+                    field.classList.add('border-red-500');
+                    isValid = false;
+                } else {
+                    field.classList.remove('border-red-500');
+                }
+            });
+            
+            if (!isValid) {
+                e.preventDefault();
+                CommonUtils.showNotification('必須項目を入力してください', 'error');
+            }
+        });
+    }
+    
+    // ========================================
+    // ユーティリティ
+    // ========================================
+    
+    escapeHtml(text) {
+        if (!text) return '';
+        const map = {
+            '&': '&amp;',
+            '<': '&lt;',
+            '>': '&gt;',
+            '"': '&quot;',
+            "'": '&#039;'
+        };
+        return text.toString().replace(/[&<>"']/g, m => map[m]);
     }
 }
+
+// ========================================
+// 初期化
+// ========================================
+
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('DOM読み込み完了');
+    
+    // グローバルインスタンスを作成
+    window.NotebookCreator = new NotebookCreator();
+    
+    console.log('ノート作成システムが初期化されました');
+});
+
+// モーダル外クリックで閉じる
+document.addEventListener('click', function(e) {
+    if (e.target.id === 'preview-modal') {
+        window.NotebookCreator.closePreview();
+    }
+});
+
+// ESCキーでモーダルを閉じる
+document.addEventListener('keydown', function(e) {
+    if (e.key === 'Escape') {
+        window.NotebookCreator.closePreview();
+    }
+});
 </script>
 {% endblock %}
