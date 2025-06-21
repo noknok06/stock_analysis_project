@@ -337,14 +337,6 @@ class ContentHelper:
                 'impact': content.get('impact', ''),
                 'stock_impact': content.get('stock_impact', ''),
             })
-        elif entry_type == 'CALCULATION':
-            # 計算結果用のフォーマット
-            formatted.update({
-                'current_price': content.get('current_price', ''),
-                'calculations': content.get('calculations', {}),
-                'fair_value': content.get('fair_value', ''),
-                'recommendation': content.get('recommendation', ''),
-            })
         elif entry_type == 'MEMO':
             # メモ用のフォーマット
             formatted.update({

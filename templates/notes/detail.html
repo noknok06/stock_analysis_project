@@ -318,13 +318,6 @@ templates/notes/detail.html - 統計情報修正完全版
                         </div>
                     {% endif %}
                     
-                    {% if notebook.target_allocation %}
-                        <div class="info-card">
-                            <div class="info-label">目標配分</div>
-                            <div class="info-value">{{ notebook.target_allocation }}</div>
-                        </div>
-                    {% endif %}
-                    
                     <div class="info-card">
                         <div class="info-label">作成日</div>
                         <div class="info-value">{{ notebook.created_at|date:"Y年m月d日" }}</div>
@@ -475,7 +468,6 @@ templates/notes/detail.html - 統計情報修正完全版
                         <option value="">すべてのタイプ</option>
                         <option value="ANALYSIS">決算分析</option>
                         <option value="NEWS">ニュース</option>
-                        <option value="CALCULATION">計算結果</option>
                         <option value="MEMO">メモ</option>
                         <option value="GOAL">投資目標</option>
                         <option value="EARNINGS">決算発表</option>
@@ -752,17 +744,6 @@ templates/notes/detail.html - 統計情報修正完全版
                             <p class="text-xs text-gray-400 mt-1 hidden md:block">関連ニュースの記録</p>
                         </button>
                         
-                        <button type="button" data-entry-type="CALCULATION" 
-                                class="entry-type-btn p-3 md:p-4 rounded-lg border-2 border-gray-600 bg-gray-700 hover:bg-gray-600 transition-all text-center">
-                            <div class="p-2 rounded-lg bg-orange-900 text-orange-300 mb-2 mx-auto w-fit">
-                                <svg class="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"></path>
-                                </svg>
-                            </div>
-                            <h3 class="font-semibold text-white text-xs md:text-sm">計算結果</h3>
-                            <p class="text-xs text-gray-400 mt-1 hidden md:block">バリュエーション計算</p>
-                        </button>
-                        
                         <button type="button" data-entry-type="MEMO" 
                                 class="entry-type-btn p-3 md:p-4 rounded-lg border-2 border-gray-600 bg-gray-700 hover:bg-gray-600 transition-all text-center">
                             <div class="p-2 rounded-lg bg-gray-700 text-gray-300 mb-2 mx-auto w-fit">
@@ -827,15 +808,6 @@ templates/notes/detail.html - 統計情報修正完全版
                                    id="company_name" 
                                    name="company_name" 
                                    placeholder="例: トヨタ自動車"
-                                   class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        </div>
-                        
-                        <div>
-                            <label for="market" class="block text-sm font-medium text-gray-300 mb-2">市場</label>
-                            <input type="text" 
-                                   id="market" 
-                                   name="market" 
-                                   placeholder="例: 東証プライム"
                                    class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                     </div>
@@ -1817,7 +1789,6 @@ function generateEntryTypeForm(type) {
     const formTemplates = {
         'ANALYSIS': generateAnalysisForm(),
         'NEWS': generateNewsForm(),
-        'CALCULATION': generateCalculationForm(),
         'MEMO': generateMemoForm(),
         'GOAL': generateGoalForm(),
         'EARNINGS': generateEarningsForm(),
@@ -2110,22 +2081,6 @@ function generateNewsForm() {
             ${createFormField('textarea', 'content', 'ニュース内容', 'ニュースの詳細内容を記述してください', false, 4)}
             ${createFormField('textarea', 'impact', '事業への影響', 'このニュースが事業に与える影響を分析してください')}
             ${createFormField('textarea', 'stock_impact', '株価への影響', '株価への影響や市場の反応を記述してください')}
-        </div>
-    `;
-}
-
-function generateCalculationForm() {
-    return `
-        <div class="space-y-4">
-            ${createFormField('text', 'current_price', '現在株価', '例: 2,850円')}
-            <div class="grid grid-cols-2 gap-4">
-                ${createFormField('text', 'per', 'PER', '例: 12.5倍')}
-                ${createFormField('text', 'pbr', 'PBR', '例: 1.1倍')}
-                ${createFormField('text', 'dividend_yield', '配当利回り', '例: 2.8%')}
-                ${createFormField('text', 'roe', 'ROE', '例: 8.9%')}
-            </div>
-            ${createFormField('text', 'fair_value', '適正価格', '例: 3,100円 - 3,300円')}
-            ${createFormField('textarea', 'recommendation', '推奨・コメント', '計算結果に基づく推奨や分析コメントを記述してください')}
         </div>
     `;
 }

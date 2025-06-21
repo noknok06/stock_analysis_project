@@ -111,26 +111,6 @@ templates/notes/create.html - エラー修正版
         <p class="text-gray-400">投資テーマに沿ったノートを作成して、複数銘柄の分析を体系的に管理しましょう</p>
     </div>
 
-    <!-- Progress Steps -->
-    <div class="mb-8">
-        <div class="flex items-center space-x-4">
-            <div class="flex items-center space-x-2">
-                <div class="step-indicator w-8 h-8 rounded-full flex items-center justify-center text-white text-sm font-bold">1</div>
-                <span class="text-white font-medium">テンプレート選択</span>
-            </div>
-            <div class="h-1 w-16 bg-gray-700 rounded"></div>
-            <div class="flex items-center space-x-2">
-                <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-gray-400 text-sm font-bold">2</div>
-                <span class="text-gray-400">基本設定</span>
-            </div>
-            <div class="h-1 w-16 bg-gray-700 rounded"></div>
-            <div class="flex items-center space-x-2">
-                <div class="w-8 h-8 rounded-full bg-gray-700 flex items-center justify-center text-gray-400 text-sm font-bold">3</div>
-                <span class="text-gray-400">戦略・タグ設定</span>
-            </div>
-        </div>
-    </div>
-
     <!-- Form -->
     <form method="POST" id="notebook-form" class="space-y-8">
         {% csrf_token %}
@@ -172,16 +152,6 @@ templates/notes/create.html - エラー修正版
                            class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                 </div>
 
-                <!-- サブタイトル -->
-                <div>
-                    <label for="id_subtitle" class="block text-sm font-medium text-gray-300 mb-2">サブタイトル</label>
-                    <input type="text" 
-                           id="id_subtitle" 
-                           name="subtitle" 
-                           placeholder="例: 配当利回り3%以上の安定銘柄を選定"
-                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-
                 <!-- 説明 -->
                 <div>
                     <label for="id_description" class="block text-sm font-medium text-gray-300 mb-2">ノートの説明</label>
@@ -213,33 +183,10 @@ templates/notes/create.html - エラー修正版
                 <svg class="h-6 w-6 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
                 </svg>
-                投資戦略・テーマ
+                選定基準・リスク要因
             </h2>
 
             <div class="space-y-6">
-                <!-- 投資戦略 -->
-                <div>
-                    <label for="id_investment_strategy" class="block text-sm font-medium text-gray-300 mb-2">
-                        投資戦略 <span class="text-red-400">*</span>
-                    </label>
-                    <textarea id="id_investment_strategy" 
-                              name="investment_strategy" 
-                              required
-                              rows="4"
-                              placeholder="このテーマでの投資戦略や方針を記述してください"
-                              class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                </div>
-
-                <!-- 目標配分 -->
-                <div>
-                    <label for="id_target_allocation" class="block text-sm font-medium text-gray-300 mb-2">目標配分</label>
-                    <input type="text" 
-                           id="id_target_allocation" 
-                           name="target_allocation" 
-                           placeholder="例: ポートフォリオの30%、月額3万円"
-                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-
                 <!-- 選定基準 -->
                 <div>
                     <label class="block text-sm font-medium text-gray-300 mb-2">選定基準</label>
@@ -734,13 +681,6 @@ class NotebookCreator {
                     <h5 class="font-medium text-white mb-2">投資戦略</h5>
                     <p class="text-gray-300">${this.escapeHtml(data.investmentStrategy)}</p>
                 </div>
-                
-                ${data.targetAllocation ? `
-                <div>
-                    <h5 class="font-medium text-white mb-2">目標配分</h5>
-                    <p class="text-green-400 font-semibold">${this.escapeHtml(data.targetAllocation)}</p>
-                </div>
-                ` : ''}
                 
                 ${data.keyCriteria.length > 0 ? `
                 <div>

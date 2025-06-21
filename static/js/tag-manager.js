@@ -260,7 +260,7 @@ class TagManager {
         
         const newCategory = prompt('新しいカテゴリを選択してください：\n\nSTOCK - 銘柄\nSTYLE - 投資スタイル\nSECTOR - セクター\nANALYSIS - 分析手法\nSTRATEGY - 投資戦略\nMARKET - 市場\nRISK - リスク\nEVENT - イベント\nOTHER - その他');
         
-        if (newCategory && ['STOCK', 'STYLE', 'SECTOR', 'ANALYSIS', 'STRATEGY', 'MARKET', 'RISK', 'EVENT', 'OTHER'].includes(newCategory.toUpperCase())) {
+        if (newCategory && ['STOCK', 'STYLE', 'SECTOR', 'ANALYSIS', 'STRATEGY', 'RISK', 'EVENT', 'OTHER'].includes(newCategory.toUpperCase())) {
             this.performBulkAction('change_category', { new_category: newCategory.toUpperCase() });
         }
     }

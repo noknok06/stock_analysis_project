@@ -1,5 +1,5 @@
 # ========================================
-# apps/notes/models.py - 統計情報修正版
+# apps/notes/models.py - 簡素化版
 # ========================================
 
 import uuid
@@ -29,7 +29,6 @@ class Notebook(BaseModel):
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     user = models.ForeignKey(User, on_delete=models.CASCADE, verbose_name='ユーザー')
     title = models.CharField(max_length=200, verbose_name='ノートタイトル')
-    subtitle = models.CharField(max_length=300, blank=True, verbose_name='サブタイトル')
     description = models.TextField(blank=True, verbose_name='ノートの説明')
     notebook_type = models.CharField(
         max_length=20, 
@@ -44,9 +43,7 @@ class Notebook(BaseModel):
         verbose_name='ステータス'
     )
     
-    # 投資テーマ・目標（テーマ全体の戦略）
-    investment_strategy = models.TextField(blank=True, verbose_name='投資戦略・テーマ')
-    target_allocation = models.CharField(max_length=100, blank=True, verbose_name='目標配分')
+    # 選定基準とリスク要因のみ残す
     key_criteria = models.JSONField(default=list, verbose_name='選定基準')
     risk_factors = models.JSONField(default=list, verbose_name='リスク要因')
     
@@ -80,7 +77,6 @@ class Notebook(BaseModel):
         actual_count = self.entries.count()
         if self.entry_count != actual_count:
             self.entry_count = actual_count
-            # update_fieldsを使用して無限ループを防ぐ
             super(Notebook, self).save(update_fields=['entry_count'])
     
     def get_recent_entries(self, limit=5):
@@ -88,13 +84,13 @@ class Notebook(BaseModel):
         return self.entries.order_by('-created_at')[:limit]
     
     def get_stock_count(self):
-        """ノート内の銘柄数を取得（修正版）"""
+        """ノート内の銘柄数を取得"""
         return self.entries.exclude(
             Q(stock_code='') | Q(stock_code__isnull=True)
         ).values('stock_code').distinct().count()
     
     def get_stocks_list(self):
-        """ノート内の銘柄一覧を取得（修正版）"""
+        """ノート内の銘柄一覧を取得"""
         return self.entries.exclude(
             Q(stock_code='') | Q(stock_code__isnull=True)
         ).values('stock_code', 'company_name').distinct().order_by('stock_code')
@@ -149,7 +145,6 @@ class Entry(BaseModel):
     ENTRY_TYPE_CHOICES = [
         ('ANALYSIS', '決算分析'),
         ('NEWS', 'ニュース'),
-        ('CALCULATION', '計算結果'),
         ('MEMO', 'メモ'),
         ('GOAL', '投資目標'),
         ('EARNINGS', '決算発表'),
@@ -184,7 +179,6 @@ class Entry(BaseModel):
     # 銘柄情報（エントリーレベルで管理）
     stock_code = models.CharField(max_length=10, blank=True, verbose_name='銘柄コード')
     company_name = models.CharField(max_length=100, blank=True, verbose_name='企業名')
-    market = models.CharField(max_length=20, blank=True, verbose_name='市場')
     
     # イベント情報
     event_date = models.DateField(null=True, blank=True, verbose_name='イベント日')
@@ -208,11 +202,10 @@ class Entry(BaseModel):
         return f"{self.notebook.title} - {self.title}"
     
     def save(self, *args, **kwargs):
-        """保存時にノートブックのエントリー数を更新（修正版）"""
-        is_new = self._state.adding  # pk is None では正確ではない場合があるため
+        """保存時にノートブックのエントリー数を更新"""
+        is_new = self._state.adding
         super().save(*args, **kwargs)
         
-        # 新規作成時のみエントリー数を更新
         if is_new:
             self.notebook.update_entry_count()
     
@@ -223,7 +216,7 @@ class Entry(BaseModel):
         notebook.update_entry_count()
     
     def get_stock_display(self):
-        """銘柄表示用（修正版）"""
+        """銘柄表示用"""
         if self.stock_code and self.company_name:
             return f"{self.stock_code} {self.company_name}"
         elif self.stock_code:
@@ -242,8 +235,6 @@ class Entry(BaseModel):
             text = self.content['summary']
         elif self.entry_type == 'NEWS' and self.content.get('headline'):
             text = self.content['headline']
-        elif self.entry_type == 'CALCULATION' and self.content.get('current_price'):
-            text = f"現在株価: {self.content['current_price']}"
         elif self.entry_type == 'MEMO' and self.content.get('observation'):
             text = self.content['observation']
         elif self.entry_type == 'GOAL' and self.content.get('target_price'):
@@ -267,7 +258,7 @@ from django.dispatch import receiver
 @receiver(post_save, sender=Entry)
 def update_notebook_entry_count_on_save(sender, instance, created, **kwargs):
     """エントリー保存時にノートブックのエントリー数を更新"""
-    if created:  # 新規作成時のみ
+    if created:
         instance.notebook.update_entry_count()
 
 @receiver(post_delete, sender=Entry)
@@ -276,5 +267,4 @@ def update_notebook_entry_count_on_delete(sender, instance, **kwargs):
     try:
         instance.notebook.update_entry_count()
     except Notebook.DoesNotExist:
-        # ノートブックが既に削除されている場合は何もしない
         pass

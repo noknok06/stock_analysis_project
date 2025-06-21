@@ -720,7 +720,6 @@ def entry_create_view(request, notebook_pk):
             title = request.POST.get('title')
             stock_code = request.POST.get('stock_code', '')
             company_name = request.POST.get('company_name', '')
-            market = request.POST.get('market', '')
             sub_notebook_id = request.POST.get('sub_notebook')
             content_json = request.POST.get('content', '{}')
             
@@ -753,7 +752,6 @@ def entry_create_view(request, notebook_pk):
                 title=title,
                 stock_code=stock_code,
                 company_name=company_name,
-                market=market,
                 content=formatted_content
             )
             
@@ -917,7 +915,6 @@ def render_entry_content_html(entry):
             <div class="grid grid-cols-2 gap-4">
                 {f'<div><p class="text-sm text-gray-400">銘柄コード</p><p class="text-white">{entry.stock_code}</p></div>' if entry.stock_code else ''}
                 {f'<div><p class="text-sm text-gray-400">企業名</p><p class="text-white">{entry.company_name}</p></div>' if entry.company_name else ''}
-                {f'<div><p class="text-sm text-gray-400">市場</p><p class="text-white">{entry.market}</p></div>' if entry.market else ''}
                 {f'<div><p class="text-sm text-gray-400">イベント日</p><p class="text-white">{entry.event_date.strftime("%Y/%m/%d")}</p></div>' if entry.event_date else ''}
             </div>
         </div>
@@ -928,8 +925,6 @@ def render_entry_content_html(entry):
         content_html = render_analysis_content(content)
     elif entry_type == 'NEWS':
         content_html = render_news_content(content)
-    elif entry_type == 'CALCULATION':
-        content_html = render_calculation_content(content)
     elif entry_type == 'MEMO':
         content_html = render_memo_content(content)
     elif entry_type == 'GOAL':
@@ -1031,62 +1026,6 @@ def render_news_content(content):
     return html
 
 
-def render_calculation_content(content):
-    """計算結果コンテンツのHTML生成（既存のまま）"""
-    html = '<div class="space-y-6">'
-    
-    # 現在株価
-    if content.get('current_price'):
-        html += f'''
-        <div class="text-center bg-gray-700 p-4 rounded-lg">
-            <h4 class="font-semibold text-white mb-2">現在株価</h4>
-            <p class="text-3xl font-bold text-blue-400">{content["current_price"]}</p>
-        </div>
-        '''
-    
-    # 計算結果
-    calculations = content.get('calculations', {})
-    if any(calculations.values()):
-        html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">'
-        for key, value in calculations.items():
-            if value:
-                display_key = {
-                    'per': 'PER',
-                    'pbr': 'PBR',
-                    'dividend_yield': '配当利回り',
-                    'roe': 'ROE',
-                    'roa': 'ROA'
-                }.get(key, key.upper())
-                html += f'''
-                <div class="bg-gray-700 p-3 rounded-lg">
-                    <p class="text-sm text-gray-400">{display_key}</p>
-                    <p class="text-lg font-semibold text-white">{value}</p>
-                </div>
-                '''
-        html += '</div>'
-    
-    # 適正価格
-    if content.get('fair_value'):
-        html += f'''
-        <div class="space-y-2">
-            <h4 class="font-semibold text-white">適正価格</h4>
-            <p class="text-xl font-bold text-green-400">{content["fair_value"]}</p>
-        </div>
-        '''
-    
-    # 推奨
-    if content.get('recommendation'):
-        html += f'''
-        <div class="bg-blue-900/30 p-4 rounded-lg border border-blue-700">
-            <h4 class="font-semibold text-white mb-2">推奨</h4>
-            <p class="text-gray-300">{content["recommendation"]}</p>
-        </div>
-        '''
-    
-    html += '</div>'
-    return html
-
-
 def render_memo_content(content):
     """メモコンテンツのHTML生成（既存のまま）"""
     html = '<div class="space-y-4">'
@@ -1100,14 +1039,6 @@ def render_memo_content(content):
         </div>
         '''
     
-    # 市場トレンド
-    if content.get('market_trend'):
-        html += f'''
-        <div>
-            <h4 class="font-semibold text-white mb-2">市場トレンド</h4>
-            <p class="text-gray-300">{content["market_trend"]}</p>
-        </div>
-        '''
     
     # 個人的メモ
     if content.get('personal_note'):
@@ -1724,7 +1655,6 @@ def render_entry_content_html(entry):
             <div class="grid grid-cols-2 gap-4">
                 {f'<div><p class="text-sm text-gray-400">銘柄コード</p><p class="text-white font-semibold">{entry.stock_code}</p></div>' if entry.stock_code else ''}
                 {f'<div><p class="text-sm text-gray-400">企業名</p><p class="text-white font-semibold">{entry.company_name}</p></div>' if entry.company_name else ''}
-                {f'<div><p class="text-sm text-gray-400">市場</p><p class="text-white">{entry.market}</p></div>' if entry.market else ''}
                 {f'<div><p class="text-sm text-gray-400">イベント日</p><p class="text-white">{entry.event_date.strftime("%Y/%m/%d")}</p></div>' if entry.event_date else ''}
             </div>
         </div>
@@ -1771,8 +1701,6 @@ def render_entry_content_html(entry):
         content_html = render_analysis_content(content)
     elif entry_type == 'NEWS':
         content_html = render_news_content(content)
-    elif entry_type == 'CALCULATION':
-        content_html = render_calculation_content(content)
     elif entry_type == 'MEMO':
         content_html = render_memo_content(content)
     elif entry_type == 'GOAL':
@@ -1781,8 +1709,6 @@ def render_entry_content_html(entry):
         content_html = render_earnings_content(content)
     elif entry_type == 'IR_EVENT':
         content_html = render_ir_event_content(content)
-    elif entry_type == 'MARKET_EVENT':
-        content_html = render_market_event_content(content)
     else:
         content_html = '<p class="text-gray-300">コンテンツが見つかりません。</p>'
     
@@ -2014,58 +1940,6 @@ def render_news_content(content):
     return html
 
 
-def render_calculation_content(content):
-    """計算結果コンテンツのHTML生成"""
-    html = '<div class="space-y-6">'
-    
-    if content.get('current_price'):
-        html += f'''
-        <div class="text-center bg-gray-700 p-4 rounded-lg">
-            <h4 class="font-semibold text-white mb-2">現在株価</h4>
-            <p class="text-3xl font-bold text-blue-400">{content["current_price"]}</p>
-        </div>
-        '''
-    
-    calculations = content.get('calculations', {})
-    if any(calculations.values()):
-        html += '<div class="grid grid-cols-1 md:grid-cols-2 gap-4">'
-        for key, value in calculations.items():
-            if value:
-                display_key = {
-                    'per': 'PER',
-                    'pbr': 'PBR',
-                    'dividend_yield': '配当利回り',
-                    'roe': 'ROE',
-                    'roa': 'ROA'
-                }.get(key, key.upper())
-                html += f'''
-                <div class="bg-gray-700 p-3 rounded-lg">
-                    <p class="text-sm text-gray-400">{display_key}</p>
-                    <p class="text-lg font-semibold text-white">{value}</p>
-                </div>
-                '''
-        html += '</div>'
-    
-    if content.get('fair_value'):
-        html += f'''
-        <div class="space-y-2">
-            <h4 class="font-semibold text-white">適正価格</h4>
-            <p class="text-xl font-bold text-green-400">{content["fair_value"]}</p>
-        </div>
-        '''
-    
-    if content.get('recommendation'):
-        html += f'''
-        <div class="bg-blue-900/30 p-4 rounded-lg border border-blue-700">
-            <h4 class="font-semibold text-white mb-2">推奨</h4>
-            <p class="text-gray-300">{content["recommendation"]}</p>
-        </div>
-        '''
-    
-    html += '</div>'
-    return html
-
-
 def render_memo_content(content):
     """メモコンテンツのHTML生成"""
     html = '<div class="space-y-4">'
@@ -2146,3 +2020,4 @@ def render_goal_content(content):
     
     html += '</div>'
     return html
+

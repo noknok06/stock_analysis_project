@@ -116,20 +116,6 @@ templates/notes/edit.html（統一タグ管理版）
                         <p class="text-red-400 text-sm mt-1">{{ form.title.errors.0 }}</p>
                     {% endif %}
                 </div>
-
-                <!-- サブタイトル -->
-                <div class="md:col-span-2">
-                    <label for="id_subtitle" class="block text-sm font-medium text-gray-300 mb-2">サブタイトル</label>
-                    <input type="text" 
-                           id="id_subtitle" 
-                           name="subtitle" 
-                           value="{{ notebook.subtitle }}"
-                           placeholder="例: 長期保有・配当重視"
-                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    {% if form.subtitle.errors %}
-                        <p class="text-red-400 text-sm mt-1">{{ form.subtitle.errors.0 }}</p>
-                    {% endif %}
-                </div>
             </div>
         </section>
 

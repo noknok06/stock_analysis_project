@@ -72,22 +72,6 @@ class NotebookHelpView(LoginRequiredMixin, TemplateView):
                 ]
             },
             {
-                'field': 'subtitle',
-                'label': 'サブタイトル',
-                'description': 'ノートの具体的なテーマや方針を説明',
-                'examples': [
-                    '配当利回り3%以上の安定銘柄を選定',
-                    '売上成長率20%以上の優良企業',
-                    '東証REIT指数を上回る銘柄選択',
-                    '四半期決算でサプライズが期待される銘柄'
-                ],
-                'tips': [
-                    '選定基準や目標を簡潔に表現',
-                    '数値基準があれば明記する',
-                    '投資判断の指針になる内容'
-                ]
-            },
-            {
                 'field': 'investment_strategy',
                 'label': '投資戦略',
                 'description': 'このテーマでの投資方針と戦略を詳しく記述',

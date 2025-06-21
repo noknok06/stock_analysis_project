@@ -1,5 +1,5 @@
 # ========================================
-# apps/notes/forms.py - 見直し版（テーマ単位ノート対応）
+# apps/notes/forms.py - 簡素化版
 # ========================================
 
 import json
@@ -10,7 +10,7 @@ from apps.tags.models import Tag
 from apps.common.validators import validate_stock_code, validate_json_content
 
 class NotebookForm(forms.ModelForm):
-    """ノートブック作成・編集フォーム（テーマ単位）"""
+    """ノートブック作成・編集フォーム（簡素化版）"""
     
     # JSON配列フィールド
     key_criteria = forms.CharField(required=False, widget=forms.HiddenInput())
@@ -21,8 +21,7 @@ class NotebookForm(forms.ModelForm):
     class Meta:
         model = Notebook
         fields = [
-            'title', 'subtitle', 'description', 'notebook_type',
-            'investment_strategy', 'target_allocation', 'status'
+            'title', 'description', 'notebook_type', 'status'
         ]
         widgets = {
             'title': forms.TextInput(attrs={
@@ -30,27 +29,13 @@ class NotebookForm(forms.ModelForm):
                 'placeholder': '例: 2025年 高配当株ウォッチ',
                 'required': True
             }),
-            'subtitle': forms.TextInput(attrs={
-                'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'placeholder': '例: 配当利回り3%以上の安定銘柄を選定'
-            }),
             'description': forms.Textarea(attrs={
                 'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
                 'rows': 3,
-                'placeholder': 'このノートの目的や投資方針を記述してください'
+                'placeholder': 'このノートの目的や方針を記述してください'
             }),
             'notebook_type': forms.Select(attrs={
                 'class': 'w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
-            }),
-            'investment_strategy': forms.Textarea(attrs={
-                'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'rows': 4,
-                'placeholder': 'このテーマの投資戦略や方針を記述してください',
-                'required': True
-            }),
-            'target_allocation': forms.TextInput(attrs={
-                'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'placeholder': '例: ポートフォリオの30%、月額3万円'
             }),
             'status': forms.Select(attrs={
                 'class': 'w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500'
@@ -63,11 +48,10 @@ class NotebookForm(forms.ModelForm):
         
         # 必須フィールドのラベルに * を追加
         self.fields['title'].label = 'ノートタイトル *'
-        self.fields['investment_strategy'].label = '投資戦略 *'
         
         # ヘルプテキストの追加
         self.fields['notebook_type'].help_text = 'ノートの種類を選択してください'
-        self.fields['investment_strategy'].help_text = 'このテーマでの投資方針や戦略を明確に記述してください'
+        self.fields['description'].help_text = 'このノートの目的や投資方針を簡潔に記述してください'
     
     def clean_title(self):
         """タイトルのバリデーション"""
@@ -87,18 +71,6 @@ class NotebookForm(forms.ModelForm):
             raise forms.ValidationError('同じタイトルのノートが既に存在します。')
         
         return title
-    
-    def clean_investment_strategy(self):
-        """投資戦略のバリデーション"""
-        investment_strategy = self.cleaned_data.get('investment_strategy')
-        if not investment_strategy or not investment_strategy.strip():
-            raise forms.ValidationError('投資戦略は必須です。')
-        
-        # 最小文字数チェック
-        if len(investment_strategy.strip()) < 10:
-            raise forms.ValidationError('投資戦略は10文字以上で入力してください。')
-        
-        return investment_strategy.strip()
     
     def clean_key_criteria(self):
         """選定基準のJSONバリデーション"""
@@ -249,7 +221,7 @@ class NotebookForm(forms.ModelForm):
                 # タグを取得または作成
                 tag, created = Tag.objects.get_or_create(
                     name=tag_name,
-                    user=self.instance.user,  # ← ここを追加
+                    user=self.instance.user,
                     defaults={
                         'category': self._determine_tag_category(tag_name),
                         'description': self._generate_tag_description(tag_name),
@@ -303,7 +275,7 @@ class NotebookForm(forms.ModelForm):
             raise forms.ValidationError(f'サブノートの処理中にエラーが発生しました: {str(e)}')
     
     def _determine_tag_category(self, tag_name):
-        """タグ名からカテゴリを自動判定（既存メソッドを使用）"""
+        """タグ名からカテゴリを自動判定"""
         tag_lower = tag_name.lower()
         
         # テーマ関連キーワード
@@ -337,7 +309,7 @@ class NotebookForm(forms.ModelForm):
 
 
 class EntryForm(forms.ModelForm):
-    """エントリー作成・編集フォーム（銘柄情報付き）"""
+    """エントリー作成・編集フォーム（簡素化版）"""
     
     selected_tags = forms.ModelMultipleChoiceField(
         queryset=Tag.objects.filter(is_active=True),
@@ -352,7 +324,7 @@ class EntryForm(forms.ModelForm):
     class Meta:
         model = Entry
         fields = [
-            'entry_type', 'title', 'stock_code', 'company_name', 'market',
+            'entry_type', 'title', 'stock_code', 'company_name',
             'event_date', 'is_important', 'is_bookmarked', 'sub_notebook'
         ]
         widgets = {
@@ -371,10 +343,6 @@ class EntryForm(forms.ModelForm):
             'company_name': forms.TextInput(attrs={
                 'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
                 'placeholder': '例: トヨタ自動車'
-            }),
-            'market': forms.TextInput(attrs={
-                'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
-                'placeholder': '例: 東証プライム'
             }),
             'event_date': forms.DateInput(attrs={
                 'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
@@ -461,7 +429,7 @@ class NotebookSearchForm(forms.Form):
         required=False,
         widget=forms.TextInput(attrs={
             'class': 'w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500',
-            'placeholder': 'ノート名、戦略、内容で検索...',
+            'placeholder': 'ノート名、タグ、内容で検索...',
             'autocomplete': 'off'
         }),
         label='検索'
