@@ -452,15 +452,6 @@ templates/notes/index.html - 検索ハイライト対応版
                                     </div>
                                 {% endif %}
                             </div>
-                            {% if notebook.subtitle %}
-                                <p class="text-gray-400 text-sm md:text-base truncate">
-                                    {% if search_query %}
-                                        {{ notebook.subtitle|highlight_search:search_query }}
-                                    {% else %}
-                                        {{ notebook.subtitle }}
-                                    {% endif %}
-                                </p>
-                            {% endif %}
                             <div class="flex flex-wrap gap-1 mt-2">
                                 <span class="px-2 py-1 text-xs bg-gray-600 text-gray-300 rounded">{{ notebook.get_notebook_type_display }}</span>
                                 {% if notebook.stock_count > 0 %}
@@ -634,11 +625,9 @@ function highlightSearchResults() {
     const notebookCards = document.querySelectorAll('.notebook-card');
     notebookCards.forEach(card => {
         const title = card.querySelector('h3');
-        const subtitle = card.querySelector('p');
         const strategy = card.querySelector('.line-clamp-2');
         
         if (title) highlightTextInElement(title, searchQuery);
-        if (subtitle) highlightTextInElement(subtitle, searchQuery);
         if (strategy) highlightTextInElement(strategy, searchQuery);
     });
     

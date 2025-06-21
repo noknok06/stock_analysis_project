@@ -20,7 +20,7 @@ class NotebookAdmin(admin.ModelAdmin):
         'status', 'entry_count', 'updated_at'
     ]
     list_filter = ['status', 'created_at', 'updated_at']
-    search_fields = ['title', 'subtitle']
+    search_fields = ['title']
     filter_horizontal = ['tags']
     
     inlines = [EntryInline]
@@ -29,7 +29,7 @@ class NotebookAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('基本情報', {
-            'fields': ('user', 'title', 'subtitle', 'status')
+            'fields': ('user', 'title', 'status')
         }),
         ('銘柄情報', {
             'fields': ('stock_code', 'company_name')

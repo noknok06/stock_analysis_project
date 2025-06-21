@@ -45,7 +45,6 @@ class Command(BaseCommand):
                 title='タグシステムテスト用ノート',
                 user=user,
                 defaults={
-                    'subtitle': 'タグ機能の動作確認用',
                     'stock_code': '7203',
                     'company_name': 'トヨタ自動車',
                     'investment_reason': 'タグシステムのテスト用ノートです。',

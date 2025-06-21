@@ -140,11 +140,6 @@ class SearchHelper:
                 'tags__name',
                 'entries__stock_code',
             ],
-            'medium_priority': [
-                'subtitle',
-                'description',
-                'entries__company_name',
-            ],
             'low_priority': [
                 'investment_strategy',
                 'tags__description',

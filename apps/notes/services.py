@@ -29,7 +29,6 @@ class NotebookService:
         if query:
             queryset = queryset.filter(
                 Q(title__icontains=query) |
-                Q(subtitle__icontains=query) |
                 Q(company_name__icontains=query) |
                 Q(investment_reason__icontains=query) |
                 Q(tags__name__icontains=query)

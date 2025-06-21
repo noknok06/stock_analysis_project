@@ -248,21 +248,6 @@ templates/notes/detail.html - 統計情報修正完全版
                                 </svg>
                             </button>
                         </div>
-                        {% if notebook.subtitle %}
-                            <p class="text-sm md:text-base text-gray-400 truncate">{{ notebook.subtitle }}</p>
-                        {% endif %}
-                        <div class="flex flex-wrap gap-2 mt-2">
-                            <span class="inline-block px-2 py-1 text-xs rounded bg-gray-600 text-gray-300">
-                                {{ notebook.get_notebook_type_display }}
-                            </span>
-                            <span class="px-2 py-1 text-xs rounded-full 
-                                       {% if notebook.status == 'ACTIVE' %}bg-green-900 text-green-300
-                                       {% elif notebook.status == 'MONITORING' %}bg-yellow-900 text-yellow-300
-                                       {% elif notebook.status == 'ATTENTION' %}bg-red-900 text-red-300
-                                       {% else %}bg-gray-700 text-gray-300{% endif %}">
-                                {{ notebook.get_status_display }}
-                            </span>
-                        </div>
                     </div>
                 </div>
                 

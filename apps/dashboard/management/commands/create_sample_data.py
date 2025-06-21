@@ -51,7 +51,6 @@ class Command(BaseCommand):
         sample_notebooks = [
             {
                 'title': '7203 トヨタ自動車',
-                'subtitle': '長期保有・配当重視',
                 'stock_code': '7203',
                 'company_name': 'トヨタ自動車',
                 'investment_reason': '安定した配当政策と自動車業界でのリーダーシップ。電動化への取り組みも評価。',
@@ -63,7 +62,6 @@ class Command(BaseCommand):
             },
             {
                 'title': '6758 ソニーグループ',
-                'subtitle': 'エンタメ・半導体事業分析',
                 'stock_code': '6758',
                 'company_name': 'ソニーグループ',
                 'investment_reason': 'エンターテインメント事業の安定性と半導体事業の成長性を評価。',

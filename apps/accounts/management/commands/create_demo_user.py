@@ -212,7 +212,6 @@ class Command(BaseCommand):
             notebook = Notebook.objects.create(
                 user=user,
                 title='7203 トヨタ自動車',
-                subtitle='長期保有・配当重視',
                 stock_code='7203',
                 company_name='トヨタ自動車',
                 investment_reason='安定した配当政策と自動車業界でのリーダーシップを評価',

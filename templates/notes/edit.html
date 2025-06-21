@@ -536,7 +536,6 @@ function collectFormData() {
 
     return {
         title: document.getElementById('id_title').value,
-        subtitle: document.getElementById('id_subtitle').value,
         stockCode: document.getElementById('id_stock_code').value,
         companyName: document.getElementById('id_company_name').value,
         investmentReason: document.getElementById('id_investment_reason').value,
@@ -569,7 +568,6 @@ function generatePreviewHtml(data) {
             <div class="flex items-center justify-between">
                 <div>
                     <h4 class="text-xl font-semibold text-white">${data.title}</h4>
-                    ${data.subtitle ? `<p class="text-gray-400">${data.subtitle}</p>` : ''}
                     ${data.stockCode && data.companyName ? `<p class="text-sm text-gray-300 mt-1">${data.stockCode} ${data.companyName}</p>` : ''}
                 </div>
                 <span class="px-3 py-1 text-sm rounded-full ${statusColors[data.status]}">${statusLabels[data.status]}</span>

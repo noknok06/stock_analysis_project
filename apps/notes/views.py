@@ -87,7 +87,6 @@ class NotebookListView(UserOwnerMixin, ListView):
             # 検索フィールドを定義
             search_fields = [
                 'title',
-                'subtitle', 
                 'description',
                 'investment_strategy',
                 'tags__name',  # タグ名も検索対象に追加
@@ -402,7 +401,6 @@ class NotebookSearchResultsView(UserOwnerMixin, ListView):
         # 検索フィールドの定義
         search_fields = [
             'title',
-            'subtitle',
             'description', 
             'investment_strategy',
             'tags__name',
@@ -1265,7 +1263,6 @@ def notebook_search_ajax(request):
             results.append({
                 'id': str(notebook.pk),
                 'title': notebook.title,
-                'subtitle': notebook.subtitle,
                 'notebook_type': notebook.get_notebook_type_display(),
                 'status': notebook.get_status_display(),
                 'status_code': notebook.status,
@@ -1301,7 +1298,6 @@ def apply_enhanced_search_ajax(queryset, search_query):
     """Ajax検索用の拡張検索適用"""
     search_fields = [
         'title',
-        'subtitle',
         'description', 
         'investment_strategy',
         'tags__name',
