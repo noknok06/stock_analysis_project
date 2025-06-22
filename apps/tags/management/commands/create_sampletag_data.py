@@ -43,7 +43,6 @@ class Command(BaseCommand):
             'SECTOR': '#10b981',   # green
             'STRATEGY': '#3b82f6', # blue
             'ANALYSIS': '#f97316', # orange
-            'MARKET': '#8b5cf6',   # purple
             'RISK': '#eab308',     # yellow
             'EVENT': '#6366f1',    # indigo
             'OTHER': '#6b7280',    # gray

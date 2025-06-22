@@ -159,6 +159,29 @@ templates/notes/detail.html - 統計情報修正完全版
         background-color: rgba(75, 85, 99, 0.5);
     }
     
+    /* yfinance API ローディング表示 */
+    .loading-company-name {
+        display: inline-flex;
+        align-items: center;
+        color: #3b82f6;
+        font-size: 0.875rem;
+    }
+    
+    .loading-company-name svg {
+        animation: spin 1s linear infinite;
+        margin-right: 0.5rem;
+    }
+    
+    @keyframes spin {
+        from { transform: rotate(0deg); }
+        to { transform: rotate(360deg); }
+    }
+    
+    /* エントリー編集モーダルのスタイル */
+    .edit-modal {
+        backdrop-filter: blur(8px);
+    }
+    
     /* レスポンシブ対応 */
     @media (max-width: 768px) {
         .info-grid {
@@ -313,19 +336,6 @@ templates/notes/detail.html - 統計情報修正完全版
                         <div class="info-value">{{ notebook.updated_at|date:"Y年m月d日 H:i" }}</div>
                     </div>
                 </div>
-                
-                <!-- 投資戦略（全文表示） -->
-                {% if notebook.investment_strategy %}
-                    <div class="strategy-full rounded-lg p-6">
-                        <h3 class="text-lg font-semibold text-white mb-4 flex items-center">
-                            <svg class="h-5 w-5 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"></path>
-                            </svg>
-                            投資戦略・テーマ
-                        </h3>
-                        <div class="text-gray-200 leading-relaxed whitespace-pre-line">{{ notebook.investment_strategy }}</div>
-                    </div>
-                {% endif %}
                 
                 <!-- 選定基準とリスク要因 -->
                 <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
@@ -599,6 +609,13 @@ templates/notes/detail.html - 統計情報修正完全版
                                     
                                     <!-- エントリーアクション -->
                                     <div class="flex items-center space-x-1" onclick="event.stopPropagation()">
+                                        <button onclick="editEntry('{{ entry.pk }}')" 
+                                                title="エントリー編集"
+                                                class="p-1 text-gray-400 hover:text-green-400">
+                                            <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                                            </svg>
+                                        </button>
                                         <button onclick="toggleEntryBookmark('{{ entry.pk }}')" 
                                                 title="ブックマーク切り替え"
                                                 class="bookmark-icon p-1 text-gray-400 hover:text-blue-400 {% if entry.is_bookmarked %}active{% endif %}">
@@ -739,6 +756,17 @@ templates/notes/detail.html - 統計情報修正完全版
                             <h3 class="font-semibold text-white text-xs md:text-sm">メモ</h3>
                             <p class="text-xs text-gray-400 mt-1 hidden md:block">個人的な気づき・メモ</p>
                         </button>
+                        
+                        <button type="button" data-entry-type="GOAL" 
+                                class="entry-type-btn p-3 md:p-4 rounded-lg border-2 border-gray-600 bg-gray-700 hover:bg-gray-600 transition-all text-center">
+                            <div class="p-2 rounded-lg bg-yellow-900 text-yellow-300 mb-2 mx-auto w-fit">
+                                <svg class="h-4 w-4 md:h-5 md:w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                </svg>
+                            </div>
+                            <h3 class="font-semibold text-white text-xs md:text-sm">投資目標</h3>
+                            <p class="text-xs text-gray-400 mt-1 hidden md:block">投資目標・戦略の設定</p>
+                        </button>
                     </div>
                     <input type="hidden" id="entry_type" name="entry_type" required>
                 </div>
@@ -774,17 +802,26 @@ templates/notes/detail.html - 統計情報修正完全版
                     {% endif %}
                 </div>
                 
-                <!-- 銘柄情報 -->
+                <!-- 銘柄情報（★yfinance連携） -->
                 <div>
                     <h4 class="text-sm font-medium text-gray-300 mb-3">銘柄情報（任意）</h4>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
                             <label for="stock_code" class="block text-sm font-medium text-gray-300 mb-2">銘柄コード</label>
-                            <input type="text" 
-                                   id="stock_code" 
-                                   name="stock_code" 
-                                   placeholder="例: 7203"
-                                   class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <div class="relative">
+                                <input type="text" 
+                                       id="stock_code" 
+                                       name="stock_code" 
+                                       placeholder="例: 7203"
+                                       class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <div id="stock-code-loading" class="loading-company-name hidden absolute right-3 top-2">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                            <p class="text-xs text-gray-400 mt-1">入力すると企業名を自動取得します</p>
                         </div>
                         
                         <div>
@@ -793,6 +830,14 @@ templates/notes/detail.html - 統計情報修正完全版
                                    id="company_name" 
                                    name="company_name" 
                                    placeholder="例: トヨタ自動車"
+                                   class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label for="event_date" class="block text-sm font-medium text-gray-300 mb-2">イベント日</label>
+                            <input type="date" 
+                                   id="event_date" 
+                                   name="event_date"
                                    class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
                         </div>
                     </div>
@@ -808,13 +853,6 @@ templates/notes/detail.html - 統計情報修正完全版
                         <input type="checkbox" name="is_bookmarked" class="text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
                         <span class="ml-2 text-sm text-gray-300">ブックマーク</span>
                     </label>
-                    <div>
-                        <label for="event_date" class="block text-sm font-medium text-gray-300 mb-2">イベント日</label>
-                        <input type="date" 
-                               id="event_date" 
-                               name="event_date"
-                               class="bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                    </div>
                 </div>
                 
                 <!-- エントリー固有フォーム -->
@@ -863,6 +901,148 @@ templates/notes/detail.html - 統計情報修正完全版
         <div id="entry-detail-content" class="p-4 md:p-6 overflow-y-auto max-h-[calc(95vh-120px)] md:max-h-[60vh]">
             <!-- エントリー詳細内容がここに表示される -->
         </div>
+    </div>
+</div>
+
+<!-- ★エントリー編集モーダル（新規追加） -->
+<div id="entry-edit-modal" class="fixed inset-0 bg-black/80 backdrop-blur-sm z-50 hidden flex items-center justify-center p-2 md:p-4 edit-modal">
+    <div class="bg-gray-900 border border-gray-700 rounded-lg w-full max-w-4xl max-h-[95vh] md:max-h-[90vh] overflow-hidden">
+        <div class="flex items-center justify-between p-4 md:p-6 border-b border-gray-700">
+            <div>
+                <h2 class="text-lg md:text-2xl font-bold text-white">エントリー編集</h2>
+                <p class="text-sm md:text-base text-gray-400" id="edit-entry-subtitle">エントリーの内容を修正します</p>
+            </div>
+            <button onclick="closeEntryEditModal()" class="text-gray-400 hover:text-white p-2">
+                <svg class="h-5 w-5 md:h-6 md:w-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+        
+        <form id="entry-edit-form" method="POST" class="overflow-y-auto max-h-[calc(95vh-140px)] md:max-h-[calc(90vh-140px)]">
+            {% csrf_token %}
+            <div class="p-4 md:p-6 space-y-4 md:space-y-6">
+                <!-- エントリータイプ選択（編集時は変更不可） -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">エントリータイプ</label>
+                    <select id="edit_entry_type" 
+                            name="entry_type"
+                            class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <option value="ANALYSIS">決算分析</option>
+                        <option value="NEWS">ニュース</option>
+                        <option value="MEMO">メモ</option>
+                        <option value="GOAL">投資目標</option>
+                        <option value="EARNINGS">決算発表</option>
+                        <option value="IR_EVENT">IRイベント</option>
+                        <option value="MARKET_EVENT">市場イベント</option>
+                    </select>
+                </div>
+                
+                <!-- 基本情報 -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <!-- エントリータイトル -->
+                    <div>
+                        <label for="edit_entry_title" class="block text-sm font-medium text-gray-300 mb-2">
+                            エントリータイトル <span class="text-red-400">*</span>
+                        </label>
+                        <input type="text" 
+                               id="edit_entry_title" 
+                               name="title" 
+                               required
+                               class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    
+                    <!-- サブノート選択 -->
+                    <div>
+                        <label for="edit_sub_notebook" class="block text-sm font-medium text-gray-300 mb-2">サブノート</label>
+                        <select id="edit_sub_notebook" 
+                                name="sub_notebook"
+                                class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                            <option value="">サブノートを選択（任意）</option>
+                            <!-- 動的に設定される -->
+                        </select>
+                    </div>
+                </div>
+                
+                <!-- 銘柄情報（yfinance連携） -->
+                <div>
+                    <h4 class="text-sm font-medium text-gray-300 mb-3">銘柄情報（任意）</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <label for="edit_stock_code" class="block text-sm font-medium text-gray-300 mb-2">銘柄コード</label>
+                            <div class="relative">
+                                <input type="text" 
+                                       id="edit_stock_code" 
+                                       name="stock_code"
+                                       class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                                <div id="edit-stock-code-loading" class="loading-company-name hidden absolute right-3 top-2">
+                                    <svg class="h-4 w-4" fill="none" viewBox="0 0 24 24">
+                                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                    </svg>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label for="edit_company_name" class="block text-sm font-medium text-gray-300 mb-2">企業名</label>
+                            <input type="text" 
+                                   id="edit_company_name" 
+                                   name="company_name"
+                                   class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                        
+                        <div>
+                            <label for="edit_event_date" class="block text-sm font-medium text-gray-300 mb-2">イベント日</label>
+                            <input type="date" 
+                                   id="edit_event_date" 
+                                   name="event_date"
+                                   class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- オプション -->
+                <div class="flex flex-wrap gap-4">
+                    <label class="flex items-center">
+                        <input type="checkbox" id="edit_is_important" name="is_important" class="text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
+                        <span class="ml-2 text-sm text-gray-300">重要フラグ</span>
+                    </label>
+                    <label class="flex items-center">
+                        <input type="checkbox" id="edit_is_bookmarked" name="is_bookmarked" class="text-blue-600 bg-gray-700 border-gray-600 rounded focus:ring-blue-500">
+                        <span class="ml-2 text-sm text-gray-300">ブックマーク</span>
+                    </label>
+                </div>
+                
+                <!-- エントリー固有フォーム（編集用） -->
+                <div id="edit-entry-type-form">
+                    <!-- 動的に生成されるフォーム内容 -->
+                </div>
+            </div>
+            
+            <div class="flex flex-col sm:flex-row items-center justify-between p-4 md:p-6 bg-gray-800 border-t border-gray-700 gap-3 sm:gap-0">
+                <div class="text-xs md:text-sm text-gray-400 order-2 sm:order-1">
+                    <svg class="h-3 w-3 md:h-4 md:w-4 inline mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"></path>
+                    </svg>
+                    エントリーを編集中
+                </div>
+                <div class="flex space-x-2 md:space-x-3 w-full sm:w-auto order-1 sm:order-2">
+                    <button type="button" onclick="closeEntryEditModal()" 
+                            class="flex-1 sm:flex-none px-4 md:px-6 py-2 border border-gray-600 text-gray-300 rounded-lg hover:bg-gray-700 transition-colors text-sm md:text-base">
+                        キャンセル
+                    </button>
+                    <button type="submit" 
+                            class="flex-1 sm:flex-none px-4 md:px-6 py-2 bg-green-600 hover:bg-green-700 text-white rounded-lg transition-colors flex items-center justify-center text-sm md:text-base">
+                        <svg class="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        <span class="hidden sm:inline">変更を保存</span>
+                        <span class="sm:hidden">保存</span>
+                    </button>
+                </div>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -919,6 +1099,7 @@ templates/notes/detail.html - 統計情報修正完全版
 // ========================================
 
 let selectedEntryType = null;
+let editingEntryId = null;
 let currentFilters = {
     subNotebook: '',
     entryType: '',
@@ -997,8 +1178,285 @@ document.addEventListener('DOMContentLoaded', function() {
     // フォーム送信時の処理
     setupFormSubmission();
     
+    // ★yfinance連携の初期化
+    setupYfinanceIntegration();
+    
     console.log('初期化完了');
 });
+
+function setupYfinanceIntegration() {
+    console.log('yfinance連携を初期化');
+    
+    // 新規エントリー作成時の銘柄コード入力
+    const stockCodeInput = document.getElementById('stock_code');
+    if (stockCodeInput) {
+        stockCodeInput.addEventListener('input', debounce(function() {
+            const stockCode = this.value.trim();
+            if (stockCode && /^\d{4}$/.test(stockCode)) {
+                fetchCompanyNameFromStockCode(stockCode, 'company_name', 'stock-code-loading');
+            }
+        }, 1000));
+    }
+    
+    // エントリー編集時の銘柄コード入力
+    const editStockCodeInput = document.getElementById('edit_stock_code');
+    if (editStockCodeInput) {
+        editStockCodeInput.addEventListener('input', debounce(function() {
+            const stockCode = this.value.trim();
+            if (stockCode && /^\d{4}$/.test(stockCode)) {
+                fetchCompanyNameFromStockCode(stockCode, 'edit_company_name', 'edit-stock-code-loading');
+            }
+        }, 1000));
+    }
+}
+
+function fetchCompanyNameFromStockCode(stockCode, companyNameFieldId, loadingElementId) {
+    console.log('企業名を取得中:', stockCode);
+    
+    const companyNameField = document.getElementById(companyNameFieldId);
+    const loadingElement = document.getElementById(loadingElementId);
+    
+    if (!companyNameField) {
+        console.error('企業名フィールドが見つかりません:', companyNameFieldId);
+        return;
+    }
+    
+    // ローディング表示
+    if (loadingElement) {
+        loadingElement.classList.remove('hidden');
+    }
+    
+    // yfinance APIを呼び出し
+    fetch(`/notes/api/company-name/?stock_code=${encodeURIComponent(stockCode)}`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success && data.company_name) {
+                companyNameField.value = data.company_name;
+                companyNameField.classList.add('border-green-500');
+                setTimeout(() => {
+                    companyNameField.classList.remove('border-green-500');
+                }, 2000);
+                
+                NotificationManager.show(`企業名を取得しました: ${data.company_name}`, 'success', 2000);
+            } else {
+                console.warn('企業名が取得できませんでした:', data.error);
+                NotificationManager.show(data.error || '企業名が取得できませんでした', 'warning', 3000);
+            }
+        })
+        .catch(error => {
+            console.error('yfinance API エラー:', error);
+            NotificationManager.show('企業名の取得に失敗しました', 'error', 3000);
+        })
+        .finally(() => {
+            // ローディング非表示
+            if (loadingElement) {
+                loadingElement.classList.add('hidden');
+            }
+        });
+}
+
+// デバウンス関数（入力の頻度制限）
+function debounce(func, delay) {
+    let timeoutId;
+    return function (...args) {
+        clearTimeout(timeoutId);
+        timeoutId = setTimeout(() => func.apply(this, args), delay);
+    };
+}
+
+// ========================================
+// ★エントリー編集機能（新規追加）
+// ========================================
+
+function editEntry(entryId) {
+    console.log('エントリー編集開始:', entryId);
+    editingEntryId = entryId;
+    
+    // エントリー詳細モーダルを閉じる
+    closeEntryDetail();
+    
+    // 編集用データを取得
+    fetch(`/notes/entry/${entryId}/edit/`)
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                populateEditForm(data.entry, data.sub_notebooks);
+                openEntryEditModal();
+            } else {
+                throw new Error(data.error || 'エントリーデータの取得に失敗しました');
+            }
+        })
+        .catch(error => {
+            console.error('エントリー編集データ取得エラー:', error);
+            NotificationManager.show(error.message, 'error');
+        });
+}
+
+function openEntryEditModal() {
+    console.log('エントリー編集モーダルを開く');
+    const modal = document.getElementById('entry-edit-modal');
+    if (modal) {
+        modal.classList.remove('hidden');
+    }
+}
+
+function closeEntryEditModal() {
+    console.log('エントリー編集モーダルを閉じる');
+    const modal = document.getElementById('entry-edit-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+    editingEntryId = null;
+}
+
+function setupEditFormSubmission() {
+    const form = document.getElementById('entry-edit-form');
+    if (form) {
+        form.addEventListener('submit', function(e) {
+            e.preventDefault();
+            
+            if (!editingEntryId) {
+                NotificationManager.show('編集するエントリーが指定されていません', 'error');
+                return;
+            }
+            
+            // フォームデータを収集
+            const formData = new FormData(this);
+            const contentData = collectEditFormData();
+            formData.append('content', JSON.stringify(contentData));
+            
+            // 送信ボタンを無効化
+            const submitButton = form.querySelector('button[type="submit"]');
+            if (submitButton) {
+                submitButton.disabled = true;
+                submitButton.innerHTML = `
+                    <svg class="animate-spin h-4 w-4 mr-2" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    保存中...
+                `;
+            }
+            
+            // エントリー更新APIを呼び出し
+            fetch(`/notes/entry/${editingEntryId}/edit/`, {
+                method: 'POST',
+                body: formData,
+                headers: {
+                    'X-CSRFToken': getCsrfToken()
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    NotificationManager.show(data.message, 'success');
+                    closeEntryEditModal();
+                    
+                    // ページをリロードして更新内容を反映
+                    setTimeout(() => {
+                        window.location.reload();
+                    }, 1000);
+                } else {
+                    throw new Error(data.error || 'エントリーの更新に失敗しました');
+                }
+            })
+            .catch(error => {
+                console.error('エントリー更新エラー:', error);
+                NotificationManager.show(error.message, 'error');
+            })
+            .finally(() => {
+                // ボタンを元に戻す
+                if (submitButton) {
+                    submitButton.disabled = false;
+                    submitButton.innerHTML = `
+                        <svg class="h-4 w-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                        </svg>
+                        変更を保存
+                    `;
+                }
+            });
+        });
+    }
+}
+
+function collectEditFormData() {
+    const contentData = {};
+    
+    // エントリータイプ固有のフィールドを収集
+    const typeForm = document.getElementById('edit-entry-type-form');
+    if (typeForm) {
+        const inputs = typeForm.querySelectorAll('input, textarea, select');
+        inputs.forEach(input => {
+            if (input.value.trim()) {
+                contentData[input.name] = input.value;
+            }
+        });
+    }
+    
+    // エントリータイプに応じて構造化
+    const entryType = document.getElementById('edit_entry_type').value;
+    
+    // key_metricsを別途作成（ANALYSIS用）
+    if (entryType === 'ANALYSIS') {
+        contentData.key_metrics = {};
+        ['revenue', 'operating_profit', 'net_income', 'eps'].forEach(key => {
+            if (contentData[key]) {
+                contentData.key_metrics[key] = contentData[key];
+                delete contentData[key];
+            }
+        });
+    }
+    
+    return contentData;
+}
+
+function populateEditForm(entryData, subNotebooks) {
+    console.log('編集フォームにデータを設定:', entryData);
+    
+    // 基本情報
+    document.getElementById('edit_entry_type').value = entryData.entry_type;
+    document.getElementById('edit_entry_title').value = entryData.title;
+    document.getElementById('edit_stock_code').value = entryData.stock_code;
+    document.getElementById('edit_company_name').value = entryData.company_name;
+    document.getElementById('edit_event_date').value = entryData.event_date;
+    document.getElementById('edit_is_important').checked = entryData.is_important;
+    document.getElementById('edit_is_bookmarked').checked = entryData.is_bookmarked;
+    
+    // サブノート選択肢を更新
+    const subNotebookSelect = document.getElementById('edit_sub_notebook');
+    subNotebookSelect.innerHTML = '<option value="">サブノートを選択（任意）</option>';
+    subNotebooks.forEach(sub => {
+        const option = document.createElement('option');
+        option.value = sub.id;
+        option.textContent = sub.title;
+        if (sub.id === entryData.sub_notebook) {
+            option.selected = true;
+        }
+        subNotebookSelect.appendChild(option);
+    });
+    
+    // エントリータイプ固有フォームを生成
+    generateEditEntryTypeForm(entryData.entry_type, entryData.content);
+}
+
+function generateEditEntryTypeForm(entryType, content) {
+    console.log('編集用エントリータイプフォーム生成:', entryType);
+    const container = document.getElementById('edit-entry-type-form');
+    if (!container) return;
+    
+    const formTemplates = {
+        'ANALYSIS': generateEditAnalysisForm(content),
+        'NEWS': generateEditNewsForm(content),
+        'MEMO': generateEditMemoForm(content),
+        'GOAL': generateEditGoalForm(content),
+        'EARNINGS': generateEditEarningsForm(content),
+        'IR_EVENT': generateEditIREventForm(content),
+        'MARKET_EVENT': generateEditMarketEventForm(content)
+    };
+    
+    container.innerHTML = formTemplates[entryType] || '<p class="text-gray-400">このエントリータイプの編集フォームはまだ実装されていません。</p>';
+}
 
 // ========================================
 // 詳細セクション展開機能
@@ -1188,6 +1646,12 @@ function deleteEntry(entryId) {
                 closeEntryDetail();
             }
             
+            // 編集モーダルが開いている場合は閉じる
+            const editModal = document.getElementById('entry-edit-modal');
+            if (editModal && !editModal.classList.contains('hidden')) {
+                closeEntryEditModal();
+            }
+            
             // 1秒後にページをリロード（統計更新のため）
             setTimeout(() => {
                 window.location.reload();
@@ -1265,6 +1729,12 @@ function openEntryDetail(entryId) {
                 if (deleteButton) {
                     deleteButton.setAttribute('onclick', `deleteEntry('${entryId}')`);
                 }
+                
+                // モーダル内の編集ボタンに現在のentryIdを設定
+                const editButton = document.querySelector('#entry-detail-modal [onclick*="editEntry"]');
+                if (editButton) {
+                    editButton.setAttribute('onclick', `editEntry('${entryId}')`);
+                }
             } else {
                 throw new Error(data.error || 'データの取得に失敗しました');
             }
@@ -1283,6 +1753,23 @@ function openEntryDetail(entryId) {
             updateEntryDetailModal('エラー', errorHtml);
         });
 }
+
+function closeEntryDetail() {
+    console.log('エントリー詳細モーダルを閉じます');
+    const modal = document.getElementById('entry-detail-modal');
+    if (modal) {
+        modal.classList.add('hidden');
+    }
+}
+
+function updateEntryDetailModal(title, content) {
+    const titleElement = document.getElementById('entry-detail-title');
+    const contentElement = document.getElementById('entry-detail-content');
+    
+    if (titleElement) titleElement.textContent = title;
+    if (contentElement) contentElement.innerHTML = content;
+}
+
 
 function closeEntryDetail() {
     console.log('エントリー詳細モーダルを閉じます');
@@ -2126,5 +2613,6 @@ function generateMarketEventForm() {
         </div>
     `;
 }
+
 </script>
 {% endblock %}

@@ -27,9 +27,84 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_http_methods
 import logging
 
+# yfinance関連のインポート
+try:
+    import yfinance as yf
+except ImportError:
+    yf = None
+
+# ログ設定
+
 
 # ログ設定
 logger = logging.getLogger(__name__)
+
+
+# ========================================
+# yfinance API関連
+# ========================================
+
+@login_required
+def get_company_name_from_stock_code(request):
+    """銘柄コードから企業名を取得（yfinance使用）"""
+    stock_code = request.GET.get('stock_code', '').strip()
+    
+    if not stock_code:
+        return JsonResponse({
+            'success': False,
+            'error': '銘柄コードが指定されていません'
+        })
+    
+    if yf is None:
+        return JsonResponse({
+            'success': False,
+            'error': 'yfinance ライブラリがインストールされていません'
+        })
+    
+    try:
+        # 日本株の場合、.Tを付加
+        if stock_code.isdigit() and len(stock_code) == 4:
+            yahoo_symbol = f"{stock_code}.T"
+        else:
+            yahoo_symbol = stock_code
+        
+        # yfinanceでデータ取得
+        ticker = yf.Ticker(yahoo_symbol)
+        info = ticker.info
+        
+        # 企業名を取得（複数の候補から取得）
+        company_name = (
+            info.get('longName') or 
+            info.get('shortName') or 
+            info.get('displayName') or 
+            info.get('name')
+        )
+        
+        if company_name:
+            # 日本企業の場合、余分な文字を除去
+            if company_name.endswith(' Co Ltd'):
+                company_name = company_name.replace(' Co Ltd', '')
+            elif company_name.endswith(' Corp'):
+                company_name = company_name.replace(' Corp', '')
+            
+            return JsonResponse({
+                'success': True,
+                'company_name': company_name,
+                'stock_code': stock_code,
+                'symbol': yahoo_symbol
+            })
+        else:
+            return JsonResponse({
+                'success': False,
+                'error': '企業名が見つかりませんでした'
+            })
+            
+    except Exception as e:
+        logger.error(f"yfinance API エラー: {e}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': f'企業情報の取得に失敗しました: {str(e)}'
+        })
 
 
 class NotebookListView(UserOwnerMixin, ListView):
@@ -739,7 +814,7 @@ class NotebookCreateView(LoginRequiredMixin, CreateView):
             for error in errors:
                 messages.error(self.request, f'{form[field].label}: {error}')
         return super().form_invalid(form)
-    
+        
 
 class NotebookUpdateView(UserOwnerMixin, UpdateView):
     """ノート編集ビュー（テーマ単位）"""
@@ -858,6 +933,93 @@ def entry_create_view(request, notebook_pk):
 
 
 @login_required
+def entry_edit_view(request, entry_pk):
+    """エントリー編集ビュー（新規追加）"""
+    entry = get_object_or_404(Entry, pk=entry_pk, notebook__user=request.user)
+    
+    if request.method == 'POST':
+        try:
+            # フォームデータを処理
+            entry.entry_type = request.POST.get('entry_type', entry.entry_type)
+            entry.title = request.POST.get('title', entry.title)
+            entry.stock_code = request.POST.get('stock_code', '')
+            entry.company_name = request.POST.get('company_name', '')
+            
+            # サブノート
+            sub_notebook_id = request.POST.get('sub_notebook')
+            if sub_notebook_id:
+                try:
+                    entry.sub_notebook = SubNotebook.objects.get(pk=sub_notebook_id, notebook=entry.notebook)
+                except SubNotebook.DoesNotExist:
+                    entry.sub_notebook = None
+            else:
+                entry.sub_notebook = None
+            
+            # フラグ
+            entry.is_important = request.POST.get('is_important') == 'on'
+            entry.is_bookmarked = request.POST.get('is_bookmarked') == 'on'
+            
+            # イベント日
+            event_date = request.POST.get('event_date')
+            if event_date:
+                entry.event_date = event_date
+            else:
+                entry.event_date = None
+            
+            # コンテンツ
+            content_json = request.POST.get('content', '{}')
+            try:
+                content_data = json.loads(content_json)
+                entry.content = ContentHelper.format_json_content(content_data, entry.entry_type)
+            except json.JSONDecodeError:
+                pass
+            
+            entry.save()
+            
+            messages.success(request, f'エントリー「{entry.title}」を更新しました。')
+            return JsonResponse({
+                'success': True,
+                'message': f'エントリー「{entry.title}」を更新しました。',
+                'entry_id': str(entry.pk)
+            })
+            
+        except Exception as e:
+            logger.error(f"エントリー更新エラー: {e}", exc_info=True)
+            return JsonResponse({
+                'success': False,
+                'error': f'エントリーの更新に失敗しました: {str(e)}'
+            }, status=500)
+    
+    # GET: 編集フォーム用のデータを返す
+    try:
+        return JsonResponse({
+            'success': True,
+            'entry': {
+                'id': str(entry.pk),
+                'entry_type': entry.entry_type,
+                'title': entry.title,
+                'stock_code': entry.stock_code or '',
+                'company_name': entry.company_name or '',
+                'sub_notebook': str(entry.sub_notebook.pk) if entry.sub_notebook else '',
+                'is_important': entry.is_important,
+                'is_bookmarked': entry.is_bookmarked,
+                'event_date': entry.event_date.strftime('%Y-%m-%d') if entry.event_date else '',
+                'content': entry.content
+            },
+            'sub_notebooks': [
+                {'id': str(sub.pk), 'title': sub.title}
+                for sub in entry.notebook.sub_notebooks.all()
+            ]
+        })
+    except Exception as e:
+        logger.error(f"エントリー編集フォーム取得エラー: {e}", exc_info=True)
+        return JsonResponse({
+            'success': False,
+            'error': 'エントリー情報の取得に失敗しました'
+        }, status=500)
+
+
+@login_required
 def entry_detail_ajax(request, entry_pk):
     """エントリー詳細をAjaxで返すビュー"""
     try:
@@ -868,13 +1030,17 @@ def entry_detail_ajax(request, entry_pk):
         
         return JsonResponse({
             'success': True,
+            'entry_id': str(entry.pk),
             'title': entry.title,
             'entry_type': entry.get_entry_type_display(),
             'stock_info': entry.get_stock_display(),
             'sub_notebook': entry.sub_notebook.title if entry.sub_notebook else None,
             'created_at': entry.created_at.strftime('%Y/%m/%d %H:%M'),
+            'updated_at': entry.updated_at.strftime('%Y/%m/%d %H:%M'),
             'is_important': entry.is_important,
             'is_bookmarked': entry.is_bookmarked,
+            'event_date': entry.event_date.strftime('%Y/%m/%d') if entry.event_date else None,
+            'tags': [{'id': tag.pk, 'name': tag.name} for tag in entry.tags.all()],
             'html': html_content
         })
         
@@ -884,6 +1050,9 @@ def entry_detail_ajax(request, entry_pk):
             'error': 'エントリーが見つかりません'
         }, status=404)
     except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"エントリー詳細取得エラー: {e}", exc_info=True)
         return JsonResponse({
             'success': False,
             'error': f'エラーが発生しました: {str(e)}'
@@ -891,27 +1060,37 @@ def entry_detail_ajax(request, entry_pk):
 
 
 @login_required
-def toggle_favorite_view(request, notebook_pk):
+def toggle_favorite_view(request, pk):
     """ノートのお気に入り切り替え"""
     if request.method == 'POST':
-        notebook = get_object_or_404(Notebook, pk=notebook_pk, user=request.user)
-        notebook.is_favorite = not notebook.is_favorite
-        notebook.save(update_fields=['is_favorite'])
-        
-        status = 'お気に入りに追加' if notebook.is_favorite else 'お気に入りから削除'
-        return JsonResponse({
-            'success': True,
-            'is_favorite': notebook.is_favorite,
-            'message': f'「{notebook.title}」を{status}しました'
-        })
+        try:
+            notebook = get_object_or_404(Notebook, pk=pk, user=request.user)
+            notebook.is_favorite = not notebook.is_favorite
+            notebook.save(update_fields=['is_favorite'])
+            
+            status = 'お気に入りに追加' if notebook.is_favorite else 'お気に入りから削除'
+            return JsonResponse({
+                'success': True,
+                'is_favorite': notebook.is_favorite,
+                'message': f'「{notebook.title}」を{status}しました'
+            })
+        except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"お気に入り切り替えエラー: {e}", exc_info=True)
+            return JsonResponse({
+                'success': False, 
+                'error': 'お気に入りの切り替えに失敗しました'
+            }, status=500)
     
-    return JsonResponse({'success': False, 'error': '無効なリクエストです'}, status=400)
+    return JsonResponse({'success': False, 'error': '無効なリクエストです'}, status=405)
 
 
 @login_required
-def toggle_bookmark_view(request, entry_pk):
-    """エントリーのブックマーク切り替え"""
-    if request.method == 'POST':
+@require_http_methods(["POST"])
+def toggle_entry_bookmark(request, entry_pk):
+    """エントリーのブックマーク切り替え（修正版）"""
+    try:
         entry = get_object_or_404(Entry, pk=entry_pk, notebook__user=request.user)
         entry.is_bookmarked = not entry.is_bookmarked
         entry.save(update_fields=['is_bookmarked'])
@@ -922,8 +1101,46 @@ def toggle_bookmark_view(request, entry_pk):
             'is_bookmarked': entry.is_bookmarked,
             'message': f'「{entry.title}」を{status}しました'
         })
-    
-    return JsonResponse({'success': False, 'error': '無効なリクエストです'}, status=400)
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"エントリーブックマーク切り替えエラー: {e}", exc_info=True)
+        return JsonResponse({
+            'success': False, 
+            'error': 'ブックマークの切り替えに失敗しました'
+        }, status=500)
+
+
+@login_required
+@require_http_methods(["POST"])
+def delete_entry(request, entry_pk):
+    """エントリー削除"""
+    try:
+        entry = get_object_or_404(Entry, pk=entry_pk, notebook__user=request.user)
+        entry_title = entry.title
+        notebook_pk = entry.notebook.pk
+        
+        # エントリーを削除
+        entry.delete()
+        
+        # ノートブックのエントリー数を更新
+        notebook = entry.notebook
+        notebook.entry_count = notebook.entries.count()
+        notebook.save(update_fields=['entry_count'])
+        
+        return JsonResponse({
+            'success': True,
+            'message': f'エントリー「{entry_title}」を削除しました',
+            'notebook_url': reverse('notes:detail', kwargs={'pk': notebook_pk})
+        })
+    except Exception as e:
+        import logging
+        logger = logging.getLogger(__name__)
+        logger.error(f"エントリー削除エラー: {e}", exc_info=True)
+        return JsonResponse({
+            'success': False, 
+            'error': 'エントリーの削除に失敗しました'
+        }, status=500)
 
 
 @login_required
@@ -974,12 +1191,16 @@ def sub_notebook_create_ajax(request, notebook_pk):
                 'error': '無効なJSONデータです'
             }, status=400)
         except Exception as e:
+            import logging
+            logger = logging.getLogger(__name__)
+            logger.error(f"サブノート作成エラー: {e}", exc_info=True)
             return JsonResponse({
                 'success': False,
-                'error': str(e)
+                'error': 'サブノートの作成に失敗しました'
             }, status=500)
     
     return JsonResponse({'success': False, 'error': '無効なリクエストです'}, status=405)
+
 
 # ========================================
 # ヘルパー関数（既存のものを流用）

@@ -6,8 +6,8 @@ from .base import *
 import os
 
 # 一時的にデバッグを有効化
-DEBUG = True
-ALLOWED_HOSTS = ['*']  # 一時的に全て許可
+DEBUG = False
+ALLOWED_HOSTS = ['note.kabu-log.net']  # 一時的に全て許可
 
 # base.pyの設定を上書きして、allauthを完全に削除
 INSTALLED_APPS = [
