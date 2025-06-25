@@ -61,11 +61,275 @@ templates/tags/list.html - 改良版タグ管理画面（カテゴリ削除版�
         transition: all 0.2s ease-in-out;
         color: white;
         border: 1px solid;
+        font-weight: 500;
     }
     
     .tag-display:hover {
         opacity: 0.8;
         transform: scale(1.05);
+    }
+
+    /* スマホ向けレスポンシブデザイン */
+    @media (max-width: 768px) {
+        /* ヘッダー調整 */
+        .header-actions {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .header-actions .button-group {
+            flex-wrap: wrap;
+            gap: 0.5rem;
+        }
+        
+        .header-actions button,
+        .header-actions a {
+            flex: 1;
+            min-width: 120px;
+            text-align: center;
+            padding: 0.75rem 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        /* 統計カード調整 */
+        .stats-grid {
+            grid-template-columns: repeat(2, 1fr);
+            gap: 1rem;
+        }
+        
+        .stats-card {
+            padding: 1rem;
+        }
+        
+        .stats-card .stat-number {
+            font-size: 1.5rem;
+        }
+
+        /* 検索・フィルター調整 */
+        .filter-grid {
+            grid-template-columns: 1fr;
+            gap: 1rem;
+        }
+        
+        .filter-row {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1rem;
+        }
+        
+        .filter-row .sort-section {
+            flex-direction: column;
+            align-items: stretch;
+        }
+
+        /* バルクアクション調整 */
+        .bulk-actions {
+            padding: 1rem;
+        }
+        
+        .bulk-actions .actions-container {
+            flex-direction: column;
+            gap: 1rem;
+        }
+        
+        .bulk-actions .action-buttons {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.5rem;
+        }
+
+        /* タグアイテム調整 */
+        .tag-item {
+            padding: 1rem;
+            border-left-width: 3px;
+        }
+        
+        .tag-item-content {
+            flex-direction: column;
+            align-items: stretch;
+            gap: 1rem;
+        }
+        
+        .tag-main-info {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.75rem;
+        }
+        
+        /* タグ表示エリア */
+        .tag-display-area {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 0.5rem;
+        }
+        
+        .tag-display {
+            font-size: 1rem;
+            padding: 0.5rem 0.75rem;
+            min-height: 44px;
+            display: flex;
+            align-items: center;
+        }
+        
+        /* ステータスバッジ調整 */
+        .status-badges {
+            flex-wrap: wrap;
+            gap: 0.5rem;
+            margin-top: 0.5rem;
+        }
+        
+        .status-badges .badge {
+            font-size: 0.75rem;
+            padding: 0.25rem 0.5rem;
+            white-space: nowrap;
+        }
+
+        /* メタ情報調整 */
+        .tag-meta {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.5rem;
+            font-size: 0.75rem;
+            margin-top: 0.5rem;
+        }
+        
+        .tag-meta-item {
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* アクション調整 */
+        .tag-actions {
+            align-self: stretch;
+            justify-content: center;
+            background: rgba(75, 85, 99, 0.2);
+            border-radius: 0.5rem;
+            padding: 0.75rem;
+        }
+        
+        .tag-actions .action-buttons {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 0.5rem;
+            width: 100%;
+        }
+        
+        .tag-actions button,
+        .tag-actions a {
+            min-height: 44px;
+            min-width: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 0.75rem;
+            border-radius: 0.5rem;
+            background: rgba(75, 85, 99, 0.5);
+            border: 1px solid rgba(156, 163, 175, 0.3);
+            transition: all 0.2s ease;
+        }
+        
+        .tag-actions button:hover,
+        .tag-actions a:hover {
+            background: rgba(75, 85, 99, 0.8);
+            transform: scale(1.05);
+        }
+
+        /* テーブルヘッダー調整 */
+        .table-header {
+            padding: 1rem;
+        }
+        
+        .table-header-content {
+            flex-direction: column;
+            gap: 0.75rem;
+        }
+        
+        .select-all-section {
+            justify-content: center;
+        }
+
+        /* ページネーション調整 */
+        .pagination-container {
+            flex-direction: column;
+            text-align: center;
+            gap: 1rem;
+        }
+        
+        .pagination-nav {
+            justify-content: center;
+            flex-wrap: wrap;
+        }
+        
+        .pagination-nav a,
+        .pagination-nav span {
+            min-height: 44px;
+            min-width: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* モーダル調整 */
+        .modal-content {
+            margin: 1rem;
+            max-height: calc(100vh - 2rem);
+            overflow-y: auto;
+        }
+        
+        .usage-modal-content {
+            max-width: 95vw;
+        }
+
+        /* 空状態調整 */
+        .empty-state {
+            padding: 2rem 1rem;
+        }
+        
+        .empty-state .action-buttons {
+            flex-direction: column;
+            width: 100%;
+            max-width: 300px;
+            margin: 0 auto;
+        }
+    }
+
+    /* タッチデバイス用の調整 */
+    @media (hover: none) and (pointer: coarse) {
+        .tag-item:hover {
+            transform: none;
+            box-shadow: none;
+        }
+        
+        .tag-actions button:hover,
+        .tag-actions a:hover {
+            transform: none;
+        }
+        
+        /* タップ時のフィードバック */
+        .tag-actions button:active,
+        .tag-actions a:active {
+            background: rgba(75, 85, 99, 0.9);
+            transform: scale(0.95);
+        }
+    }
+
+    /* 超小型画面 (320px未満) */
+    @media (max-width: 320px) {
+        .tag-item {
+            padding: 0.75rem;
+        }
+        
+        .tag-display {
+            font-size: 0.875rem;
+        }
+        
+        .stats-grid {
+            grid-template-columns: 1fr;
+        }
+        
+        .tag-actions .action-buttons {
+            grid-template-columns: repeat(2, 1fr);
+        }
     }
 </style>
 {% endblock %}
