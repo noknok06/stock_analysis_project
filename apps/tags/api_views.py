@@ -1,5 +1,5 @@
 # ========================================
-# apps/tags/api_views.py - ユーザー固有タグAPI
+# apps/tags/api_views.py - ユーザー固有タグAPI（カテゴリなし版）
 # ========================================
 
 import json
@@ -17,7 +17,6 @@ def tag_search_api(request):
     """ユーザー固有タグ検索API"""
     try:
         query = request.GET.get('q', '').strip()
-        category = request.GET.get('category', '')
         limit = int(request.GET.get('limit', 20))
         
         # ユーザー固有のタグのみ取得
@@ -26,18 +25,15 @@ def tag_search_api(request):
         if query:
             tags = tags.filter(name__icontains=query)
         
-        if category:
-            tags = tags.filter(category=category)
-        
         tags = tags.order_by('-usage_count', 'name')[:limit]
         
         results = [
             {
                 'id': tag.pk,
                 'name': tag.name,
-                'category': tag.category,
                 'usage_count': tag.usage_count,
-                'description': tag.description
+                'description': tag.description,
+                'color': tag.get_effective_color()
             }
             for tag in tags
         ]
@@ -63,7 +59,6 @@ def tag_create_api(request):
     try:
         data = json.loads(request.body)
         tag_name = data.get('name', '').strip()
-        category = data.get('category', 'OTHER')
         description = data.get('description', '')
         
         if not tag_name:
@@ -84,7 +79,6 @@ def tag_create_api(request):
                 'tag': {
                     'id': existing_tag.pk,
                     'name': existing_tag.name,
-                    'category': existing_tag.category,
                     'usage_count': existing_tag.usage_count,
                     'is_existing': True
                 },
@@ -95,7 +89,6 @@ def tag_create_api(request):
         tag = Tag.objects.create(
             user=request.user,
             name=tag_name,
-            category=category,
             description=description,
             usage_count=1
         )
@@ -105,7 +98,6 @@ def tag_create_api(request):
             'tag': {
                 'id': tag.pk,
                 'name': tag.name,
-                'category': tag.category,
                 'usage_count': tag.usage_count,
                 'is_existing': False
             },
@@ -266,14 +258,10 @@ def generate_tag_suggestions_for_user(user, content_data, existing_tags=None):
 def popular_tags_api(request):
     """ユーザー固有人気タグAPI"""
     try:
-        category = request.GET.get('category', '')
         limit = int(request.GET.get('limit', 10))
         
         # ユーザー固有のタグのみ取得
         tags = Tag.objects.get_for_user(request.user).filter(is_active=True)
-        
-        if category:
-            tags = tags.filter(category=category)
         
         tags = tags.order_by('-usage_count')[:limit]
         
@@ -281,8 +269,8 @@ def popular_tags_api(request):
             {
                 'id': tag.pk,
                 'name': tag.name,
-                'category': tag.category,
-                'usage_count': tag.usage_count
+                'usage_count': tag.usage_count,
+                'color': tag.get_effective_color()
             }
             for tag in tags
         ]
@@ -312,18 +300,7 @@ def user_tag_stats_api(request):
             'active_tags': user_tags.filter(is_active=True).count(),
             'used_tags': user_tags.filter(usage_count__gt=0).count(),
             'total_usage': sum(user_tags.values_list('usage_count', flat=True)),
-            'categories': {}
         }
-        
-        # カテゴリ別統計
-        for category, display_name in Tag.CATEGORY_CHOICES:
-            category_tags = user_tags.filter(category=category)
-            stats['categories'][category] = {
-                'display_name': display_name,
-                'count': category_tags.count(),
-                'used_count': category_tags.filter(usage_count__gt=0).count(),
-                'total_usage': sum(category_tags.values_list('usage_count', flat=True))
-            }
         
         return JsonResponse({
             'success': True,

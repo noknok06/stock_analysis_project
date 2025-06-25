@@ -1,5 +1,5 @@
 # ========================================
-# apps/notes/forms.py - 簡素化版
+# apps/notes/forms.py - 簡素化版（カテゴリなし）
 # ========================================
 
 import json
@@ -10,7 +10,7 @@ from apps.tags.models import Tag
 from apps.common.validators import validate_stock_code, validate_json_content
 
 class NotebookForm(forms.ModelForm):
-    """ノートブック作成・編集フォーム（簡素化版）"""
+    """ノートブック作成・編集フォーム（簡素化版・カテゴリなし）"""
     
     # JSON配列フィールド
     key_criteria = forms.CharField(required=False, widget=forms.HiddenInput())
@@ -190,7 +190,7 @@ class NotebookForm(forms.ModelForm):
         return instance
     
     def _handle_tags(self, instance):
-        """タグの追加・削除処理"""
+        """タグの追加・削除処理（カテゴリなし版）"""
         try:
             tags_data = self.cleaned_data.get('selected_tags_json', {})
             selected_tags = tags_data.get('selected', [])
@@ -218,12 +218,11 @@ class NotebookForm(forms.ModelForm):
                 if not tag_name.startswith('#'):
                     tag_name = '#' + tag_name
                 
-                # タグを取得または作成
+                # タグを取得または作成（カテゴリなしで）
                 tag, created = Tag.objects.get_or_create(
                     name=tag_name,
                     user=self.instance.user,
                     defaults={
-                        'category': self._determine_tag_category(tag_name),
                         'description': self._generate_tag_description(tag_name),
                         'usage_count': 1,
                         'is_active': True
@@ -274,38 +273,17 @@ class NotebookForm(forms.ModelForm):
             logger.error(f"サブノート処理エラー: {e}", exc_info=True)
             raise forms.ValidationError(f'サブノートの処理中にエラーが発生しました: {str(e)}')
     
-    def _determine_tag_category(self, tag_name):
-        """タグ名からカテゴリを自動判定"""
-        tag_lower = tag_name.lower()
-        
-        # テーマ関連キーワード
-        theme_keywords = ['高配当', '成長株', 'グロース', 'バリュー', 'ポートフォリオ', 'ウォッチ']
-        if any(keyword in tag_lower for keyword in theme_keywords):
-            return 'STRATEGY'
-        
-        # 銘柄コードパターン
-        import re
-        if re.match(r'#\d{4}', tag_name):
-            return 'STOCK'
-        
-        # 業界セクターキーワード
-        sector_keywords = ['自動車', 'it', 'テクノロジー', '金融', '不動産', '製造', 'ヘルスケア']
-        if any(keyword in tag_lower for keyword in sector_keywords):
-            return 'SECTOR'
-        
-        return 'STRATEGY'
-    
     def _generate_tag_description(self, tag_name):
-        """タグ名から自動的に説明文を生成"""
-        category = self._determine_tag_category(tag_name)
-        
-        category_descriptions = {
-            'STOCK': f'{tag_name}の銘柄タグ',
-            'STRATEGY': f'{tag_name}投資戦略',
-            'SECTOR': f'{tag_name}業界セクター',
-        }
-        
-        return category_descriptions.get(category, f'{tag_name}に関するタグ')
+        """タグ名から自動的に説明文を生成（カテゴリなし版）"""
+        # シンプルな説明生成
+        if tag_name.startswith('#') and len(tag_name) == 5 and tag_name[1:].isdigit():
+            return f'{tag_name}の銘柄タグ'
+        elif '配当' in tag_name:
+            return f'{tag_name}投資戦略'
+        elif '株' in tag_name:
+            return f'{tag_name}関連タグ'
+        else:
+            return f'{tag_name}に関するタグ'
 
 
 class EntryForm(forms.ModelForm):

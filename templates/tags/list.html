@@ -1,5 +1,5 @@
 <!-- ========================================
-templates/tags/list.html - 改良版タグ管理画面（色表示修正版）
+templates/tags/list.html - 改良版タグ管理画面（カテゴリ削除版）
 ======================================== -->
 
 {% extends 'base.html' %}
@@ -21,13 +21,6 @@ templates/tags/list.html - 改良版タグ管理画面（色表示修正版）
         background-color: #1e40af;
         border-left-color: #60a5fa;
     }
-    .tag-category-stock { border-left-color: #dc2626; }
-    .tag-category-style { border-left-color: #7c3aed; }
-    .tag-category-sector { border-left-color: #059669; }
-    .tag-category-analysis { border-left-color: #ea580c; }
-    .tag-category-strategy { border-left-color: #0284c7; }
-    .tag-category-market { border-left-color: #65a30d; }
-    .tag-category-risk { border-left-color: #dc2626; }
     
     .stats-card {
         background: linear-gradient(135deg, #1e293b 0%, #334155 100%);
@@ -73,14 +66,6 @@ templates/tags/list.html - 改良版タグ管理画面（色表示修正版）
     .tag-display:hover {
         opacity: 0.8;
         transform: scale(1.05);
-    }
-    
-    .tag-custom-color {
-        /* カスタム色タグ用のクラス */
-    }
-    
-    .tag-category-color {
-        /* カテゴリベース色タグ用のクラス */
     }
 </style>
 {% endblock %}
@@ -161,7 +146,7 @@ templates/tags/list.html - 改良版タグ管理画面（色表示修正版）
     <!-- Search and Filters -->
     <div class="bg-gray-800 border border-gray-700 rounded-lg p-6 mb-8">
         <form method="GET" id="filter-form" class="space-y-4">
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
                 <!-- Search Input -->
                 <div class="lg:col-span-2">
                     <label class="block text-sm font-medium text-gray-300 mb-2">タグ検索</label>
@@ -170,19 +155,6 @@ templates/tags/list.html - 改良版タグ管理画面（色表示修正版）
                            value="{{ current_filters.q }}"
                            placeholder="タグ名または説明で検索..."
                            class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                </div>
-                
-                <!-- Category Filter -->
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-2">カテゴリ</label>
-                    <select name="category" class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        <option value="">すべて</option>
-                        {% for category, display_name in object_list.model.CATEGORY_CHOICES %}
-                            <option value="{{ category }}" {% if current_filters.category == category %}selected{% endif %}>
-                                {{ display_name }}
-                            </option>
-                        {% endfor %}
-                    </select>
                 </div>
                 
                 <!-- Status Filter -->
@@ -262,7 +234,7 @@ templates/tags/list.html - 改良版タグ管理画面（色表示修正版）
             <!-- Tags Table Body -->
             <div class="divide-y divide-gray-700">
                 {% for tag in tags %}
-                    <div class="tag-item tag-category-{{ tag.category.lower }} px-6 py-4 hover:bg-gray-750"
+                    <div class="tag-item px-6 py-4 hover:bg-gray-750"
                          data-tag-id="{{ tag.pk }}"
                          data-tag-name="{{ tag.name }}">
                         <div class="flex items-center justify-between">
@@ -275,19 +247,13 @@ templates/tags/list.html - 改良版タグ管理画面（色表示修正版）
                                 
                                 <div class="flex-1 min-w-0">
                                     <div class="flex items-center space-x-3 mb-1">
-                                        <!-- 🔧 修正: タグ名表示 - カスタム色対応 -->
+                                        <!-- タグ名表示 -->
                                         <h3 class="font-semibold text-white truncate flex items-center">
-                                            <!-- タグ表示部分 - カスタム色とカテゴリ色の適切な処理 -->
-                                            <span class="tag-display px-2 py-1 text-xs rounded-full mr-2 {% if tag.color %}tag-custom-color{% else %}tag-category-color {{ tag.get_color_class }}{% endif %}"
-                                                  {% if tag.color %}style="background-color: {{ tag.color }}; border-color: {{ tag.color }};"{% endif %}>
+                                            <span class="tag-display px-2 py-1 text-xs rounded-full mr-2"
+                                                  style="background-color: {{ tag.get_effective_color }}; border-color: {{ tag.get_effective_color }};">
                                                 {{ tag.name }}
                                             </span>
                                         </h3>
-                                        
-                                        <!-- Category Badge -->
-                                        <span class="px-2 py-1 text-xs rounded-full bg-gray-700 text-gray-300 border border-gray-600">
-                                            {{ tag.get_category_display }}
-                                        </span>
                                         
                                         <!-- Status Badge -->
                                         {% if tag.is_active %}
@@ -305,7 +271,7 @@ templates/tags/list.html - 改良版タグ管理画面（色表示修正版）
                                             {{ tag.usage_count }}回使用
                                         </span>
 
-                                        <!-- 🔧 修正: カスタム色インジケーター -->
+                                        <!-- カスタム色インジケーター -->
                                         {% if tag.color %}
                                             <span class="flex items-center text-xs text-gray-400">
                                                 <svg class="h-3 w-3 mr-1" fill="currentColor" viewBox="0 0 24 24">
@@ -335,22 +301,6 @@ templates/tags/list.html - 改良版タグ管理画面（色表示修正版）
                             
                             <!-- Right Side: Actions -->
                             <div class="flex items-center space-x-2">
-                                <!-- Quick Actions -->
-                                <button onclick="toggleTagStatus({{ tag.pk }})" 
-                                        class="p-2 text-gray-400 hover:text-white transition-colors"
-                                        title="ステータス切り替え">
-                                    {% if tag.is_active %}
-                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
-                                        </svg>
-                                    {% else %}
-                                        <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.878 9.878L3 3m6.878 6.878L21 21"></path>
-                                        </svg>
-                                    {% endif %}
-                                </button>
-                                
                                 <button onclick="viewTagUsage({{ tag.pk }})" 
                                         class="p-2 text-gray-400 hover:text-blue-400 transition-colors"
                                         title="使用状況を表示">
@@ -436,14 +386,14 @@ templates/tags/list.html - 改良版タグ管理画面（色表示修正版）
             </div>
             <h3 class="text-lg font-medium text-gray-400 mb-2">タグが見つかりません</h3>
             <p class="text-base text-gray-500 mb-6">
-                {% if current_filters.q or current_filters.category %}
+                {% if current_filters.q %}
                     検索条件に一致するタグがありません。検索条件を変更してお試しください。
                 {% else %}
                     まだタグが作成されていません。ノートやエントリーを作成する際にタグが自動的に作成されます。
                 {% endif %}
             </p>
             <div class="flex flex-col sm:flex-row items-center justify-center gap-3">
-                {% if current_filters.q or current_filters.category %}
+                {% if current_filters.q %}
                     <a href="{% url 'tags:list' %}" 
                        class="inline-flex items-center px-4 py-2 bg-blue-600 hover:bg-blue-700 text-white font-medium rounded-lg transition-colors">
                         すべてのタグを表示
@@ -478,15 +428,6 @@ templates/tags/list.html - 改良版タグ管理画面（色表示修正版）
                     <textarea id="edit-tag-description" 
                               rows="3"
                               class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"></textarea>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-gray-300 mb-1">カテゴリ</label>
-                    <select id="edit-tag-category" 
-                            class="w-full bg-gray-700 border border-gray-600 text-white rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
-                        {% for category, display_name in object_list.model.CATEGORY_CHOICES %}
-                            <option value="{{ category }}">{{ display_name }}</option>
-                        {% endfor %}
-                    </select>
                 </div>
                 <div class="flex items-center">
                     <input type="checkbox" 
@@ -693,7 +634,6 @@ document.getElementById('quick-edit-form').addEventListener('submit', function(e
     const formData = {
         name: document.getElementById('edit-tag-name').value,
         description: document.getElementById('edit-tag-description').value,
-        category: document.getElementById('edit-tag-category').value,
         is_active: document.getElementById('edit-tag-active').checked
     };
     
@@ -795,12 +735,11 @@ function exportTags() {
     // Create CSV content
     const tags = Array.from(document.querySelectorAll('.tag-item'));
     const csvContent = [
-        ['タグ名', 'カテゴリ', '説明', '使用回数', 'ステータス', '作成日'].join(','),
+        ['タグ名', '説明', '使用回数', 'ステータス', '作成日'].join(','),
         ...tags.map(tag => {
             const name = tag.dataset.tagName;
-            const category = tag.querySelector('.rounded-full').textContent.trim();
             // Add more data extraction as needed
-            return [name, category, '', '', '', ''].join(',');
+            return [name, '', '', '', ''].join(',');
         })
     ].join('\n');
     

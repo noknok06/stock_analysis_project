@@ -7,8 +7,8 @@ from apps.tags.models import Tag
 
 @admin.register(Tag)
 class TagAdmin(admin.ModelAdmin):
-    list_display = ['name', 'category', 'usage_count', 'is_active', 'created_at']
-    list_filter = ['category', 'is_active', 'created_at']
+    list_display = ['name', 'usage_count', 'is_active', 'created_at']
+    list_filter = [ 'is_active', 'created_at']
     search_fields = ['name', 'description']
     list_editable = ['is_active']
     ordering = ['-usage_count', 'name']
@@ -17,7 +17,7 @@ class TagAdmin(admin.ModelAdmin):
     
     fieldsets = (
         ('基本情報', {
-            'fields': ('name', 'category', 'description')
+            'fields': ('name', 'description')
         }),
         ('統計', {
             'fields': ('usage_count', 'is_active')

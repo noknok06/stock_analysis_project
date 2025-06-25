@@ -1,5 +1,5 @@
 <!-- ========================================
-templates/tags/edit.html - タグ詳細編集ページ
+templates/tags/edit.html - タグ詳細編集ページ（カテゴリなし版）
 ======================================== -->
 
 {% extends 'base.html' %}
@@ -104,23 +104,6 @@ templates/tags/edit.html - タグ詳細編集ページ
                         </p>
                     </div>
                     
-                    <!-- Category -->
-                    <div>
-                        <label for="{{ form.category.id_for_label }}" 
-                               class="block text-sm font-medium text-gray-300 mb-2">
-                            カテゴリ <span class="text-red-400">*</span>
-                        </label>
-                        {{ form.category }}
-                        {% if form.category.errors %}
-                            {% for error in form.category.errors %}
-                                <p class="mt-1 text-sm text-red-400">{{ error }}</p>
-                            {% endfor %}
-                        {% endif %}
-                        <p class="mt-1 text-sm text-gray-500">
-                            タグの分類を選択してください
-                        </p>
-                    </div>
-                    
                     <!-- Description -->
                     <div>
                         <label for="{{ form.description.id_for_label }}" 
@@ -204,9 +187,6 @@ templates/tags/edit.html - タグ詳細編集ページ
                             <span id="tag-preview" class="preview-tag inline-flex items-center px-3 py-1 rounded-full text-sm text-white"
                                 style="background-color: {{ object.get_effective_color }}; border-color: {{ object.get_effective_color }};">
                                 {{ object.name }}
-                            </span>
-                            <span class="text-sm text-gray-400">
-                                カテゴリ: <span id="category-preview">{{ object.get_category_display }}</span>
                             </span>
                         </div>
                     </div>
@@ -365,11 +345,9 @@ function selectColor(color) {
 // Real-time preview updates
 function updatePreview() {
     const nameInput = document.getElementById('{{ form.name.id_for_label }}');
-    const categorySelect = document.getElementById('{{ form.category.id_for_label }}');
     const colorInput = document.getElementById('{{ form.color.id_for_label }}');
     
     const preview = document.getElementById('tag-preview');
-    const categoryPreview = document.getElementById('category-preview');
     
     // Update tag name
     preview.textContent = nameInput.value || '{{ object.name }}';
@@ -377,36 +355,19 @@ function updatePreview() {
     // Update color - カスタム色を優先、未設定なら現在の色、それもなければデフォルト色
     let color = colorInput.value;
     if (!color) {
-        // デフォルトカラーマップ
-        const defaultColors = {
-            'STOCK': '#dc2626',
-            'SECTOR': '#16a34a', 
-            'STRATEGY': '#2563eb',
-            'ANALYSIS': '#ea580c',
-            'RISK': '#eab308',
-            'EVENT': '#4f46e5',
-            'OTHER': '#6b7280'
-        };
-        color = defaultColors[categorySelect.value] || '#6b7280';
+        color = '#6b7280'; // gray-600 (default)
     }
     
     preview.style.backgroundColor = color;
     preview.style.borderColor = color;
     preview.style.color = 'white';
-    
-    // Update category display
-    const selectedOption = categorySelect.options[categorySelect.selectedIndex];
-    categoryPreview.textContent = selectedOption.text;
 }
-
 
 // Set up real-time preview
 document.addEventListener('DOMContentLoaded', function() {
     const nameInput = document.getElementById('{{ form.name.id_for_label }}');
-    const categorySelect = document.getElementById('{{ form.category.id_for_label }}');
     
     nameInput.addEventListener('input', updatePreview);
-    categorySelect.addEventListener('change', updatePreview);
     
     // Set initial color selection
     const currentColor = '{{ object.get_effective_color }}';
@@ -441,7 +402,6 @@ document.addEventListener('DOMContentLoaded', function() {
     }
 });
 
-
 // Form validation
 document.querySelector('form').addEventListener('submit', function(e) {
     const nameInput = document.getElementById('{{ form.name.id_for_label }}');
@@ -469,7 +429,6 @@ function scheduleAutoSave() {
         console.log('Auto-save scheduled');
     }, 5000);
 }
-
 
 // Listen for changes to schedule auto-save
 document.querySelectorAll('input, textarea, select').forEach(input => {

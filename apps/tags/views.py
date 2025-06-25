@@ -1,5 +1,5 @@
 # ========================================
-# apps/tags/views.py - ユーザー固有タグ管理ビュー
+# apps/tags/views.py - ユーザー固有タグ管理ビュー（カテゴリなし版）
 # ========================================
 
 import json
@@ -40,11 +40,6 @@ class TagListView(LoginRequiredMixin, ListView):
                 Q(description__icontains=search_query)
             )
         
-        # カテゴリフィルター
-        category = self.request.GET.get('category', '')
-        if category:
-            queryset = queryset.filter(category=category)
-        
         # アクティブ状態フィルター
         is_active = self.request.GET.get('is_active')
         if is_active is not None:
@@ -81,23 +76,9 @@ class TagListView(LoginRequiredMixin, ListView):
             'total_usage': user_tags.aggregate(total=Sum('usage_count'))['total'] or 0,
         }
         
-        # カテゴリ別統計（ユーザー固有）
-        context['category_stats'] = []
-        for category, display_name in Tag.CATEGORY_CHOICES:
-            count = user_tags.filter(category=category).count()
-            used_count = user_tags.filter(category=category, usage_count__gt=0).count()
-            context['category_stats'].append({
-                'category': category,
-                'display_name': display_name,
-                'count': count,
-                'used_count': used_count,
-                'usage_percentage': round((used_count / count * 100) if count > 0 else 0, 1)
-            })
-        
         # 検索・フィルター情報
         context['current_filters'] = {
             'q': self.request.GET.get('q', ''),
-            'category': self.request.GET.get('category', ''),
             'is_active': self.request.GET.get('is_active', ''),
             'usage': self.request.GET.get('usage', ''),
             'sort': self.request.GET.get('sort', '-usage_count'),
@@ -118,7 +99,7 @@ class TagListView(LoginRequiredMixin, ListView):
 class TagUpdateView(LoginRequiredMixin, UpdateView):
     """ユーザー固有タグ編集ビュー"""
     model = Tag
-    fields = ['name', 'category', 'description', 'color', 'is_active']
+    fields = ['name', 'description', 'color', 'is_active']
     template_name = 'tags/edit.html'
     success_url = reverse_lazy('tags:list')
     
@@ -210,7 +191,7 @@ def tag_quick_edit_ajax(request, tag_id):
         data = json.loads(request.body)
         
         # 更新可能なフィールドを制限
-        allowed_fields = ['name', 'description', 'category', 'is_active', 'color']
+        allowed_fields = ['name', 'description', 'is_active', 'color']
         
         # タグ名の重複チェック（ユーザー内で）
         if 'name' in data:
@@ -239,13 +220,10 @@ def tag_quick_edit_ajax(request, tag_id):
             'tag': {
                 'id': tag.pk,
                 'name': tag.name,
-                'category': tag.category,
-                'category_display': tag.get_category_display(),
                 'description': tag.description,
                 'usage_count': tag.usage_count,
                 'is_active': tag.is_active,
                 'color': tag.color,
-                'color_class': tag.get_color_class(),
             }
         })
         
@@ -350,7 +328,6 @@ def tag_bulk_action_ajax(request):
 def tag_search_ajax(request):
     """ユーザー固有タグ検索Ajax（リアルタイム検索用）"""
     query = request.GET.get('q', '').strip()
-    category = request.GET.get('category', '')
     limit = int(request.GET.get('limit', 20))
     
     try:
@@ -363,9 +340,6 @@ def tag_search_ajax(request):
                 Q(description__icontains=query)
             )
         
-        if category:
-            tags = tags.filter(category=category)
-        
         tags = tags.order_by('-usage_count', 'name')[:limit]
         
         results = []
@@ -373,12 +347,10 @@ def tag_search_ajax(request):
             results.append({
                 'id': tag.pk,
                 'name': tag.name,
-                'category': tag.category,
-                'category_display': tag.get_category_display(),
                 'description': tag.description,
                 'usage_count': tag.usage_count,
                 'is_active': tag.is_active,
-                'color_class': tag.get_color_class(),
+                'color': tag.get_effective_color(),
                 'edit_url': f'/tags/{tag.pk}/edit/',
                 'delete_url': f'/tags/{tag.pk}/delete/',
             })
@@ -470,6 +442,6 @@ def tag_search_ajax_legacy(request):
     # ユーザー固有のタグのみ検索
     tags = Tag.objects.filter(
         Q(name__icontains=query) & Q(is_active=True) & Q(user=request.user)
-    ).values('id', 'name', 'category')[:10]
+    ).values('id', 'name')[:10]
     
     return JsonResponse({'tags': list(tags)})
