@@ -18,6 +18,7 @@ urlpatterns = [
     # エントリー関連
     path('<uuid:notebook_pk>/entry/create/', views.entry_create_view, name='entry_create'),
     path('entry/<uuid:entry_pk>/', views.entry_detail_ajax, name='entry_detail_ajax'),
+    path('entry/<uuid:entry_pk>/edit/', views.entry_edit_view, name='entry_edit'),
     
     # ★ ブックマーク・削除機能
     path('<uuid:pk>/favorite/', views.toggle_favorite_view, name='toggle_favorite'),

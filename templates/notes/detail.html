@@ -1161,6 +1161,20 @@ const NotificationManager = {
 
 // ページ初期化
 document.addEventListener('DOMContentLoaded', function() {
+    // エントリー編集フォームのイベントリスナー
+    const editForm = document.getElementById('edit-entry-form');
+    if (editForm) {
+        editForm.addEventListener('submit', function(e) {
+            e.preventDefault(); // デフォルトのフォーム送信を防ぐ
+            
+            const entryId = this.dataset.entryId; // フォームにentry-idデータ属性が必要
+            if (entryId) {
+                saveEditEntry(entryId);
+            } else {
+                console.error('エントリーIDが見つかりません');
+            }
+        });
+    }
     console.log('ノート詳細ページが初期化されました');
     
     // 詳細セクションの状態復元
@@ -1270,26 +1284,38 @@ function debounce(func, delay) {
 
 function editEntry(entryId) {
     console.log('エントリー編集開始:', entryId);
-    editingEntryId = entryId;
     
-    // エントリー詳細モーダルを閉じる
-    closeEntryDetail();
-    
-    // 編集用データを取得
-    fetch(`/notes/entry/${entryId}/edit/`)
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                populateEditForm(data.entry, data.sub_notebooks);
-                openEntryEditModal();
-            } else {
-                throw new Error(data.error || 'エントリーデータの取得に失敗しました');
-            }
-        })
-        .catch(error => {
-            console.error('エントリー編集データ取得エラー:', error);
-            NotificationManager.show(error.message, 'error');
-        });
+    // エントリー編集データを取得
+    fetch(`/notes/entry/${entryId}/edit/`, {
+        method: 'GET',
+        headers: {
+            'X-CSRFToken': getCsrfToken()
+        }
+    })
+    .then(response => {
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success) {
+            // 編集フォームにデータを設定
+            populateEditForm(data.entry, data.sub_notebooks);
+            
+            // フォーム送信イベントを設定
+            setupEditFormSubmission(entryId);
+            
+            // モーダルを表示
+            showModal('entry-edit-modal');
+        } else {
+            throw new Error(data.error || 'エントリー編集データの取得に失敗しました');
+        }
+    })
+    .catch(error => {
+        console.error('エントリー編集データ取得エラー:', error);
+        showNotification(error.message, 'error');
+    });
 }
 
 function openEntryEditModal() {
@@ -1440,22 +1466,842 @@ function populateEditForm(entryData, subNotebooks) {
     generateEditEntryTypeForm(entryData.entry_type, entryData.content);
 }
 
-function generateEditEntryTypeForm(entryType, content) {
-    console.log('編集用エントリータイプフォーム生成:', entryType);
+// ========================================
+// エントリー編集用フォーム生成関数
+// ========================================
+
+function generateEditEntryTypeForm(entryType, existingContent = {}) {
+    console.log('エントリータイプフォーム生成:', entryType, existingContent);
+    
+    switch (entryType) {
+        case 'ANALYSIS':
+            return generateEditAnalysisForm(existingContent);
+        case 'NEWS':
+            return generateEditNewsForm(existingContent);
+        case 'MEMO':
+            return generateEditMemoForm(existingContent);
+        case 'GOAL':
+            return generateEditGoalForm(existingContent);
+        case 'EARNINGS':
+            return generateEditEarningsForm(existingContent);
+        case 'IR_EVENT':
+            return generateEditIrEventForm(existingContent);
+        case 'MARKET_EVENT':
+            return generateEditMarketEventForm(existingContent);
+        default:
+            return generateEditDefaultForm(existingContent);
+    }
+}
+
+function generateEditAnalysisForm(content = {}) {
+    return `
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">サマリー</label>
+                <textarea name="summary" 
+                         class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         rows="3" 
+                         placeholder="決算結果の要約を記述してください">${content.summary || ''}</textarea>
+            </div>
+            
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">売上高</label>
+                    <input type="text" name="revenue" 
+                           value="${content.key_metrics?.revenue || ''}"
+                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="例: 1,500億円">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">営業利益</label>
+                    <input type="text" name="operating_profit" 
+                           value="${content.key_metrics?.operating_profit || ''}"
+                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="例: 200億円">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">純利益</label>
+                    <input type="text" name="net_income" 
+                           value="${content.key_metrics?.net_income || ''}"
+                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="例: 150億円">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">EPS</label>
+                    <input type="text" name="eps" 
+                           value="${content.key_metrics?.eps || ''}"
+                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="例: 120円">
+                </div>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">分析</label>
+                <textarea name="analysis" 
+                         class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         rows="4" 
+                         placeholder="決算内容の詳細分析を記述してください">${content.analysis || ''}</textarea>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">今後の見通し</label>
+                <textarea name="outlook" 
+                         class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         rows="3" 
+                         placeholder="今後の業績見通しや注目ポイントを記述してください">${content.outlook || ''}</textarea>
+            </div>
+        </div>
+    `;
+}
+
+function generateEditNewsForm(content = {}) {
+    return `
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">ヘッドライン</label>
+                <input type="text" name="headline" 
+                       value="${content.headline || ''}"
+                       class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="ニュースのタイトルを入力してください">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">ニュース内容</label>
+                <textarea name="content" 
+                         class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         rows="4" 
+                         placeholder="ニュースの詳細内容を記述してください">${content.content || ''}</textarea>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">事業への影響</label>
+                <textarea name="impact" 
+                         class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         rows="3" 
+                         placeholder="このニュースが事業に与える影響を分析してください">${content.impact || ''}</textarea>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">株価への影響</label>
+                <textarea name="stock_impact" 
+                         class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         rows="3" 
+                         placeholder="株価に与える影響を分析してください">${content.stock_impact || ''}</textarea>
+            </div>
+        </div>
+    `;
+}
+
+function generateEditMemoForm(content = {}) {
+    return `
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">観察事項</label>
+                <textarea name="observation" 
+                         class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         rows="4" 
+                         placeholder="気づいたことや観察事項を記録してください">${content.observation || ''}</textarea>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">市場トレンド</label>
+                <textarea name="market_trend" 
+                         class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         rows="3" 
+                         placeholder="関連する市場トレンドについて記述してください">${content.market_trend || ''}</textarea>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">個人的メモ</label>
+                <textarea name="personal_note" 
+                         class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         rows="3" 
+                         placeholder="個人的な考えやメモを記録してください">${content.personal_note || ''}</textarea>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">次のアクション</label>
+                <textarea name="next_action" 
+                         class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         rows="2" 
+                         placeholder="今後取るべきアクションを記述してください">${content.next_action || ''}</textarea>
+            </div>
+        </div>
+    `;
+}
+
+function generateEditGoalForm(content = {}) {
+    return `
+        <div class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">目標株価</label>
+                    <input type="text" name="target_price" 
+                           value="${content.target_price || ''}"
+                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="例: 3,500円">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">売却タイミング</label>
+                    <input type="text" name="sell_timing" 
+                           value="${content.sell_timing || ''}"
+                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="例: 目標株価到達時">
+                </div>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">投資理由</label>
+                <textarea name="investment_reason" 
+                         class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         rows="4" 
+                         placeholder="なぜこの投資目標を設定したかの理由を記述してください">${content.investment_reason || ''}</textarea>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">期待される効果</label>
+                <textarea name="expected_effect" 
+                         class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         rows="3" 
+                         placeholder="この投資から期待される効果を記述してください">${content.expected_effect || ''}</textarea>
+            </div>
+        </div>
+    `;
+}
+
+function generateEditEarningsForm(content = {}) {
+    return `
+        <div class="space-y-4">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">決算発表日</label>
+                    <input type="date" name="earnings_date" 
+                           value="${content.earnings_date || ''}"
+                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-gray-300 mb-2">対象四半期</label>
+                    <input type="text" name="quarter" 
+                           value="${content.quarter || ''}"
+                           class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                           placeholder="例: 2025年Q1">
+                </div>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">事前予想</label>
+                <textarea name="expectations" 
+                         class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         rows="3" 
+                         placeholder="決算発表前の市場予想や期待値を記述してください">${content.expectations || ''}</textarea>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">注目ポイント</label>
+                <textarea name="key_criteria" 
+                         class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         rows="3" 
+                         placeholder="決算で特に注目すべきポイントを記述してください">${content.key_criteria || ''}</textarea>
+            </div>
+        </div>
+    `;
+}
+
+function generateEditIrEventForm(content = {}) {
+    return `
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">イベント名</label>
+                <input type="text" name="event_name" 
+                       value="${content.event_name || ''}"
+                       class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="例: 中期経営計画説明会">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">開催日時</label>
+                <input type="datetime-local" name="event_datetime" 
+                       value="${content.event_datetime || ''}"
+                       class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">アジェンダ</label>
+                <textarea name="agenda" 
+                         class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         rows="3" 
+                         placeholder="イベントのアジェンダや内容を記述してください">${content.agenda || ''}</textarea>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">主要なポイント</label>
+                <textarea name="key_takeaways" 
+                         class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         rows="4" 
+                         placeholder="イベントから得られた主要なポイントを記述してください">${content.key_takeaways || ''}</textarea>
+            </div>
+        </div>
+    `;
+}
+
+function generateEditMarketEventForm(content = {}) {
+    return `
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">イベントタイトル</label>
+                <input type="text" name="event_title" 
+                       value="${content.event_title || ''}"
+                       class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                       placeholder="例: 日銀金融政策決定会合">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">イベント日</label>
+                <input type="date" name="event_date" 
+                       value="${content.event_date || ''}"
+                       class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500">
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">市場への影響</label>
+                <textarea name="market_impact" 
+                         class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         rows="3" 
+                         placeholder="このイベントが市場全体に与える影響を記述してください">${content.market_impact || ''}</textarea>
+            </div>
+            
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">セクターへの影響</label>
+                <textarea name="sector_impact" 
+                         class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         rows="3" 
+                         placeholder="特定のセクターへの影響を記述してください">${content.sector_impact || ''}</textarea>
+            </div>
+        </div>
+    `;
+}
+
+function generateEditDefaultForm(content = {}) {
+    return `
+        <div class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-gray-300 mb-2">内容</label>
+                <textarea name="content_text" 
+                         class="w-full bg-gray-700 border border-gray-600 text-white placeholder-gray-400 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
+                         rows="6" 
+                         placeholder="エントリーの内容を記述してください">${JSON.stringify(content, null, 2)}</textarea>
+            </div>
+        </div>
+    `;
+}
+
+// ========================================
+// フォームデータ収集関数
+// ========================================
+
+function collectEditFormData(entryType) {
+    const formData = new FormData();
+    const form = document.getElementById('entry-edit-form'); // HTMLのIDに合わせて修正
+    
+    if (!form) {
+        console.error('編集フォームが見つかりません');
+        return null;
+    }
+    
+    // 基本フィールドの収集
+    const basicFields = ['entry_type', 'title', 'stock_code', 'company_name', 'sub_notebook', 'event_date'];
+    basicFields.forEach(field => {
+        const element = form.querySelector(`[name="${field}"]`);
+        if (element) {
+            formData.append(field, element.value);
+        }
+    });
+    
+    // チェックボックスの処理
+    const checkboxFields = ['is_important', 'is_bookmarked'];
+    checkboxFields.forEach(field => {
+        const element = form.querySelector(`[name="${field}"]`);
+        if (element && element.checked) {
+            formData.append(field, 'on');
+        }
+    });
+    
+    // エントリータイプ別のコンテンツ収集
+    const content = collectEntryTypeContent(entryType, form);
+    formData.append('content', JSON.stringify(content));
+    
+    return formData;
+}
+
+// ========================================
+// エントリー編集保存処理
+// ========================================
+
+function saveEditEntry(entryId) {
+    const form = document.getElementById('entry-edit-form'); // HTMLのIDに合わせて修正
+    if (!form) {
+        console.error('編集フォームが見つかりません');
+        return;
+    }
+    
+    const entryType = form.querySelector('[name="entry_type"]')?.value;
+    if (!entryType) {
+        showNotification('エントリータイプが選択されていません', 'error');
+        return;
+    }
+    
+    // 保存ボタンを無効化
+    const saveButton = form.querySelector('button[type="submit"]');
+    if (saveButton) {
+        saveButton.disabled = true;
+        saveButton.innerHTML = '<span class="animate-spin mr-2">⟳</span>保存中...';
+    }
+    
+    try {
+        const formData = collectEditFormData(entryType);
+        if (!formData) {
+            throw new Error('フォームデータの収集に失敗しました');
+        }
+        
+        // 正しいエントリー編集URLにPOST
+        const editUrl = `/notes/entry/${entryId}/edit/`;
+        
+        fetch(editUrl, {
+            method: 'POST',
+            body: formData,
+            headers: {
+                'X-CSRFToken': getCsrfToken()
+            }
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                showNotification(data.message || 'エントリーを更新しました', 'success');
+                closeEntryEditModal(); // 関数名を正しく修正
+                // エントリー一覧を更新
+                refreshEntryList();
+            } else {
+                throw new Error(data.error || 'エントリーの更新に失敗しました');
+            }
+        })
+        .catch(error => {
+            console.error('エントリー編集エラー:', error);
+            showNotification(error.message, 'error');
+        })
+        .finally(() => {
+            // 保存ボタンを有効化
+            if (saveButton) {
+                saveButton.disabled = false;
+                saveButton.innerHTML = `
+                    <svg class="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                    </svg>
+                    <span class="hidden sm:inline">変更を保存</span>
+                    <span class="sm:hidden">保存</span>
+                `;
+            }
+        });
+        
+    } catch (error) {
+        console.error('エントリー編集処理エラー:', error);
+        showNotification(error.message, 'error');
+        
+        // 保存ボタンを有効化
+        if (saveButton) {
+            saveButton.disabled = false;
+            saveButton.innerHTML = `
+                <svg class="h-3 w-3 md:h-4 md:w-4 mr-1 md:mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"></path>
+                </svg>
+                <span class="hidden sm:inline">変更を保存</span>
+                <span class="sm:hidden">保存</span>
+            `;
+        }
+    }
+}
+
+// CSRFトークン取得
+function getCsrfToken() {
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'csrftoken') {
+            return value;
+        }
+    }
+    // CSRFトークンが見つからない場合は、metaタグから取得
+    const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+    if (csrfMeta) {
+        return csrfMeta.getAttribute('content');
+    }
+    return '';
+}
+
+// エントリー一覧の更新
+function refreshEntryList() {
+    // ページをリロードしてエントリー一覧を更新
+    window.location.reload();
+}
+
+// ========================================
+// フォーム送信イベントの設定
+// ========================================
+
+// DOMが読み込まれた後にイベントリスナーを設定
+document.addEventListener('DOMContentLoaded', function() {
+    console.log('エントリー編集機能を初期化中...');
+    
+    // エントリー編集フォームのイベントリスナー設定
+    setupEditFormEventListeners();
+});
+
+function setupEditFormEventListeners() {
+    // フォーム送信イベントの設定は動的に行う（モーダルが開かれた時）
+    console.log('エントリー編集フォームのイベントリスナーを設定準備完了');
+}
+
+// モーダルが開かれた時に呼び出される関数
+function setupEditFormSubmission(entryId) {
+    const form = document.getElementById('entry-edit-form');
+    if (!form) {
+        console.error('編集フォームが見つかりません');
+        return;
+    }
+    
+    // 既存のイベントリスナーを削除
+    const newForm = form.cloneNode(true);
+    form.parentNode.replaceChild(newForm, form);
+    
+    // 新しいイベントリスナーを追加
+    newForm.addEventListener('submit', function(e) {
+        e.preventDefault(); // デフォルトのフォーム送信を防ぐ
+        console.log('エントリー編集フォーム送信:', entryId);
+        saveEditEntry(entryId);
+    });
+    
+    console.log('エントリー編集フォームの送信イベントを設定しました:', entryId);
+}
+
+// ========================================
+// モーダル操作関数
+// ========================================
+
+function showModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        // フェードイン効果
+        setTimeout(() => {
+            const modalContent = modal.querySelector('.modal-content');
+            if (modalContent) {
+                modalContent.classList.add('scale-100', 'opacity-100');
+                modalContent.classList.remove('scale-95', 'opacity-0');
+            }
+        }, 10);
+        
+        // Escキーでモーダルを閉じる
+        document.addEventListener('keydown', handleModalEscape);
+    } else {
+        console.error('モーダルが見つかりません:', modalId);
+    }
+}
+
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if (modal) {
+        const modalContent = modal.querySelector('.modal-content');
+        if (modalContent) {
+            modalContent.classList.add('scale-95', 'opacity-0');
+            modalContent.classList.remove('scale-100', 'opacity-100');
+        }
+        
+        // アニメーション完了後にモーダルを非表示
+        setTimeout(() => {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        }, 150);
+        
+        // Escキーイベントリスナーを削除
+        document.removeEventListener('keydown', handleModalEscape);
+    }
+}
+
+function closeEntryEditModal() {
+    closeModal('entry-edit-modal');
+}
+
+function handleModalEscape(e) {
+    if (e.key === 'Escape') {
+        // 現在表示されているモーダルを閉じる
+        const visibleModals = document.querySelectorAll('.modal:not(.hidden)');
+        visibleModals.forEach(modal => {
+            closeModal(modal.id);
+        });
+    }
+}
+
+// ========================================
+// 通知機能
+// ========================================
+
+function showNotification(message, type = 'info') {
+    // 既存の通知を削除
+    const existingNotification = document.getElementById('notification');
+    if (existingNotification) {
+        existingNotification.remove();
+    }
+    
+    // 通知の色を決定
+    let bgColor, borderColor, textColor;
+    switch (type) {
+        case 'success':
+            bgColor = 'bg-green-800';
+            borderColor = 'border-green-600';
+            textColor = 'text-green-100';
+            break;
+        case 'error':
+            bgColor = 'bg-red-800';
+            borderColor = 'border-red-600';
+            textColor = 'text-red-100';
+            break;
+        case 'warning':
+            bgColor = 'bg-yellow-800';
+            borderColor = 'border-yellow-600';
+            textColor = 'text-yellow-100';
+            break;
+        default:
+            bgColor = 'bg-blue-800';
+            borderColor = 'border-blue-600';
+            textColor = 'text-blue-100';
+    }
+    
+    // 通知要素を作成
+    const notification = document.createElement('div');
+    notification.id = 'notification';
+    notification.className = `fixed top-4 right-4 z-50 p-4 rounded-lg border ${bgColor} ${borderColor} ${textColor} shadow-lg max-w-sm transition-all duration-300 transform translate-x-full opacity-0`;
+    notification.innerHTML = `
+        <div class="flex items-center">
+            <div class="flex-1">
+                <p class="font-medium">${message}</p>
+            </div>
+            <button onclick="this.parentElement.parentElement.remove()" class="ml-4 text-current hover:opacity-75">
+                <svg class="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
+                </svg>
+            </button>
+        </div>
+    `;
+    
+    // ページに追加
+    document.body.appendChild(notification);
+    
+    // アニメーション実行
+    setTimeout(() => {
+        notification.classList.remove('translate-x-full', 'opacity-0');
+        notification.classList.add('translate-x-0', 'opacity-100');
+    }, 10);
+    
+    // 3秒後に自動削除
+    setTimeout(() => {
+        if (notification.parentElement) {
+            notification.classList.add('translate-x-full', 'opacity-0');
+            setTimeout(() => {
+                notification.remove();
+            }, 300);
+        }
+    }, 3000);
+}
+
+// ========================================
+// エントリー編集フォーム入力処理
+// ========================================
+
+function populateEditForm(entryData, subNotebooks) {
+    console.log('エントリー編集フォームにデータを設定:', entryData);
+    
+    try {
+        // 基本情報の設定
+        const form = document.getElementById('entry-edit-form');
+        if (!form) {
+            throw new Error('編集フォームが見つかりません');
+        }
+        
+        // エントリータイプ
+        const entryTypeSelect = form.querySelector('[name="entry_type"]');
+        if (entryTypeSelect) {
+            entryTypeSelect.value = entryData.entry_type;
+        }
+        
+        // タイトル
+        const titleInput = form.querySelector('[name="title"]');
+        if (titleInput) {
+            titleInput.value = entryData.title || '';
+        }
+        
+        // 銘柄情報
+        const stockCodeInput = form.querySelector('[name="stock_code"]');
+        if (stockCodeInput) {
+            stockCodeInput.value = entryData.stock_code || '';
+        }
+        
+        const companyNameInput = form.querySelector('[name="company_name"]');
+        if (companyNameInput) {
+            companyNameInput.value = entryData.company_name || '';
+        }
+        
+        // イベント日
+        const eventDateInput = form.querySelector('[name="event_date"]');
+        if (eventDateInput) {
+            eventDateInput.value = entryData.event_date || '';
+        }
+        
+        // サブノート選択肢を設定
+        const subNotebookSelect = form.querySelector('[name="sub_notebook"]');
+        if (subNotebookSelect && subNotebooks) {
+            subNotebookSelect.innerHTML = '<option value="">サブノートを選択（任意）</option>';
+            subNotebooks.forEach(sub => {
+                const option = document.createElement('option');
+                option.value = sub.id;
+                option.textContent = sub.title;
+                option.selected = entryData.sub_notebook === sub.id;
+                subNotebookSelect.appendChild(option);
+            });
+        }
+        
+        // チェックボックス
+        const importantCheckbox = form.querySelector('[name="is_important"]');
+        if (importantCheckbox) {
+            importantCheckbox.checked = entryData.is_important || false;
+        }
+        
+        const bookmarkedCheckbox = form.querySelector('[name="is_bookmarked"]');
+        if (bookmarkedCheckbox) {
+            bookmarkedCheckbox.checked = entryData.is_bookmarked || false;
+        }
+        
+        // エントリータイプ別フォームを生成
+        generateEditEntryTypeForm(entryData.entry_type, entryData.content);
+        
+        console.log('エントリー編集フォームのデータ設定完了');
+        
+    } catch (error) {
+        console.error('エントリー編集フォーム設定エラー:', error);
+        showNotification('フォームの初期化に失敗しました', 'error');
+    }
+}
+
+function generateEditEntryTypeForm(entryType, existingContent = {}) {
+    console.log('エントリータイプフォーム生成:', entryType, existingContent);
+    
     const container = document.getElementById('edit-entry-type-form');
-    if (!container) return;
+    if (!container) {
+        console.error('エントリータイプフォームコンテナが見つかりません');
+        return;
+    }
     
-    const formTemplates = {
-        'ANALYSIS': generateEditAnalysisForm(content),
-        'NEWS': generateEditNewsForm(content),
-        'MEMO': generateEditMemoForm(content),
-        'GOAL': generateEditGoalForm(content),
-        'EARNINGS': generateEditEarningsForm(content),
-        'IR_EVENT': generateEditIREventForm(content),
-        'MARKET_EVENT': generateEditMarketEventForm(content)
-    };
+    let formHtml = '';
     
-    container.innerHTML = formTemplates[entryType] || '<p class="text-gray-400">このエントリータイプの編集フォームはまだ実装されていません。</p>';
+    switch (entryType) {
+        case 'ANALYSIS':
+            formHtml = generateEditAnalysisForm(existingContent);
+            break;
+        case 'NEWS':
+            formHtml = generateEditNewsForm(existingContent);
+            break;
+        case 'MEMO':
+            formHtml = generateEditMemoForm(existingContent);
+            break;
+        case 'GOAL':
+            formHtml = generateEditGoalForm(existingContent);
+            break;
+        case 'EARNINGS':
+            formHtml = generateEditEarningsForm(existingContent);
+            break;
+        case 'IR_EVENT':
+            formHtml = generateEditIrEventForm(existingContent);
+            break;
+        case 'MARKET_EVENT':
+            formHtml = generateEditMarketEventForm(existingContent);
+            break;
+        default:
+            formHtml = generateEditDefaultForm(existingContent);
+            break;
+    }
+    
+    container.innerHTML = formHtml;
+    console.log('エントリータイプフォーム生成完了');
+}
+
+function collectEntryTypeContent(entryType, form) {
+    const content = {};
+    
+    switch (entryType) {
+        case 'ANALYSIS':
+            content.summary = form.querySelector('[name="summary"]')?.value || '';
+            content.key_metrics = {
+                revenue: form.querySelector('[name="revenue"]')?.value || '',
+                operating_profit: form.querySelector('[name="operating_profit"]')?.value || '',
+                net_income: form.querySelector('[name="net_income"]')?.value || '',
+                eps: form.querySelector('[name="eps"]')?.value || ''
+            };
+            content.analysis = form.querySelector('[name="analysis"]')?.value || '';
+            content.outlook = form.querySelector('[name="outlook"]')?.value || '';
+            break;
+            
+        case 'NEWS':
+            content.headline = form.querySelector('[name="headline"]')?.value || '';
+            content.content = form.querySelector('[name="content"]')?.value || '';
+            content.impact = form.querySelector('[name="impact"]')?.value || '';
+            content.stock_impact = form.querySelector('[name="stock_impact"]')?.value || '';
+            break;
+            
+        case 'MEMO':
+            content.observation = form.querySelector('[name="observation"]')?.value || '';
+            content.market_trend = form.querySelector('[name="market_trend"]')?.value || '';
+            content.personal_note = form.querySelector('[name="personal_note"]')?.value || '';
+            content.next_action = form.querySelector('[name="next_action"]')?.value || '';
+            break;
+            
+        case 'GOAL':
+            content.target_price = form.querySelector('[name="target_price"]')?.value || '';
+            content.sell_timing = form.querySelector('[name="sell_timing"]')?.value || '';
+            content.investment_reason = form.querySelector('[name="investment_reason"]')?.value || '';
+            content.expected_effect = form.querySelector('[name="expected_effect"]')?.value || '';
+            break;
+            
+        case 'EARNINGS':
+            content.earnings_date = form.querySelector('[name="earnings_date"]')?.value || '';
+            content.quarter = form.querySelector('[name="quarter"]')?.value || '';
+            content.expectations = form.querySelector('[name="expectations"]')?.value || '';
+            content.key_criteria = form.querySelector('[name="key_criteria"]')?.value || '';
+            break;
+            
+        case 'IR_EVENT':
+            content.event_name = form.querySelector('[name="event_name"]')?.value || '';
+            content.event_datetime = form.querySelector('[name="event_datetime"]')?.value || '';
+            content.agenda = form.querySelector('[name="agenda"]')?.value || '';
+            content.key_takeaways = form.querySelector('[name="key_takeaways"]')?.value || '';
+            break;
+            
+        case 'MARKET_EVENT':
+            content.event_title = form.querySelector('[name="event_title"]')?.value || '';
+            content.event_date = form.querySelector('[name="event_date"]')?.value || '';
+            content.market_impact = form.querySelector('[name="market_impact"]')?.value || '';
+            content.sector_impact = form.querySelector('[name="sector_impact"]')?.value || '';
+            break;
+            
+        default:
+            content.content_text = form.querySelector('[name="content_text"]')?.value || '';
+            break;
+    }
+    
+    return content;
 }
 
 // ========================================

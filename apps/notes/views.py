@@ -387,8 +387,14 @@ def trending_tags_ajax(request):
         category = request.GET.get('category', '')
         limit = int(request.GET.get('limit', 10))
         
+        # ユーザー固有のタグのみ取得
         if category:
-            tags = Tag.objects.get_tags_by_category(category, limit=limit)
+            tags = Tag.objects.filter(
+                user=request.user,
+                category=category,
+                is_active=True,
+                usage_count__gt=0
+            ).order_by('-usage_count', '-updated_at')[:limit]
         else:
             tags = Tag.objects.get_trending_tags(request.user, limit=limit)
         
@@ -406,6 +412,7 @@ def trending_tags_ajax(request):
                 'category_display': tag.get_category_display(),
                 'description': tag.description,
                 'usage_count': tag.usage_count,
+                'color': tag.get_effective_color(),
                 'color_class': tag.get_color_class(),
                 'notebook_count': notebook_count,
                 'entry_count': entry_count,

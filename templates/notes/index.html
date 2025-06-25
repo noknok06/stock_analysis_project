@@ -726,7 +726,12 @@ function fetchTrendingTags(category) {
     const url = `/notes/trending-tags/?category=${encodeURIComponent(category)}&limit=15`;
     
     fetch(url)
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 updateTrendingTagsDisplay(data.tags);
@@ -736,7 +741,11 @@ function fetchTrendingTags(category) {
         })
         .catch(error => {
             console.error('トレンドタグ取得エラー:', error);
-            showNotification(error.message, 'error');
+            // エラー時は元のタグ表示を維持
+            const container = document.getElementById('trending-tags-container');
+            if (container && container.children.length === 0) {
+                container.innerHTML = '<span class="text-gray-400 text-sm">タグの読み込みに失敗しました</span>';
+            }
         })
         .finally(() => {
             hideTagsLoading();
